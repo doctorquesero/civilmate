@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Contracts & Pricing - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>body { background-color: #f8fafc; font-family: sans-serif; color: #1e293b; }</style>
+</head>
+<body class="p-2 md:p-6 max-w-4xl mx-auto">
+
+    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-700">NZS Contracts Builder</h1>
+            <p class="text-xs text-slate-500">Unit Rate Analysis (Like APU)</p>
+        </div>
+        <a href="index.html" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></a>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div class="bg-white p-5 rounded-xl shadow-lg border border-blue-100">
+            <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                Select NZ Master Kit
+            </h2>
+
+            <div class="space-y-3 mb-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Discipline (NZ Standards)</label>
+                    <select id="disciplineSelect" onchange="loadKits()" class="w-full p-3 bg-slate-50 border rounded-lg font-medium outline-none focus:ring-2 ring-blue-500">
+                        <option value="">-- Select Trade --</option>
+                        </select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Activity Kit (APU)</label>
+                    <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-3 bg-slate-50 border rounded-lg font-medium outline-none focus:ring-2 ring-blue-500" disabled>
+                        <option>-- Select Discipline First --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="kitDetails" class="hidden bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4">
+                <div class="flex justify-between items-end mb-2">
+                    <h3 class="font-bold text-sm text-slate-700" id="kitTitle">...</h3>
+                    <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">NZS Compliant</span>
+                </div>
+                
+                <div id="resourcesList" class="space-y-2 text-sm mb-4"></div>
+
+                <div class="flex justify-between items-center border-t pt-3">
+                    <span class="font-bold text-slate-600">Unit Rate:</span>
+                    <span class="font-bold text-2xl text-blue-700" id="unitPriceDisplay">$0.00</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <div class="w-1/3">
+                    <label class="text-xs font-bold text-slate-500">Qty</label>
+                    <input type="number" id="qtyInput" class="w-full p-3 border rounded-lg font-bold text-center" placeholder="0" oninput="calcTotal()">
+                </div>
+                <button onclick="addToBudget()" class="w-2/3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition">
+                    + Add to Budget
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl shadow-lg border border-slate-200 flex flex-col h-full">
+            <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+                <span class="bg-blue-100 text-blue-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                Project Budget / Quote
+            </h2>
+
+            <div class="flex-1 overflow-y-auto mb-4 border rounded-lg">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-500 font-bold uppercase text-xs">
+                        <tr>
+                            <th class="p-3">Item</th>
+                            <th class="p-3 text-center">Qty</th>
+                            <th class="p-3 text-right">Total</th>
+                            <th class="p-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="budgetTable">
+                        <tr><td colspan="4" class="p-4 text-center text-slate-400 italic">No items added yet.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="border-t pt-4 space-y-2">
+                <div class="flex justify-between text-slate-500">
+                    <span>Subtotal</span>
+                    <span id="subtotalDisplay">$0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-500">
+                    <span>GST (15%)</span>
+                    <span id="gstDisplay">$0.00</span>
+                </div>
+                <div class="flex justify-between text-xl font-bold text-slate-800">
+                    <span>TOTAL (NZD)</span>
+                    <span id="totalDisplay">$0.00</span>
+                </div>
+            </div>
+
+            <button onclick="saveContract()" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-lg font-bold hover:bg-black transition flex justify-center items-center gap-2">
+                <i class="fas fa-file-contract"></i> Generate NZS 3902 Contract
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIG FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
+            authDomain: "civilmate-933db.firebaseapp.com",
+            projectId: "civilmate-933db",
+            storageBucket: "civilmate-933db.firebasestorage.app",
+            messagingSenderId: "679829297548",
+            appId: "1:679829297548:web:42f9a5217314b787ed9ea9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- 2. LIBRERÍA MAESTRA (KITS / APU) ---
+        // Aquí simulamos la data de Lulowin pero adaptada a NZ
+        const masterLibrary = {
+            "Earthworks (NZS 4402)": [
+                {
+                    id: "EW01", name: "Site Clearing & Strip", unit: "m2",
+                    resources: [
+                        { name: "Excavator 1.7T (Plant)", type: "Plant", cost: 45.00 }, // Precio por unidad
+                        { name: "Operator (Labor)", type: "Labor", cost: 35.00 },
+                        { name: "Tip Fees (Material)", type: "Mat", cost: 15.00 }
+                    ]
+                },
+                {
+                    id: "EW02", name: "Trenching < 1.5m Deep", unit: "m",
+                    resources: [
+                        { name: "Excavator 5T (Plant)", type: "Plant", cost: 65.00 },
+                        { name: "Drainlayer (Labor)", type: "Labor", cost: 45.00 },
+                        { name: "Shoring (Safety)", type: "Mat", cost: 10.00 }
+                    ]
+                }
+            ],
+            "Concrete (NZS 3109)": [
+                {
+                    id: "CON01", name: "Footing 20MPa", unit: "m3",
+                    resources: [
+                        { name: "Concrete 20MPa (Mat)", type: "Mat", cost: 250.00 },
+                        { name: "Pump Hire (Plant)", type: "Plant", cost: 40.00 },
+                        { name: "Concrete Placer (Labor)", type: "Labor", cost: 50.00 },
+                        { name: "Vibrator (Plant)", type: "Plant", cost: 5.00 }
+                    ]
+                },
+                {
+                    id: "CON02", name: "Rebar Install D12", unit: "kg",
+                    resources: [
+                        { name: "Steel D12 (Mat)", type: "Mat", cost: 3.50 },
+                        { name: "Tie Wire (Mat)", type: "Mat", cost: 0.20 },
+                        { name: "Steelfixer (Labor)", type: "Labor", cost: 2.00 }
+                    ]
+                }
+            ],
+            "Carpentry (NZS 3604)": [
+                {
+                    id: "CAR01", name: "Framing Timber H1.2", unit: "m",
+                    resources: [
+                        { name: "Timber 90x45 (Mat)", type: "Mat", cost: 6.50 },
+                        { name: "Nails/Fixings (Mat)", type: "Mat", cost: 0.50 },
+                        { name: "Carpenter (Labor)", type: "Labor", cost: 12.00 }
+                    ]
+                }
+            ]
+        };
+
+        // --- 3. LOGICA DE INTERFAZ ---
+        let currentKit = null;
+        let budgetItems = [];
+
+        // Cargar Disciplinas
+        const discSelect = document.getElementById('disciplineSelect');
+        Object.keys(masterLibrary).forEach(disc => {
+            discSelect.innerHTML += `<option value="${disc}">${disc}</option>`;
+        });
+
+        function loadKits() {
+            const disc = discSelect.value;
+            const kitSelect = document.getElementById('kitSelect');
+            kitSelect.innerHTML = '<option>-- Select Activity Kit --</option>';
+            
+            if(disc && masterLibrary[disc]) {
+                masterLibrary[disc].forEach((kit, index) => {
+                    kitSelect.innerHTML += `<option value="${disc}|${index}">${kit.name} (${kit.unit})</option>`;
+                });
+                kitSelect.disabled = false;
+            } else {
+                kitSelect.disabled = true;
+            }
+        }
+
+        function loadKitDetails() {
+            const val = document.getElementById('kitSelect').value;
+            if(!val.includes("|")) return;
+            
+            const [disc, index] = val.split("|");
+            // Clonamos el objeto para que si editamos el precio NO se dañe la librería original
+            currentKit = JSON.parse(JSON.stringify(masterLibrary[disc][index])); 
+            
+            document.getElementById('kitDetails').classList.remove('hidden');
+            document.getElementById('kitTitle').innerText = currentKit.name;
+            
+            renderResources();
+            updateUnitPrice();
+        }
+
+        function renderResources() {
+            const list = document.getElementById('resourcesList');
+            list.innerHTML = "";
+            currentKit.resources.forEach((res, idx) => {
+                // Aquí permitimos editar el costo (Customizable)
+                list.innerHTML += `
+                    <div class="flex justify-between items-center bg-white p-2 rounded border">
+                        <div class="flex flex-col">
+                            <span class="font-medium text-slate-700">${res.name}</span>
+                            <span class="text-xs text-slate-400 uppercase">${res.type}</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs text-slate-400">$</span>
+                            <input type="number" value="${res.cost}" onchange="updateResourceCost(${idx}, this.value)" class="w-20 p-1 border rounded text-right font-mono text-sm">
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateResourceCost(idx, newCost) {
+            currentKit.resources[idx].cost = parseFloat(newCost);
+            updateUnitPrice();
+        }
+
+        function updateUnitPrice() {
+            let total = 0;
+            currentKit.resources.forEach(r => total += r.cost);
+            currentKit.unitPrice = total; // Guardamos el precio unitario calculado
+            document.getElementById('unitPriceDisplay').innerText = "$" + total.toFixed(2);
+            calcTotal();
+        }
+
+        function calcTotal() {
+            // Solo visual por ahora
+        }
+
+        // --- 4. LOGICA DEL PRESUPUESTO ---
+        function addToBudget() {
+            const qty = parseFloat(document.getElementById('qtyInput').value);
+            if(!currentKit || !qty) return alert("Select a Kit and enter Quantity");
+
+            const lineTotal = qty * currentKit.unitPrice;
+            
+            budgetItems.push({
+                name: currentKit.name,
+                unit: currentKit.unit,
+                qty: qty,
+                rate: currentKit.unitPrice,
+                total: lineTotal,
+                resources: currentKit.resources // Guardamos el desglose para usarlo luego en valuaciones
+            });
+
+            renderBudget();
+            document.getElementById('qtyInput').value = "";
+        }
+
+        function renderBudget() {
+            const tbody = document.getElementById('budgetTable');
+            tbody.innerHTML = "";
+            let subtotal = 0;
+
+            budgetItems.forEach((item, idx) => {
+                subtotal += item.total;
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="p-3">
+                            <div class="font-bold text-slate-700">${item.name}</div>
+                            <div class="text-xs text-slate-400">Rate: $${item.rate.toFixed(2)} / ${item.unit}</div>
+                        </td>
+                        <td class="p-3 text-center">${item.qty}</td>
+                        <td class="p-3 text-right font-mono">$${item.total.toFixed(2)}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="removeBudget(${idx})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const gst = subtotal * 0.15;
+            const total = subtotal + gst;
+
+            document.getElementById('subtotalDisplay').innerText = "$" + subtotal.toFixed(2);
+            document.getElementById('gstDisplay').innerText = "$" + gst.toFixed(2);
+            document.getElementById('totalDisplay').innerText = "$" + total.toFixed(2);
+        }
+
+        function removeBudget(idx) {
+            budgetItems.splice(idx, 1);
+            renderBudget();
+        }
+
+        // --- 5. GUARDAR Y GENERAR CONTRATO ---
+        function saveContract() {
+            if(budgetItems.length === 0) return alert("Budget is empty!");
+
+            const btn = document.querySelector('button[onclick="saveContract()"]');
+            btn.innerHTML = "Saving to Firestore...";
+            btn.disabled = true;
+
+            // Guardamos en Firebase como un proyecto nuevo
+            db.collection('projects').add({
+                clientName: "Client Demo", // En el futuro pediremos esto
+                totalValue: parseFloat(document.getElementById('totalDisplay').innerText.replace('$','')),
+                items: budgetItems, // ¡Aquí está la magia! Guardamos los items para usarlos en valuaciones
+                status: "Draft",
+                createdAt: Date.now()
+            }).then((docRef) => {
+                alert("✅ Contract Saved! ID: " + docRef.id + "\nReady for Valuations & Variations.");
+                window.location.href = "index.html";
+            }).catch((e) => {
+                alert("Error: " + e.message);
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
