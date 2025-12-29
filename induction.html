@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Site Induction - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { background-color: #f3f4f6; font-family: sans-serif; touch-action: manipulation; }
+        canvas { background: white; border: 2px dashed #cbd5e1; border-radius: 8px; cursor: crosshair; touch-action: none; }
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-lg mx-auto">
+
+    <div class="bg-white p-6 rounded-xl shadow-lg">
+        <header class="mb-6 border-b pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">🏗️ Site Induction</h1>
+                <p class="text-sm text-slate-500">Auckland Central Project</p>
+            </div>
+            <a href="index.html" class="text-blue-500 font-bold text-sm">Cancel</a>
+        </header>
+
+        <div id="inductionForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Full Name</label>
+                <input type="text" id="workerName" class="w-full p-3 border rounded-lg bg-slate-50" placeholder="e.g. John Doe">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Company / Trade</label>
+                <input type="text" id="workerCompany" class="w-full p-3 border rounded-lg bg-slate-50" placeholder="e.g. Spark Electrical">
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
+                <h3 class="font-bold text-blue-800 text-sm">Safety Declaration</h3>
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" id="check1" class="mt-1 w-5 h-5">
+                    <span class="text-sm text-slate-700">I have appropriate PPE (Boots, Vest, Hard Hat).</span>
+                </label>
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" id="check2" class="mt-1 w-5 h-5">
+                    <span class="text-sm text-slate-700">I have read the Hazard Board & Evacuation Plan.</span>
+                </label>
+                <label class="flex items-start gap-3">
+                    <input type="checkbox" id="check3" class="mt-1 w-5 h-5">
+                    <span class="text-sm text-slate-700">I am fit for work (No drugs/alcohol).</span>
+                </label>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-slate-700 mb-1">Digital Signature</label>
+                <p class="text-xs text-slate-400 mb-2">Sign with your finger below:</p>
+                <div class="relative w-full">
+                    <canvas id="sig-canvas" width="350" height="150" class="w-full"></canvas>
+                    <button onclick="clearCanvas()" class="absolute top-2 right-2 text-xs bg-slate-200 px-2 py-1 rounded text-slate-600">Clear</button>
+                </div>
+            </div>
+
+            <button onclick="submitInduction()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-md transition">
+                Sign In to Site
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 1. CONFIGURACIÓN FIREBASE (La misma que Tracker)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
+            authDomain: "civilmate-933db.firebaseapp.com",
+            projectId: "civilmate-933db",
+            storageBucket: "civilmate-933db.firebasestorage.app",
+            messagingSenderId: "679829297548",
+            appId: "1:679829297548:web:42f9a5217314b787ed9ea9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 2. LÓGICA DE FIRMA (CANVAS)
+        const canvas = document.getElementById("sig-canvas");
+        const ctx = canvas.getContext("2d");
+        let drawing = false;
+
+        // Ajustar tamaño del canvas al ancho del celular
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            ctx.scale(ratio, ratio);
+        }
+        window.onresize = resizeCanvas;
+        setTimeout(resizeCanvas, 500); // Esperar a que cargue
+
+        // Eventos Ratón/Dedo
+        function startDraw(e) { drawing = true; ctx.beginPath(); draw(e); }
+        function endDraw() { drawing = false; ctx.beginPath(); }
+        function draw(e) {
+            if (!drawing) return;
+            e.preventDefault(); // Evitar scroll
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+            
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "#000";
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        canvas.addEventListener("mousedown", startDraw);
+        canvas.addEventListener("mouseup", endDraw);
+        canvas.addEventListener("mousemove", draw);
+        
+        canvas.addEventListener("touchstart", startDraw, {passive: false});
+        canvas.addEventListener("touchend", endDraw);
+        canvas.addEventListener("touchmove", draw, {passive: false});
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 3. ENVIAR A FIREBASE
+        function submitInduction() {
+            const name = document.getElementById('workerName').value;
+            const company = document.getElementById('workerCompany').value;
+            const c1 = document.getElementById('check1').checked;
+            const c2 = document.getElementById('check2').checked;
+            const c3 = document.getElementById('check3').checked;
+
+            if(!name || !company) return alert("Please fill in Name and Company.");
+            if(!c1 || !c2 || !c3) return alert("You must agree to all safety checks.");
+
+            // Convertir firma a imagen texto (Base64)
+            const signatureData = canvas.toDataURL();
+
+            const btn = document.querySelector('button');
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            db.collection('inductions').add({
+                name: name,
+                company: company,
+                signature: signatureData,
+                timestamp: Date.now(),
+                dateReadable: new Date().toLocaleString()
+            }).then(() => {
+                alert("Induction Successful! You are signed in.");
+                window.location.href = "index.html";
+            }).catch((e) => {
+                alert("Error: " + e.message);
+                btn.innerText = "Try Again";
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
