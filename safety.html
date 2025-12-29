@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Safety Report - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>body { background-color: #1a1a1a; font-family: sans-serif; }</style>
+</head>
+<body class="p-4 text-white max-w-lg mx-auto">
+
+    <header class="mb-6 flex justify-between items-center border-b border-gray-700 pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-red-500">🛡️ Safety Incident</h1>
+            <p class="text-xs text-gray-400">NZ Health & Safety at Work Act 2015</p>
+        </div>
+        <a href="index.html" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></a>
+    </header>
+
+    <div class="space-y-5">
+        
+        <div>
+            <label class="block text-sm font-bold text-gray-400 mb-2">Type of Incident</label>
+            <select id="type" class="w-full p-4 bg-gray-800 border border-gray-700 rounded-xl focus:border-red-500 outline-none text-white appearance-none">
+                <option value="">-- Select Type --</option>
+                <option value="Near Miss">Near Miss (Casi Accidente)</option>
+                <option value="Minor Injury">Minor Injury (First Aid)</option>
+                <option value="Property Damage">Property Damage</option>
+                <option value="Serious Harm">Serious Harm (Notifiable)</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-bold text-gray-400 mb-2">Person Involved</label>
+            <input type="text" id="person" class="w-full p-4 bg-gray-800 border border-gray-700 rounded-xl focus:border-red-500 outline-none text-white" placeholder="Name of person...">
+        </div>
+
+        <div>
+            <label class="block text-sm font-bold text-gray-400 mb-2">What Happened?</label>
+            <textarea id="details" rows="3" class="w-full p-4 bg-gray-800 border border-gray-700 rounded-xl focus:border-red-500 outline-none text-white" placeholder="Describe the event..."></textarea>
+        </div>
+
+        <div>
+            <label class="block text-sm font-bold text-gray-400 mb-2">Immediate Action Taken</label>
+            <textarea id="action" rows="2" class="w-full p-4 bg-gray-800 border border-gray-700 rounded-xl focus:border-red-500 outline-none text-white" placeholder="e.g. Stopped work, applied first aid..."></textarea>
+        </div>
+
+        <button onclick="submitSafety()" class="w-full bg-red-600 text-white py-4 rounded-xl font-bold text-xl hover:bg-red-500 shadow-lg shadow-red-900/20 transition transform active:scale-95 mt-4">
+            Submit Report 🚨
+        </button>
+
+    </div>
+
+    <script>
+        // CONFIGURACIÓN FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
+            authDomain: "civilmate-933db.firebaseapp.com",
+            projectId: "civilmate-933db",
+            storageBucket: "civilmate-933db.firebasestorage.app",
+            messagingSenderId: "679829297548",
+            appId: "1:679829297548:web:42f9a5217314b787ed9ea9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function submitSafety() {
+            const type = document.getElementById('type').value;
+            const person = document.getElementById('person').value;
+            const details = document.getElementById('details').value;
+            const action = document.getElementById('action').value;
+
+            if(!type || !person || !details) return alert("Please fill all required fields.");
+
+            const btn = document.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Sending...';
+            btn.disabled = true;
+
+            db.collection('incidents').add({
+                type: type,
+                person: person,
+                details: details,
+                actionTaken: action,
+                status: 'Investigating',
+                timestamp: Date.now(),
+                dateReadable: new Date().toLocaleString()
+            }).then(() => {
+                alert("Incident Logged. Safety Manager Notified.");
+                window.location.href = "index.html";
+            }).catch((e) => {
+                alert("Error: " + e.message);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
