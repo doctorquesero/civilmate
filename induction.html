@@ -8,8 +8,16 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        body { background-color: #f3f4f6; font-family: sans-serif; touch-action: manipulation; }
-        canvas { background: white; border: 2px dashed #cbd5e1; border-radius: 8px; cursor: crosshair; touch-action: none; }
+        body { background-color: #f3f4f6; font-family: sans-serif; touch-action: manipulation; overscroll-behavior: none; }
+        /* Canvas más robusto y grande */
+        canvas { 
+            background: #fff; 
+            border: 2px dashed #94a3b8; 
+            border-radius: 12px; 
+            touch-action: none; /* Vital para que no mueva la página al firmar */
+            width: 100%;
+            height: 300px; /* ¡MUCHO MÁS GRANDE! */
+        }
     </style>
 </head>
 <body class="p-4 md:p-8 max-w-lg mx-auto">
@@ -23,49 +31,54 @@
             <a href="index.html" class="text-blue-500 font-bold text-sm">Cancel</a>
         </header>
 
-        <div id="inductionForm" class="space-y-4">
+        <div id="inductionForm" class="space-y-5">
             <div>
                 <label class="block text-sm font-bold text-slate-700 mb-1">Full Name</label>
-                <input type="text" id="workerName" class="w-full p-3 border rounded-lg bg-slate-50" placeholder="e.g. John Doe">
+                <input type="text" id="workerName" class="w-full p-4 border-2 border-slate-200 rounded-lg bg-slate-50 text-lg focus:border-blue-500 outline-none" placeholder="Enter Full Name">
             </div>
             <div>
                 <label class="block text-sm font-bold text-slate-700 mb-1">Company / Trade</label>
-                <input type="text" id="workerCompany" class="w-full p-3 border rounded-lg bg-slate-50" placeholder="e.g. Spark Electrical">
+                <input type="text" id="workerCompany" class="w-full p-4 border-2 border-slate-200 rounded-lg bg-slate-50 text-lg focus:border-blue-500 outline-none" placeholder="e.g. Electrical">
             </div>
 
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
-                <h3 class="font-bold text-blue-800 text-sm">Safety Declaration</h3>
-                <label class="flex items-start gap-3">
-                    <input type="checkbox" id="check1" class="mt-1 w-5 h-5">
-                    <span class="text-sm text-slate-700">I have appropriate PPE (Boots, Vest, Hard Hat).</span>
+                <h3 class="font-bold text-blue-800 text-sm uppercase tracking-wide">Safety Declaration</h3>
+                <label class="flex items-start gap-4 p-2 active:bg-blue-100 rounded cursor-pointer">
+                    <input type="checkbox" id="check1" class="mt-1 w-6 h-6 accent-blue-600">
+                    <span class="text-sm text-slate-700 font-medium">I have appropriate PPE (Boots, Vest, Hard Hat).</span>
                 </label>
-                <label class="flex items-start gap-3">
-                    <input type="checkbox" id="check2" class="mt-1 w-5 h-5">
-                    <span class="text-sm text-slate-700">I have read the Hazard Board & Evacuation Plan.</span>
+                <label class="flex items-start gap-4 p-2 active:bg-blue-100 rounded cursor-pointer">
+                    <input type="checkbox" id="check2" class="mt-1 w-6 h-6 accent-blue-600">
+                    <span class="text-sm text-slate-700 font-medium">I have read the Hazard Board & Evacuation Plan.</span>
                 </label>
-                <label class="flex items-start gap-3">
-                    <input type="checkbox" id="check3" class="mt-1 w-5 h-5">
-                    <span class="text-sm text-slate-700">I am fit for work (No drugs/alcohol).</span>
+                <label class="flex items-start gap-4 p-2 active:bg-blue-100 rounded cursor-pointer">
+                    <input type="checkbox" id="check3" class="mt-1 w-6 h-6 accent-blue-600">
+                    <span class="text-sm text-slate-700 font-medium">I am fit for work (No drugs/alcohol).</span>
                 </label>
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1">Digital Signature</label>
-                <p class="text-xs text-slate-400 mb-2">Sign with your finger below:</p>
+                <div class="flex justify-between items-end mb-2">
+                    <label class="block text-sm font-bold text-slate-700">Digital Signature</label>
+                    <button onclick="clearCanvas()" class="text-xs text-red-500 font-bold hover:underline">Clear Signature</button>
+                </div>
+                
                 <div class="relative w-full">
-                    <canvas id="sig-canvas" width="350" height="150" class="w-full"></canvas>
-                    <button onclick="clearCanvas()" class="absolute top-2 right-2 text-xs bg-slate-200 px-2 py-1 rounded text-slate-600">Clear</button>
+                    <canvas id="sig-canvas"></canvas>
+                    <div id="sign-hint" class="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-2xl font-bold opacity-50">
+                        SIGN HERE
+                    </div>
                 </div>
             </div>
 
-            <button onclick="submitInduction()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 shadow-md transition">
-                Sign In to Site
+            <button onclick="submitInduction()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-xl hover:bg-blue-700 shadow-lg transition transform active:scale-95">
+                Confirm & Sign In
             </button>
         </div>
     </div>
 
     <script>
-        // 1. CONFIGURACIÓN FIREBASE (La misma que Tracker)
+        // 1. CONFIGURACIÓN FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
             authDomain: "civilmate-933db.firebaseapp.com",
@@ -77,84 +90,116 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // 2. LÓGICA DE FIRMA (CANVAS)
+        // 2. LÓGICA DE FIRMA MEJORADA
         const canvas = document.getElementById("sig-canvas");
         const ctx = canvas.getContext("2d");
-        let drawing = false;
+        const hint = document.getElementById("sign-hint");
+        let hasSigned = false; // Variable de control para saber si firmó
 
-        // Ajustar tamaño del canvas al ancho del celular
-        function resizeCanvas() {
+        // Configuración inicial del Canvas (Alta resolución)
+        function initCanvas() {
             const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            // Fijamos el tamaño interno igual al tamaño visual multiplicado por el ratio
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             ctx.scale(ratio, ratio);
+            
+            ctx.lineWidth = 3; // Trazo más grueso
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "#0f172a"; // Color Slate-900
         }
-        window.onresize = resizeCanvas;
-        setTimeout(resizeCanvas, 500); // Esperar a que cargue
+        
+        // Ejecutamos solo una vez al cargar para evitar borrados accidentales
+        setTimeout(initCanvas, 100);
 
-        // Eventos Ratón/Dedo
-        function startDraw(e) { drawing = true; ctx.beginPath(); draw(e); }
-        function endDraw() { drawing = false; ctx.beginPath(); }
+        // Funciones de dibujo
+        let drawing = false;
+
+        function startPosition(e) {
+            drawing = true;
+            hint.style.display = "none"; // Ocultar el texto "SIGN HERE"
+            draw(e);
+        }
+
+        function endPosition() {
+            drawing = false;
+            ctx.beginPath();
+        }
+
         function draw(e) {
             if (!drawing) return;
-            e.preventDefault(); // Evitar scroll
+            e.preventDefault(); // Evita scroll
+
             const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            
-            ctx.lineWidth = 2;
-            ctx.lineCap = "round";
-            ctx.strokeStyle = "#000";
-            
+            // Soporte para Mouse y Touch
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
             ctx.lineTo(x, y);
             ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(x, y);
+
+            hasSigned = true; // ¡Marcamos que ya firmó!
         }
 
-        canvas.addEventListener("mousedown", startDraw);
-        canvas.addEventListener("mouseup", endDraw);
+        // Event Listeners (Mouse & Touch)
+        canvas.addEventListener("mousedown", startPosition);
+        canvas.addEventListener("mouseup", endPosition);
         canvas.addEventListener("mousemove", draw);
-        
-        canvas.addEventListener("touchstart", startDraw, {passive: false});
-        canvas.addEventListener("touchend", endDraw);
-        canvas.addEventListener("touchmove", draw, {passive: false});
+
+        canvas.addEventListener("touchstart", startPosition, { passive: false });
+        canvas.addEventListener("touchend", endPosition);
+        canvas.addEventListener("touchmove", draw, { passive: false });
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            hasSigned = false; // Reseteamos la validación
+            hint.style.display = "flex"; // Vuelve a mostrar la ayuda
         }
 
-        // 3. ENVIAR A FIREBASE
+        // 3. ENVIAR CON VALIDACIÓN ESTRICTA
         function submitInduction() {
-            const name = document.getElementById('workerName').value;
-            const company = document.getElementById('workerCompany').value;
+            const name = document.getElementById('workerName').value.trim();
+            const company = document.getElementById('workerCompany').value.trim();
             const c1 = document.getElementById('check1').checked;
             const c2 = document.getElementById('check2').checked;
             const c3 = document.getElementById('check3').checked;
 
-            if(!name || !company) return alert("Please fill in Name and Company.");
-            if(!c1 || !c2 || !c3) return alert("You must agree to all safety checks.");
+            // VALIDACIONES
+            if (!name) return alert("❌ Error: Name is required.");
+            if (!company) return alert("❌ Error: Company/Trade is required.");
+            if (!c1 || !c2 || !c3) return alert("❌ Safety Error: You must agree to all safety checks to enter the site.");
+            if (!hasSigned) return alert("❌ Signature Error: Please sign with your finger in the box.");
 
-            // Convertir firma a imagen texto (Base64)
-            const signatureData = canvas.toDataURL();
-
+            // Si todo está bien, enviamos
             const btn = document.querySelector('button');
+            const originalText = btn.innerText;
             btn.innerText = "Saving...";
             btn.disabled = true;
+            btn.classList.add('opacity-50');
+
+            // Guardar imagen de firma
+            const signatureData = canvas.toDataURL();
 
             db.collection('inductions').add({
                 name: name,
                 company: company,
                 signature: signatureData,
+                checks: { ppe: c1, hazards: c2, fitForWork: c3 },
                 timestamp: Date.now(),
-                dateReadable: new Date().toLocaleString()
+                dateString: new Date().toLocaleString()
             }).then(() => {
-                alert("Induction Successful! You are signed in.");
+                alert("✅ Welcome to Site! Induction Saved.");
                 window.location.href = "index.html";
             }).catch((e) => {
-                alert("Error: " + e.message);
-                btn.innerText = "Try Again";
+                alert("Error saving: " + e.message);
+                btn.innerText = originalText;
                 btn.disabled = false;
+                btn.classList.remove('opacity-50');
             });
         }
     </script>
