@@ -10,14 +10,71 @@
     <style>
         body { background-color: #1a1a1a; font-family: 'Inter', sans-serif; }
         .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #262626; position: relative; }
+        .btn-disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); pointer-events: none; }
     </style>
 </head>
 <body class="text-white">
 
+    <div id="loginScreen" class="fixed inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6">
+        <div class="mb-10 text-center">
+            <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+                <i class="fas fa-hard-hat text-4xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight mb-2">CivilMate</h1>
+            <p class="text-gray-400 text-sm">Secure Site Management System</p>
+        </div>
+
+        <div class="w-full max-w-sm space-y-4" id="roleSelection">
+            <button onclick="selectRole('ENGINEER')" class="w-full bg-slate-800 hover:bg-slate-700 p-5 rounded-xl flex items-center border border-slate-700 transition group">
+                <div class="bg-green-500/10 p-3 rounded-full mr-4 group-hover:bg-green-500/20 transition">
+                    <i class="fas fa-user text-green-500 text-xl"></i>
+                </div>
+                <div class="text-left flex-1">
+                    <span class="block font-bold text-lg">Site Engineer</span>
+                    <span class="text-xs text-gray-400">Field Access Only</span>
+                </div>
+                <i class="fas fa-chevron-right text-gray-600"></i>
+            </button>
+
+            <button onclick="showPinInput()" class="w-full bg-slate-800 hover:bg-slate-700 p-5 rounded-xl flex items-center border border-slate-700 transition group">
+                <div class="bg-blue-500/10 p-3 rounded-full mr-4 group-hover:bg-blue-500/20 transition">
+                    <i class="fas fa-lock text-blue-500 text-xl"></i>
+                </div>
+                <div class="text-left flex-1">
+                    <span class="block font-bold text-lg">Director / QS</span>
+                    <span class="text-xs text-gray-400">Admin & Financials</span>
+                </div>
+                <i class="fas fa-chevron-right text-gray-600"></i>
+            </button>
+        </div>
+
+        <div id="pinArea" class="hidden w-full max-w-sm">
+            <p class="text-center text-gray-400 mb-4 text-sm">Enter Secure Admin PIN</p>
+            <div class="flex gap-2 mb-4">
+                <input type="password" id="pinInput" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-xl text-center text-2xl tracking-widest outline-none focus:border-blue-500 transition" placeholder="••••" maxlength="4">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="cancelPin()" class="p-3 rounded-lg border border-slate-600 text-gray-400">Cancel</button>
+                <button onclick="verifyPin()" class="p-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500">Unlock</button>
+            </div>
+            <p id="pinError" class="text-red-500 text-center text-xs mt-3 hidden animate-pulse">⛔ Incorrect PIN. Access Denied.</p>
+        </div>
+
+        <p class="absolute bottom-6 text-xs text-gray-600">Server Connection: australia-southeast1 (Active)</p>
+    </div>
+
     <div class="mobile-container flex flex-col p-6">
-        <header class="mb-8 pt-6 pb-4 text-center relative border-b border-gray-700">
-            <h1 class="text-3xl font-bold tracking-wide">CivilMate</h1>
-            <p class="text-gray-400 text-xs mt-1 uppercase tracking-widest">NZ Small Business Suite</p>
+        <header class="mb-8 pt-6 pb-4 text-center relative border-b border-gray-700 flex justify-between items-center">
+            <div class="text-left">
+                <h1 class="text-2xl font-bold tracking-wide">CivilMate</h1>
+                <div id="userBadge" class="flex items-center mt-1">
+                    <div class="w-2 h-2 rounded-full bg-gray-500 mr-2" id="statusDot"></div>
+                    <p class="text-gray-400 text-xs uppercase tracking-widest" id="userRoleLabel">Guest</p>
+                </div>
+            </div>
+            <button onclick="logout()" class="text-xs text-gray-400 border border-gray-700 px-3 py-1 rounded hover:text-white hover:border-gray-500 transition">
+                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+            </button>
         </header>
 
         <div class="flex-1 flex flex-col justify-center space-y-5">
@@ -30,7 +87,6 @@
                     <span class="block font-bold text-xl leading-none text-white mb-1">Health & Safety</span>
                     <span class="text-xs text-red-100 opacity-80">Inductions, Hazards, Reports</span>
                 </div>
-                <div class="ml-auto opacity-50"><i class="fas fa-chevron-right"></i></div>
             </a>
 
             <a href="tracker.html" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer no-underline border border-green-400/30">
@@ -41,10 +97,9 @@
                     <span class="block font-bold text-xl leading-none text-white mb-1">Site Control</span>
                     <span class="text-xs text-green-100 opacity-80">Daily Logs & Progress</span>
                 </div>
-                <div class="ml-auto opacity-50"><i class="fas fa-chevron-right"></i></div>
             </a>
 
-            <a href="contracts.html" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer no-underline border border-blue-400/30">
+            <div id="btnContracts" onclick="handleProtectedClick('contracts.html')" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-blue-400/30 relative overflow-hidden">
                 <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
                     <i class="fas fa-file-signature text-3xl text-white"></i>
                 </div>
@@ -52,10 +107,14 @@
                     <span class="block font-bold text-xl leading-none text-white mb-1">Contracts</span>
                     <span class="text-xs text-blue-100 opacity-80">Estimates & NZS 3902</span>
                 </div>
-                <div class="ml-auto opacity-50"><i class="fas fa-chevron-right"></i></div>
-            </a>
+                <div id="lockContracts" class="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px] z-10 transition-opacity duration-300">
+                    <div class="bg-black/80 p-2 rounded-full border border-gray-600">
+                        <i class="fas fa-lock text-xl text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
 
-            <button onclick="alert('Module: Payment Claims & Invoicing \nStatus: Coming Soon')" class="w-full bg-gradient-to-r from-slate-700 to-slate-600 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg border border-slate-500/30 opacity-90">
+            <div id="btnValuations" onclick="handleProtectedClick('#')" class="w-full bg-gradient-to-r from-slate-700 to-slate-600 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-slate-500/30 relative overflow-hidden">
                 <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
                     <i class="fas fa-calculator text-3xl text-white"></i>
                 </div>
@@ -63,11 +122,95 @@
                     <span class="block font-bold text-xl leading-none text-white mb-1">Valuations</span>
                     <span class="text-xs text-gray-300 opacity-80">Claims & Variations</span>
                 </div>
-                <div class="ml-auto opacity-50"><i class="fas fa-lock"></i></div>
-            </button>
+                <div id="lockValuations" class="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px] z-10 transition-opacity duration-300">
+                    <div class="bg-black/80 p-2 rounded-full border border-gray-600">
+                        <i class="fas fa-lock text-xl text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
 
         </div>
-        <footer class="mt-8 text-center text-gray-500 text-xs">CivilMate V1.3 &bull; Enterprise Menu</footer>
+        <footer class="mt-8 text-center text-gray-500 text-xs">CivilMate V1.4 &bull; Enterprise Security</footer>
     </div>
+
+    <script>
+        let currentUserRole = null; 
+
+        // 1. Mostrar Input de PIN
+        function showPinInput() {
+            document.getElementById('roleSelection').classList.add('hidden');
+            document.getElementById('pinArea').classList.remove('hidden');
+            document.getElementById('pinInput').focus();
+        }
+
+        // 2. Cancelar PIN
+        function cancelPin() {
+            document.getElementById('roleSelection').classList.remove('hidden');
+            document.getElementById('pinArea').classList.add('hidden');
+            document.getElementById('pinError').classList.add('hidden');
+            document.getElementById('pinInput').value = '';
+        }
+
+        // 3. Verificar PIN
+        function verifyPin() {
+            const pin = document.getElementById('pinInput').value;
+            if (pin === '2025') {
+                selectRole('DIRECTOR');
+            } else {
+                document.getElementById('pinError').classList.remove('hidden');
+                document.getElementById('pinInput').value = '';
+                // Vibrar celular si es posible
+                if(navigator.vibrate) navigator.vibrate(200);
+            }
+        }
+
+        // 4. Lógica de Login
+        function selectRole(role) {
+            currentUserRole = role;
+            document.getElementById('loginScreen').classList.add('hidden');
+            
+            const label = document.getElementById('userRoleLabel');
+            const dot = document.getElementById('statusDot');
+
+            if (role === 'ENGINEER') {
+                label.innerText = "Site Engineer";
+                dot.classList.remove('bg-gray-500'); dot.classList.add('bg-green-500');
+                
+                // Asegurar que los candados estén visibles
+                document.getElementById('lockContracts').classList.remove('hidden');
+                document.getElementById('lockValuations').classList.remove('hidden');
+            } else {
+                label.innerText = "Director / QS";
+                dot.classList.remove('bg-gray-500'); dot.classList.add('bg-blue-500');
+                
+                // Quitar candados
+                document.getElementById('lockContracts').classList.add('hidden');
+                // Valuations sigue con candado porque no existe el archivo aun, pero podriamos quitarlo
+                // document.getElementById('lockValuations').classList.add('hidden'); 
+            }
+        }
+
+        // 5. Manejar Clics en Botones Protegidos
+        function handleProtectedClick(url) {
+            if (currentUserRole === 'ENGINEER') {
+                alert("⛔ ACCESS DENIED\n\nYou do not have permission to view Financial Data.\nThis attempt has been logged.");
+                return;
+            }
+            if (url === '#') {
+                alert("Module coming soon!");
+                return;
+            }
+            window.location.href = url;
+        }
+
+        function logout() {
+            location.reload();
+        }
+
+        // Permitir "Enter" en el input de PIN
+        document.getElementById('pinInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') verifyPin();
+        });
+    </script>
 </body>
 </html>
