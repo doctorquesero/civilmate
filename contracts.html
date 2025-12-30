@@ -12,49 +12,31 @@
     <style>
         body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* STRICT TABLE ALIGNMENT */
-        .res-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-        
-        /* Common widths for TH and TD to ensure alignment */
+        /* ALINEACIÓN DE TABLAS - Clases Utilitarias */
         .col-desc { width: 45%; }
         .col-unit { width: 15%; text-align: center; }
         .col-qty  { width: 15%; text-align: right; }
         .col-rate { width: 15%; text-align: right; }
         .col-total { width: 10%; text-align: right; }
-        .col-del  { width: 5%; text-align: center; }
-
-        .res-table th { 
-            font-size: 10px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            color: #64748b; 
-            padding: 6px 4px; 
-            border-bottom: 2px solid #e2e8f0; 
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
         
-        .res-table td { padding: 2px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
+        .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .res-table th { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
+        .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
-        /* Inputs */
-        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; }
+        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
         .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        /* Header Editables */
-        .editable-header { background: transparent; border: 1px dashed transparent; width: 100%; outline: none; text-align: right; transition: 0.2s; }
-        .editable-header:hover, .editable-header:focus { background: #fffbeb; border-color: #fcd34d; }
+        .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
+        .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
 
-        /* Print Logic */
         @media print {
             body * { visibility: hidden; }
             #printSection, #printSection * { visibility: visible; }
             #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
             .no-print { display: none !important; }
-            input { border: none !important; background: transparent !important; }
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            input { border: none !important; background: transparent !important; padding: 0 !important; }
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
     </style>
 </head>
@@ -65,7 +47,7 @@
             <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-lg">C</div>
             <div>
                 <h1 class="font-bold text-lg leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-400 opacity-80" id="statusLabel">Estimator V3.1</p>
+                <p class="text-[10px] text-slate-400 opacity-80">Estimator V3.2 (Stable)</p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -108,10 +90,10 @@
                 
                 <div class="flex justify-center mb-6">
                     <div class="bg-slate-100 p-1 rounded-lg flex w-full max-w-sm shadow-inner">
-                        <button id="btnModeUnit" onclick="setPricingMode('UNIT')" class="flex-1 py-1.5 text-xs font-bold rounded shadow-sm bg-white text-blue-700 transition">
+                        <button id="btnModeUnit" onclick="switchPricingMode('UNIT')" class="flex-1 py-1.5 text-xs font-bold rounded shadow-sm bg-white text-blue-700 transition border border-transparent">
                             <i class="fas fa-ruler-combined mr-1"></i> Unit Rate
                         </button>
-                        <button id="btnModeTime" onclick="setPricingMode('TIME')" class="flex-1 py-1.5 text-xs font-bold rounded text-slate-400 hover:text-slate-600 transition">
+                        <button id="btnModeTime" onclick="switchPricingMode('TIME')" class="flex-1 py-1.5 text-xs font-bold rounded text-slate-400 hover:text-slate-600 transition border border-transparent">
                             <i class="fas fa-clock mr-1"></i> Hourly (Charge-up)
                         </button>
                     </div>
@@ -129,7 +111,6 @@
                 </div>
 
                 <div class="space-y-6">
-                    
                     <div class="border border-orange-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-orange-50 px-3 py-2 flex justify-between items-center border-b border-orange-100">
                             <span class="text-[10px] font-bold text-orange-800 uppercase tracking-wider"><i class="fas fa-user-hard-hat mr-1"></i> Labor Cost</span>
@@ -144,7 +125,7 @@
                                         <th class="col-qty">Yield</th>
                                         <th class="col-rate">Rate</th>
                                         <th class="col-total">Total</th>
-                                        <th class="col-del"></th>
+                                        <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="listLab"></tbody>
@@ -166,7 +147,7 @@
                                         <th class="col-qty">Yield</th>
                                         <th class="col-rate">Rate</th>
                                         <th class="col-total">Total</th>
-                                        <th class="col-del"></th>
+                                        <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="listPlant"></tbody>
@@ -188,7 +169,7 @@
                                         <th class="col-qty">Qty</th>
                                         <th class="col-rate">Cost</th>
                                         <th class="col-total">Total</th>
-                                        <th class="col-del"></th>
+                                        <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="listMat"></tbody>
@@ -199,7 +180,6 @@
 
                 <div class="absolute bottom-0 left-0 w-full bg-white border-t border-slate-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
                     <div class="flex items-center justify-between gap-4">
-                        
                         <div class="flex gap-6 text-xs">
                             <div>
                                 <span class="block text-slate-400 font-bold uppercase text-[9px]">Base Cost</span>
@@ -220,9 +200,9 @@
                         <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
                             <div class="px-2">
                                 <label class="text-[8px] font-bold text-slate-400 uppercase block">Total Qty</label>
-                                <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-slate-800" placeholder="0">
+                                <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-slate-800" placeholder="1">
                             </div>
-                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow transition flex items-center gap-2">
+                            <button onclick="handleAddToQuote()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow transition flex items-center gap-2">
                                 <i class="fas fa-check"></i> Add to Quote
                             </button>
                         </div>
@@ -241,18 +221,18 @@
                         <h2 class="text-3xl font-bold text-slate-800 uppercase tracking-[0.2em]">Quotation</h2>
                         <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2024-001</span></p>
                     </div>
-                    <div class="w-1/2 text-right">
-                        <input type="text" value="My Construction Co." class="editable-header font-bold text-xl text-slate-800">
-                        <input type="text" value="123 Builder Lane, Auckland" class="editable-header text-xs text-slate-500">
-                        <input type="text" value="Ph: 0800 123 456" class="editable-header text-xs text-slate-500">
-                        <input type="text" value="www.civilmate.nz" class="editable-header text-xs text-blue-500">
+                    <div class="w-1/2">
+                        <input type="text" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
+                        <input type="text" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
+                        <input type="text" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
+                        <input type="text" value="www.civilmate.nz" class="company-input text-xs text-blue-500">
                     </div>
                 </div>
 
                 <div class="bg-yellow-50 border border-yellow-100 rounded p-4 mb-8 grid grid-cols-2 gap-8 no-print-bg">
                     <div>
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Prepared For (Client)</p>
-                        <input type="text" id="clientName" class="w-full font-bold text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400 mb-1" placeholder="Enter Client Name Here">
+                        <input type="text" id="clientName" class="w-full font-bold text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400 mb-1" placeholder="Enter Client Name">
                         <input type="text" id="clientAddress" class="w-full text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none mb-1 placeholder-slate-400" placeholder="Enter Address">
                         <div class="flex gap-2">
                              <input type="text" id="clientEmail" class="w-1/2 text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400" placeholder="Email">
@@ -263,7 +243,7 @@
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Date</p>
                         <p class="font-bold text-slate-700 text-sm" id="currentDate">...</p>
                         <p class="text-[9px] font-bold text-slate-400 uppercase mt-3 mb-1">Valid Until</p>
-                        <p class="text-sm text-slate-700">30 Days from date</p>
+                        <p class="text-sm text-slate-700">30 Days</p>
                     </div>
                 </div>
 
@@ -279,7 +259,7 @@
                         </tr>
                     </thead>
                     <tbody id="quoteTable" class="text-slate-700">
-                        <tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added to quote yet.</td></tr>
+                        <tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added.</td></tr>
                     </tbody>
                 </table>
 
@@ -304,7 +284,6 @@
                     <p class="font-bold uppercase mb-1">Terms & Conditions</p>
                     <p>1. This quotation is based on the NZS 3910 conditions of contract.</p>
                     <p>2. Acceptance of this quote indicates acceptance of our standard terms of trade.</p>
-                    <p>3. Payment is due on the 20th of the month following invoice.</p>
                 </div>
             </div>
             
@@ -318,7 +297,7 @@
     </div>
 
     <script>
-        // --- 1. CONFIG ---
+        // CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
             authDomain: "civilmate-933db.firebaseapp.com",
@@ -332,7 +311,7 @@
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-        // --- 2. DATABASE ---
+        // DATABASE
         const standardDB = {
             "Earthworks": [
                 { name: "Bulk Excavation", unit: "m3", resources: [
@@ -359,12 +338,13 @@
 
         // VARIABLES
         let currentResources = [];
-        let originalResources = []; // Snapshot for reversibility
-        let originalUnit = "ea";
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+        
+        // **SNAPSHOT STATE** (Para resolver el problema de reversibilidad)
+        let unitModeSnapshot = null; // Guardará { resources: [], unit: "" } cuando estemos en modo Unit
 
-        // --- 3. INIT ---
+        // INIT
         init();
 
         function init() {
@@ -373,7 +353,7 @@
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
-        // --- 4. LOAD ITEMS ---
+        // LOADERS
         function loadKits() {
             const d = document.getElementById('disciplineSelect').value;
             const k = document.getElementById('kitSelect');
@@ -392,14 +372,12 @@
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
             
-            // SAVE ORIGINAL STATE FOR REVERSIBILITY
-            originalUnit = item.unit;
-            // Use JSON parse/stringify to create a deep copy
+            // Cargar recursos limpios
             currentResources = JSON.parse(JSON.stringify(item.resources));
-            originalResources = JSON.parse(JSON.stringify(item.resources));
+            unitModeSnapshot = null; // Reset snapshot
             
             // Reset UI
-            setPricingMode('UNIT', false);
+            switchPricingMode('UNIT', false);
             renderAllLists();
             updateCalculations();
         }
@@ -409,16 +387,15 @@
             document.getElementById('itemName').value = "Custom Item";
             document.getElementById('itemUnit').value = "ea";
             
-            originalUnit = "ea";
-            originalResources = [];
             currentResources = [{n:"New Item", u:"ea", q:1, c:0, t:"Mat"}];
+            unitModeSnapshot = null;
             
-            setPricingMode('UNIT');
+            switchPricingMode('UNIT');
             renderAllLists();
             updateCalculations();
         }
 
-        // --- 5. RENDER TABLES (ALIGNED) ---
+        // --- RENDER TABLES (ALIGNED) ---
         function renderAllLists() {
             renderList('Lab', 'listLab');
             renderList('Plant', 'listPlant');
@@ -454,48 +431,47 @@
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
 
-        // --- 6. SWITCH MODES (FIXED) ---
-        function setPricingMode(mode, doRender = true) {
+        // --- PRICING MODE LOGIC (FIXED) ---
+        function switchPricingMode(targetMode) {
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
-            
-            if(mode === 'TIME') {
-                // UI Changes
+            const unitInput = document.getElementById('itemUnit');
+
+            if(targetMode === 'TIME') {
+                // UI Toggle
                 btnT.classList.replace('text-slate-400', 'bg-blue-600'); 
                 btnT.classList.add('text-white', 'shadow-md');
                 btnU.classList.replace('bg-white', 'text-slate-400');
                 btnU.classList.remove('text-blue-700', 'shadow-sm');
                 
-                // DATA CHANGES
-                document.getElementById('itemUnit').value = 'hr';
-                
-                // Force Labor/Plant Qty to 1 (Charge-up logic)
+                // SAVE SNAPSHOT OF UNIT MODE (This saves your custom edits!)
+                unitModeSnapshot = {
+                    resources: JSON.parse(JSON.stringify(currentResources)),
+                    unit: unitInput.value
+                };
+
+                // CONVERT TO HOURLY
+                unitInput.value = 'hr';
                 currentResources.forEach(r => {
-                    if(r.t !== 'Mat') r.q = 1;
+                    if(r.t !== 'Mat') r.q = 1; // Force labor/plant yield to 1
                 });
 
             } else {
-                // UI Changes
+                // UI Toggle
                 btnU.classList.replace('text-slate-400', 'bg-white'); 
                 btnU.classList.add('text-blue-700', 'shadow-sm');
                 btnT.classList.replace('bg-blue-600', 'text-slate-400');
                 btnT.classList.remove('text-white', 'shadow-md');
-                
-                // RESTORE ORIGINAL DATA (Reversibility Logic)
-                document.getElementById('itemUnit').value = originalUnit;
-                
-                // Only restore if we have original data
-                if(originalResources.length > 0) {
-                     // We merge original quantities back into current resources if names match
-                     // Or simply do a full reset to original snapshot for safety in this demo
-                     currentResources = JSON.parse(JSON.stringify(originalResources));
+
+                // RESTORE SNAPSHOT (This brings back your custom edits!)
+                if(unitModeSnapshot) {
+                    currentResources = JSON.parse(JSON.stringify(unitModeSnapshot.resources));
+                    unitInput.value = unitModeSnapshot.unit;
                 }
             }
             
-            if(doRender) {
-                renderAllLists();
-                updateCalculations();
-            }
+            renderAllLists();
+            updateCalculations();
         }
 
         function updateCalculations() {
@@ -510,16 +486,18 @@
             return price;
         }
 
-        // --- 7. ADD TO QUOTE (FIXED) ---
-        function addToQuote() {
-            // Simplified Validation Logic
-            const qtyInput = document.getElementById('qtyInput');
-            const qtyVal = parseFloat(qtyInput.value);
+        // --- ADD TO QUOTE (FIXED) ---
+        function handleAddToQuote() {
+            let qtyVal = parseFloat(document.getElementById('qtyInput').value);
             
-            if(!qtyVal || qtyVal <= 0) {
-                alert("Please enter a valid Quantity (greater than 0).");
-                qtyInput.focus();
-                return;
+            // Fix: If empty or 0, default to 1, or enforce user input based on preference
+            if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) {
+                // Option A: Alert user
+                // return alert("Please enter a valid Quantity.");
+                
+                // Option B: Default to 1 (Smoother for user)
+                qtyVal = 1; 
+                document.getElementById('qtyInput').value = 1;
             }
 
             const rate = updateCalculations();
@@ -534,14 +512,8 @@
             });
             
             renderQuote();
-            qtyInput.value = ""; // Clear input
-            
-            // Smooth Scroll to PDF section
-            if(window.innerWidth > 1024) {
-               // Only scroll if desktop
-            } else {
-               document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
-            }
+            // Scroll to show user it happened
+            if(window.innerWidth < 1024) document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
         }
 
         function renderQuote() {
@@ -550,7 +522,7 @@
             let sub = 0;
             
             if(quoteItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added to quote yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added.</td></tr>`;
             }
 
             quoteItems.forEach((item, i) => {
@@ -576,25 +548,19 @@
 
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
 
-        // --- 8. SAVE & LOAD ---
+        // --- SAVE / PRINT ---
         function printQuote() {
-            const client = document.getElementById('clientName').value;
-            if(!client) return alert("Please enter Client Name before printing.");
+            if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
             window.print();
         }
 
         function saveProject() {
             const client = document.getElementById('clientName').value;
-            
             if(!quoteItems.length) return alert("Quote is empty.");
-            if(!client) {
-                alert("Please enter a Client Name.");
-                document.getElementById('clientName').focus();
-                return;
-            }
+            if(!client) return alert("Enter Client Name.");
 
             let totalRev = 0;
-            quoteItems.forEach(i => { totalRev += i.total; });
+            quoteItems.forEach(i => totalRev += i.total);
 
             const pData = {
                 name: client + " - Project",
@@ -610,13 +576,13 @@
             };
 
             if(currentProjectId) {
-                db.collection('projects').doc(currentProjectId).update(pData).then(() => alert("✅ Project Updated!"));
+                db.collection('projects').doc(currentProjectId).update(pData).then(() => alert("✅ Updated!"));
             } else {
                 pData.createdAt = Date.now();
                 db.collection('projects').add(pData).then((doc) => {
                     localStorage.setItem('civilmate_current_project_id', doc.id);
                     currentProjectId = doc.id;
-                    alert("✅ Saved! Quote ID: " + doc.id);
+                    alert("✅ Saved!");
                 });
             }
         }
@@ -624,16 +590,3 @@
         function loadProjectFromDB(id) {
             db.collection('projects').doc(id).get().then(doc => {
                 if(doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('clientName').value = data.client || "";
-                    document.getElementById('clientAddress').value = data.address || "";
-                    document.getElementById('clientPhone').value = data.phone || "";
-                    document.getElementById('clientEmail').value = data.email || "";
-                    quoteItems = data.items || [];
-                    renderQuote();
-                }
-            });
-        }
-    </script>
-</body>
-</html>
