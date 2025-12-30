@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Estimator Pro - CivilMate</title>
+    <title>Contract Viewer - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
         /* ALINEACIÓN DE TABLAS */
         .col-desc { width: 45%; }
@@ -29,22 +29,19 @@
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
         .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
-        .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
+        .res-input:hover { background-color: #f1f5f9; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        /* CORRECCIÓN: Input de Cantidad Ajustado */
-        .quote-qty-input { 
-            background: #f0f9ff; 
-            border: 1px solid #bae6fd; 
-            color: #0369a1; 
-            font-weight: bold; 
-            text-align: center; 
-            border-radius: 4px; 
-            width: 100%; 
-            font-size: 11px; 
-            padding: 2px 0; /* Reducido para evitar corte */
-            height: 24px;   /* Altura fija para estabilidad */
+        /* ESTILO DE BLOQUEO (READ ONLY) */
+        .locked-input { 
+            background-color: #f1f5f9 !important; 
+            color: #64748b !important; 
+            pointer-events: none; 
+            border: none !important;
         }
+        .locked-area { opacity: 0.7; pointer-events: none; filter: grayscale(100%); }
+
+        .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; font-size: 11px; padding: 2px 0; height: 24px; }
         
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -67,42 +64,29 @@
 
     <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
         <div class="flex items-center gap-3">
-            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-layer-group"></i></div>
+            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-contract"></i></div>
             <div>
-                <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V4.2 (Pro Data + UI Fix)</p>
+                <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate Contract</h1>
+                <p class="text-[10px] text-slate-500">Estimator V4.3</p>
             </div>
         </div>
         
-        <div class="flex gap-2 items-center">
-            <input type="file" id="importFile" class="hidden" accept=".csv" onchange="handleCSVImport(this)">
-            
-            <div class="bg-slate-50 p-1 rounded-lg border border-slate-200 flex gap-1 mr-4">
-                <button onclick="downloadCSVTemplate()" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-white rounded transition flex items-center gap-1" title="Download Excel Template">
-                    <i class="fas fa-file-csv text-green-600"></i> Template
-                </button>
-                <div class="w-px bg-slate-300 my-1"></div>
-                <button onclick="document.getElementById('importFile').click()" class="px-3 py-1 text-[10px] font-bold text-slate-700 hover:bg-white rounded transition flex items-center gap-1" title="Append to current DB">
-                    <i class="fas fa-upload text-blue-600"></i> Import
-                </button>
-                <div class="w-px bg-slate-300 my-1"></div>
-                <button onclick="openDBManager()" class="px-3 py-1 text-[10px] font-bold text-slate-700 hover:bg-white rounded transition flex items-center gap-1" title="Manage & Clear DB">
-                    <i class="fas fa-database text-slate-500"></i> Manage DB
-                </button>
+        <div id="statusBanner" class="hidden px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
             </div>
 
+        <div class="flex gap-2 items-center">
             <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border">
                 <i class="fas fa-arrow-left mr-1"></i> Dashboard
             </button>
-            <button onclick="saveProject()" class="px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2">
-                <i class="fas fa-save"></i> Save Contract
+            <button id="btnSaveHeader" onclick="saveProject()" class="px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2">
+                <i class="fas fa-save"></i> Save Changes
             </button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         
-        <div class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
+        <div id="leftPanel" class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
             
             <div class="p-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
                 <div class="flex gap-2">
@@ -119,7 +103,7 @@
                         </select>
                     </div>
                     <div class="w-1/3 flex items-end">
-                        <button onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2">
+                        <button id="btnCustom" onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2">
                             <i class="fas fa-plus"></i> Create Custom
                         </button>
                     </div>
@@ -154,7 +138,7 @@
                     <div class="border border-orange-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-orange-50 px-3 py-2 flex justify-between items-center border-b border-orange-100">
                             <span class="text-[10px] font-bold text-orange-800 uppercase tracking-wider"><i class="fas fa-user-hard-hat mr-1"></i> Labor Cost</span>
-                            <button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm transition hover:shadow">+ Add</button>
+                            <button id="btnAddLab" onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm transition hover:shadow">+ Add</button>
                         </div>
                         <div class="bg-white">
                             <table class="res-table">
@@ -176,7 +160,7 @@
                     <div class="border border-green-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-green-50 px-3 py-2 flex justify-between items-center border-b border-green-100">
                             <span class="text-[10px] font-bold text-green-800 uppercase tracking-wider"><i class="fas fa-truck-monster mr-1"></i> Plant Cost</span>
-                            <button onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm transition hover:shadow">+ Add</button>
+                            <button id="btnAddPlant" onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm transition hover:shadow">+ Add</button>
                         </div>
                         <div class="bg-white">
                             <table class="res-table">
@@ -198,7 +182,7 @@
                     <div class="border border-blue-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-blue-50 px-3 py-2 flex justify-between items-center border-b border-blue-100">
                             <span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider"><i class="fas fa-cubes mr-1"></i> Material Cost</span>
-                            <button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm transition hover:shadow">+ Add</button>
+                            <button id="btnAddMat" onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm transition hover:shadow">+ Add</button>
                         </div>
                         <div class="bg-white">
                             <table class="res-table">
@@ -238,15 +222,11 @@
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <button onclick="saveToLibrary()" class="text-slate-400 hover:text-white px-3 py-2 rounded font-bold border border-slate-700 hover:border-slate-500 transition text-xs" title="Save this analysis to local DB">
-                                <i class="fas fa-save mr-1"></i> Save to DB
-                            </button>
-
                             <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
                                 <label class="text-[9px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
                                 <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1">
                             </div>
-                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded font-bold shadow-lg shadow-blue-900/50 transition flex items-center gap-2">
+                            <button id="btnAddToQuote" onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded font-bold shadow-lg shadow-blue-900/50 transition flex items-center gap-2">
                                 <i class="fas fa-arrow-right"></i> Add to Quote
                             </button>
                         </div>
@@ -299,7 +279,7 @@
                             <th class="p-3 text-center w-1/12">Qty</th>
                             <th class="p-3 text-right w-2/12">Rate</th>
                             <th class="p-3 text-right w-2/12">Amount</th>
-                            <th class="p-3 w-1/12 no-print"></th>
+                            <th class="p-3 w-1/12 no-print header-action"></th>
                         </tr>
                     </thead>
                     <tbody id="quoteTable" class="text-slate-700">
@@ -343,41 +323,6 @@
         </div>
     </div>
 
-    <div id="dbModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-6 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 class="font-bold text-slate-800 text-lg">Database Manager</h3>
-                    <p class="text-xs text-slate-500">Total Items: <span id="dbCount" class="font-bold">0</span></p>
-                </div>
-                <button onclick="document.getElementById('dbModal').classList.add('hidden')" class="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"><i class="fas fa-times"></i></button>
-            </div>
-
-            <div class="p-3 bg-white border-b border-slate-100 flex justify-between items-center">
-                <p class="text-xs text-slate-400 italic">Manage your items below. Changes are saved to memory.</p>
-                <button onclick="clearAllData()" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 rounded text-xs font-bold transition flex items-center gap-2">
-                    <i class="fas fa-trash-alt"></i> Delete All Data
-                </button>
-            </div>
-
-            <div class="overflow-y-auto p-0 flex-1 bg-slate-50">
-                <table class="w-full text-sm">
-                    <thead class="text-[10px] uppercase bg-slate-100 text-slate-500 font-bold sticky top-0 shadow-sm">
-                        <tr>
-                            <th class="p-3 text-left w-1/4">Discipline</th>
-                            <th class="p-3 text-left w-1/3">Item Name</th>
-                            <th class="p-3 text-center w-1/6">Unit</th>
-                            <th class="p-3 text-right w-1/6">Resources</th>
-                            <th class="p-3 text-center w-1/12">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dbTableBody" class="bg-white divide-y divide-slate-100"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
     <script>
         // CONFIG
         const firebaseConfig = {
@@ -393,29 +338,10 @@
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-        // DATABASE (With CDS Standard)
+        // DATABASE
         let standardDB = {
-            "Earthworks": [
-                { name: "Bulk Excavation", unit: "m3", resources: [
-                    {n:"Excavator 20T", u:"hr", q:0.05, c:140, t:"Plant"}, 
-                    {n:"Operator", u:"hr", q:0.05, c:45, t:"Lab"},
-                    {n:"Tip Fees", u:"m3", q:1, c:35, t:"Mat"}
-                ]}
-            ],
-            "Concrete": [
-                { name: "Footing 20MPa", unit: "m3", resources: [
-                    {n:"Concrete 20MPa", u:"m3", q:1.05, c:250, t:"Mat"},
-                    {n:"Line Pump", u:"hr", q:0.2, c:180, t:"Plant"},
-                    {n:"Placers", u:"hr", q:1, c:70, t:"Lab"}
-                ]}
-            ],
-            "Drainage": [
-                { name: "PVC 100mm Pipe", unit: "m", resources: [
-                    {n:"Pipe 100mm", u:"m", q:1, c:14, t:"Mat"},
-                    {n:"Bedding GAP7", u:"m3", q:0.1, c:60, t:"Mat"},
-                    {n:"Drainlayer", u:"hr", q:0.4, c:65, t:"Lab"}
-                ]}
-            ],
+            "Earthworks": [ { name: "Bulk Excavation", unit: "m3", resources: [{n:"Excavator 20T", u:"hr", q:0.05, c:140, t:"Plant"}, {n:"Operator", u:"hr", q:0.05, c:45, t:"Lab"}, {n:"Tip Fees", u:"m3", q:1, c:35, t:"Mat"}] } ],
+            "Concrete": [ { name: "Footing 20MPa", unit: "m3", resources: [{n:"Concrete 20MPa", u:"m3", q:1.05, c:250, t:"Mat"}, {n:"Line Pump", u:"hr", q:0.2, c:180, t:"Plant"}] } ],
             "User Custom": [] 
         };
 
@@ -423,6 +349,7 @@
         let currentResources = [];
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+        let projectStatus = "Pending";
         let unitModeSnapshot = null;
 
         // INIT
@@ -437,9 +364,7 @@
             const discSelect = document.getElementById('disciplineSelect');
             discSelect.innerHTML = '<option value="">-- Select --</option>';
             Object.keys(standardDB).forEach(d => {
-                if(standardDB[d].length > 0) {
-                    discSelect.innerHTML += `<option value="${d}">${d}</option>`;
-                }
+                if(standardDB[d].length > 0) discSelect.innerHTML += `<option value="${d}">${d}</option>`;
             });
         }
 
@@ -473,16 +398,14 @@
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = "New Item";
             document.getElementById('itemUnit').value = "ea";
-            
             currentResources = [{n:"New Resource", u:"ea", q:1, c:0, t:"Mat"}];
             unitModeSnapshot = null;
-            
             switchPricingMode('UNIT');
             renderAllLists();
             updateCalculations();
         }
 
-        // --- RENDER TABLES ---
+        // --- UI LOGIC ---
         function renderAllLists() {
             renderList('Lab', 'listLab');
             renderList('Plant', 'listPlant');
@@ -492,13 +415,11 @@
         function renderList(type, elementId) {
             const list = document.getElementById(elementId);
             list.innerHTML = "";
-            
             currentResources.forEach((res, idx) => {
                 if(res.t !== type) return;
-                
                 const total = (res.c * res.q).toFixed(2);
                 list.innerHTML += `
-                    <tr class="group hover:bg-slate-50 transition">
+                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
                         <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
                         <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
                         <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
@@ -510,42 +431,25 @@
             });
         }
 
-        window.updRes = (i, f, v) => { 
-            currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; 
-            renderAllLists(); 
-            updateCalculations(); 
-        };
+        window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
 
-        // --- LOGICA REVERSIBLE ---
         function switchPricingMode(targetMode) {
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
             const unitInput = document.getElementById('itemUnit');
 
             if(targetMode === 'TIME') {
-                btnT.classList.replace('text-slate-400', 'bg-blue-600'); 
-                btnT.classList.add('text-white', 'shadow-md');
-                btnU.classList.replace('bg-white', 'text-slate-400');
-                btnU.classList.remove('text-blue-700', 'shadow-sm');
+                btnT.classList.replace('text-slate-400', 'bg-blue-600'); btnT.classList.add('text-white', 'shadow-md');
+                btnU.classList.replace('bg-white', 'text-slate-400'); btnU.classList.remove('text-blue-700', 'shadow-sm');
                 
-                unitModeSnapshot = {
-                    resources: JSON.parse(JSON.stringify(currentResources)),
-                    unit: unitInput.value
-                };
-
+                unitModeSnapshot = { resources: JSON.parse(JSON.stringify(currentResources)), unit: unitInput.value };
                 unitInput.value = 'hr';
-                currentResources.forEach(r => {
-                    if(r.t !== 'Mat') r.q = 1; 
-                });
-
+                currentResources.forEach(r => { if(r.t !== 'Mat') r.q = 1; });
             } else {
-                btnU.classList.replace('text-slate-400', 'bg-white'); 
-                btnU.classList.add('text-blue-700', 'shadow-sm');
-                btnT.classList.replace('bg-blue-600', 'text-slate-400');
-                btnT.classList.remove('text-white', 'shadow-md');
-
+                btnU.classList.replace('text-slate-400', 'bg-white'); btnU.classList.add('text-blue-700', 'shadow-sm');
+                btnT.classList.replace('bg-blue-600', 'text-slate-400'); btnT.classList.remove('text-white', 'shadow-md');
                 if(unitModeSnapshot) {
                     currentResources = JSON.parse(JSON.stringify(unitModeSnapshot.resources));
                     unitInput.value = unitModeSnapshot.unit;
@@ -558,24 +462,16 @@
         function updateCalculations() {
             let cost = 0;
             currentResources.forEach(r => cost += (r.c * r.q));
-            
             const margin = parseFloat(document.getElementById('marginInput').value) || 0;
             const price = cost * (1 + (margin/100));
-            
             document.getElementById('rawCostDisplay').innerText = "$" + cost.toFixed(2);
             document.getElementById('finalRateDisplay').innerText = "$" + price.toFixed(2);
             return price;
         }
 
-        // --- QUOTE LOGIC ---
         function addToQuote() {
             let qtyVal = parseFloat(document.getElementById('qtyInput').value);
-            
-            if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) {
-                qtyVal = 1;
-                document.getElementById('qtyInput').value = 1;
-            }
-
+            if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) { qtyVal = 1; document.getElementById('qtyInput').value = 1; }
             const rate = updateCalculations();
             
             quoteItems.push({
@@ -595,27 +491,27 @@
             tbody.innerHTML = "";
             let sub = 0;
             
-            if(quoteItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
-            }
+            if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
 
             quoteItems.forEach((item, i) => {
                 item.total = item.qty * item.rate;
                 sub += item.total;
                 
+                // Disable input if locked
+                const disableAttr = projectStatus === 'Active' ? 'disabled' : '';
+                const delBtn = projectStatus === 'Active' ? '' : `<button onclick="delQuoteItem(${i})" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>`;
+
                 tbody.innerHTML += `
                     <tr class="border-b border-slate-100 group hover:bg-slate-50 transition">
                         <td class="p-3 font-bold text-slate-700">${item.name}</td>
                         <td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td>
                         <td class="p-3 text-center">
-                            <input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print">
+                            <input type="number" value="${item.qty}" ${disableAttr} onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print">
                             <span class="hidden print-only">${item.qty}</span>
                         </td>
-                        <td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toFixed(2)}</td>
-                        <td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                        <td class="p-3 text-right no-print">
-                            <button onclick="delQuoteItem(${i})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>
-                        </td>
+                        <td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right no-print">${delBtn}</td>
                     </tr>
                 `;
             });
@@ -627,144 +523,27 @@
 
         function updateQuoteQty(index, newVal) {
             const val = parseFloat(newVal);
-            if (val > 0) {
-                quoteItems[index].qty = val;
-                renderQuote(); 
-            }
+            if (val > 0) { quoteItems[index].qty = val; renderQuote(); }
         }
 
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
 
-        // --- DATA MANAGEMENT (CSV + DB Manager) ---
-        function saveToLibrary() {
-            const name = document.getElementById('itemName').value;
-            const unit = document.getElementById('itemUnit').value;
-            const discipline = document.getElementById('disciplineSelect').value || "User Custom";
+        // --- LOCK LOGIC FOR ACTIVE PROJECTS ---
+        function lockProjectUI() {
+            // Visual
+            document.getElementById('statusBanner').classList.remove('hidden');
+            document.getElementById('statusBanner').classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-200');
+            document.getElementById('statusBanner').innerHTML = '<i class="fas fa-lock"></i> ACTIVE CONTRACT (LOCKED)';
             
-            if(!standardDB[discipline]) standardDB[discipline] = [];
+            // Disable Inputs & Buttons
+            document.getElementById('leftPanel').classList.add('locked-area');
+            document.getElementById('btnSaveHeader').classList.add('hidden');
             
-            const idx = standardDB[discipline].findIndex(i => i.name === name);
-            const newItem = {
-                name: name,
-                unit: unit,
-                resources: JSON.parse(JSON.stringify(currentResources))
-            };
-
-            if(idx >= 0) {
-                standardDB[discipline][idx] = newItem;
-                alert(`Updated existing item "${name}" in ${discipline}.`);
-            } else {
-                standardDB[discipline].push(newItem);
-                alert(`Saved new item "${name}" to ${discipline}.`);
-            }
-            renderDisciplineSelect();
+            // Disable Quote Header Inputs
+            const inputs = document.querySelectorAll('.company-input, #clientName, #clientAddress, #clientEmail, #clientPhone');
+            inputs.forEach(inp => inp.classList.add('locked-input'));
         }
 
-        function downloadCSVTemplate() {
-            let csvContent = "Discipline,Item Name,Item Unit,Res Name,Res Unit,Res Yield,Res Rate,Res Type\n";
-            csvContent += "Earthworks,Example Excavation,m3,Digger 20T,hr,0.05,140,Plant\n";
-            csvContent += "Earthworks,Example Excavation,m3,Operator,hr,0.05,45,Lab\n";
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            if (link.download !== undefined) {
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", "CivilMate_Template.csv");
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-
-        function handleCSVImport(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const rows = text.split('\n');
-                
-                for(let i = 1; i < rows.length; i++) {
-                    const row = rows[i].split(',');
-                    if(row.length < 8) continue;
-                    
-                    const disc = row[0].trim();
-                    const itemName = row[1].trim();
-                    const itemUnit = row[2].trim();
-                    const res = {
-                        n: row[3].trim(),
-                        u: row[4].trim(),
-                        q: parseFloat(row[5]),
-                        c: parseFloat(row[6]),
-                        t: row[7].trim()
-                    };
-
-                    if(!standardDB[disc]) standardDB[disc] = [];
-                    let item = standardDB[disc].find(it => it.name === itemName);
-                    if(!item) {
-                        item = { name: itemName, unit: itemUnit, resources: [] };
-                        standardDB[disc].push(item);
-                    }
-                    item.resources.push(res);
-                }
-                renderDisciplineSelect();
-                alert("✅ Database Imported from CSV!");
-            };
-            reader.readAsText(file);
-        }
-
-        // DB MANAGER (NEW)
-        function openDBManager() {
-            const tbody = document.getElementById('dbTableBody');
-            tbody.innerHTML = "";
-            let count = 0;
-            
-            Object.keys(standardDB).forEach(disc => {
-                standardDB[disc].forEach((item, index) => {
-                    count++;
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-3 text-slate-700 font-bold text-xs">${disc}</td>
-                            <td class="p-3 text-slate-600 text-xs">${item.name}</td>
-                            <td class="p-3 text-center text-slate-500 text-xs bg-slate-50 rounded">${item.unit}</td>
-                            <td class="p-3 text-right text-xs text-slate-400 font-mono">${item.resources.length} items</td>
-                            <td class="p-3 text-center">
-                                <button onclick="deleteItem('${disc}', ${index})" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
-                            </td>
-                        </tr>
-                    `;
-                });
-            });
-            document.getElementById('dbCount').innerText = count;
-            document.getElementById('dbModal').classList.remove('hidden');
-        }
-
-        function deleteItem(disc, index) {
-            if(confirm("Delete this item?")) {
-                standardDB[disc].splice(index, 1);
-                if(standardDB[disc].length === 0) delete standardDB[disc];
-                openDBManager();
-                renderDisciplineSelect();
-            }
-        }
-
-        function clearAllData() {
-            if(confirm("⚠️ DANGER: This will delete ALL database items.\n\nAre you sure?")) {
-                if(confirm("Really sure? This cannot be undone.")) {
-                    standardDB = { "User Custom": [] };
-                    openDBManager();
-                    renderDisciplineSelect();
-                    // Optional: Reset current builder
-                    document.getElementById('kitSelect').innerHTML = "<option>-- Empty --</option>";
-                    document.getElementById('kitSelect').disabled = true;
-                }
-            }
-        }
-
-        // --- SAVE PROJECT ---
         function printQuote() {
             if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
             window.print();
@@ -787,7 +566,7 @@
                 total: totalRev,
                 profit: totalRev * 0.18, 
                 items: quoteItems,
-                status: "Pending",
+                status: "Pending", // Always saves as pending initially. Status changes in Dashboard.
                 updatedAt: Date.now()
             };
 
@@ -812,7 +591,14 @@
                     document.getElementById('clientPhone').value = data.phone || "";
                     document.getElementById('clientEmail').value = data.email || "";
                     quoteItems = data.items || [];
+                    
+                    projectStatus = data.status || "Pending";
                     renderQuote();
+
+                    // IF ACTIVE -> LOCK
+                    if(projectStatus === 'Active' || projectStatus === 'Completed') {
+                        lockProjectUI();
+                    }
                 }
             });
         }
