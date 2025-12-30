@@ -2,232 +2,182 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CivilMate Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Site Tracker - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: { colors: { brand: { 500: '#0ea5e9', 600: '#0284c7', 900: '#0c4a6e' } } }
-            }
-        }
-    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; }
+        .field-input { background: #1e293b; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; width: 100%; outline: none; font-size: 16px; }
+        .field-input:focus { border-color: #3b82f6; }
+        select.field-input { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; }
+    </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+<body class="p-4 max-w-md mx-auto min-h-screen flex flex-col">
 
-    <div id="loginModal" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-sm p-8 shadow-2xl text-center">
-            <h2 class="text-3xl font-bold text-slate-800 mb-2">🏗️ CivilMate</h2>
-            <p class="text-slate-500 mb-8">Select your role to enter</p>
-            <button onclick="login('ENGINEER')" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold mb-4 hover:bg-blue-700 flex items-center justify-center gap-3">
-                <i class="fas fa-hard-hat"></i> Site Engineer
-            </button>
-            <button onclick="login('MANAGER')" class="w-full bg-slate-800 text-white py-4 rounded-xl font-bold hover:bg-slate-900 flex items-center justify-center gap-3">
-                <i class="fas fa-user-tie"></i> Project Manager
-            </button>
+    <header class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white"><i class="fas fa-hard-hat text-yellow-400 mr-2"></i>Site Tracker</h1>
+            <p class="text-xs text-slate-400">Field Activity Log</p>
         </div>
+        <a href="index.html" class="bg-slate-700 px-3 py-2 rounded text-sm font-bold text-slate-300">Exit</a>
+    </header>
+
+    <div class="mb-6">
+        <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Active Project</label>
+        <select id="projectSelect" onchange="loadProjectItems()" class="field-input font-bold text-lg">
+            <option value="">-- Select Site --</option>
+        </select>
     </div>
 
-    <div id="app" class="hidden max-w-5xl mx-auto p-4 md:p-8">
-        <header class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+    <div id="logForm" class="hidden flex-1 flex flex-col gap-4">
+        
+        <div>
+            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Date</label>
+            <input type="date" id="logDate" class="field-input">
+        </div>
+
+        <div>
+            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Activity / Contract Item</label>
+            <select id="itemSelect" class="field-input text-sm">
+                <option value="">-- Select Activity --</option>
+            </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-slate-800"><i class="fas fa-hard-hat text-brand-500"></i> NZ Site Manager</h1>
-                <p class="text-sm text-slate-500" id="roleDisplay">Role: ...</p>
+                <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Qty Completed</label>
+                <input type="number" id="logQty" class="field-input text-center text-xl font-bold" placeholder="0">
             </div>
-            <a href="index.html" class="text-slate-400 hover:text-slate-600 font-medium text-sm"><i class="fas fa-arrow-left"></i> Back to Menu</a>
-        </header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 col-span-1 h-fit">
-                <h2 class="font-bold text-lg mb-4 border-b pb-2">1. Add Activity (NZS)</h2>
-                
-                <select id="catSelect" class="w-full p-3 mb-3 border rounded bg-slate-50 text-sm" onchange="loadActivities()">
-                    <option value="">-- Select Trade --</option>
-                </select>
-                
-                <select id="actSelect" class="w-full p-3 mb-6 border rounded bg-slate-50 text-sm" disabled>
-                    <option>-- Select Trade First --</option>
-                </select>
-
-                <button onclick="addItem()" class="w-full bg-brand-600 text-white py-3 rounded-lg font-bold hover:bg-brand-700 transition shadow-md">
-                    <i class="fas fa-plus"></i> Add to Tracker
-                </button>
-
-                <div class="mt-8 pt-6 border-t border-slate-100">
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                        <h3 class="font-bold text-yellow-800 text-sm mb-2"><i class="fas fa-bolt"></i> Variation Order</h3>
-                        <input id="customItem" type="text" placeholder="Describe variation..." class="w-full p-2 border border-yellow-200 rounded text-sm mb-2">
-                        <button onclick="addVariation()" class="w-full bg-yellow-500 text-white py-2 rounded text-sm font-bold hover:bg-yellow-600">Request Approval</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 col-span-1 lg:col-span-2">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-bold text-lg">2. Live Progress</h2>
-                    <span class="text-xs text-green-600 font-mono bg-green-50 px-2 py-1 rounded">● Live Sync: Australia-SE1</span>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="text-xs text-slate-400 uppercase border-b">
-                                <th class="pb-3 pl-2">Activity</th>
-                                <th class="pb-3">Status</th>
-                                <th class="pb-3">Progress</th>
-                                <th class="pb-3 text-center">Photo</th>
-                                <th class="pb-3 text-right pr-2">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <tr><td colspan="5" class="text-center py-8 text-slate-400">Loading database...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div>
+                <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Unit</label>
+                <input type="text" id="logUnit" class="field-input text-center text-slate-400" disabled value="...">
             </div>
         </div>
+
+        <div>
+            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Evidence / Reference</label>
+            <textarea id="logNotes" rows="3" class="field-input text-sm" placeholder="e.g. Photo #124, QA Check passed..."></textarea>
+        </div>
+
+        <button onclick="saveLog()" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2">
+            <i class="fas fa-check-circle"></i> Save Log
+        </button>
+
+        <div class="mt-8">
+            <h3 class="text-xs font-bold text-slate-500 uppercase border-b border-slate-700 pb-2 mb-2">Recent Activity</h3>
+            <div id="recentLogs" class="space-y-2 text-sm text-slate-300"></div>
+        </div>
+
     </div>
 
     <script>
-        // --- 1. CONFIGURACIÓN REAL DE TU PROYECTO 'CIVILMATE' ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
-            authDomain: "civilmate-933db.firebaseapp.com",
-            projectId: "civilmate-933db",
-            storageBucket: "civilmate-933db.firebasestorage.app",
-            messagingSenderId: "679829297548",
-            appId: "1:679829297548:web:42f9a5217314b787ed9ea9"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- 2. DATOS NZ STANDARDS ---
-        const standards = {
-            "Earthworks": ["Site Clearing", "Cut to Waste", "Imported Hardfill", "Compaction"],
-            "Concrete": ["Foundations", "Rebar Prep", "Boxing", "Pouring", "Curing"],
-            "Drainage": ["Trenching", "Pipe Laying", "Backfilling", "Manholes"],
-            "Roading": ["Sub-base", "Basecourse", "Kerb & Channel", "Asphalt"],
-            "Landscaping": ["Topsoil", "Planting", "Fencing"]
-        };
+        let activeProject = null;
+        let projectItems = [];
 
-        let role = "";
+        document.getElementById('logDate').valueAsDate = new Date();
+        loadProjects();
 
-        // --- 3. FUNCIONES ---
-        function login(userRole) {
-            role = userRole;
-            document.getElementById('loginModal').classList.add('hidden');
-            document.getElementById('app').classList.remove('hidden');
-            document.getElementById('roleDisplay').innerText = `Role: ${userRole === 'MANAGER' ? 'Project Manager' : 'Site Engineer'}`;
-            initListener();
-        }
-
-        // Cargar Dropdowns
-        const catSelect = document.getElementById('catSelect');
-        const actSelect = document.getElementById('actSelect');
-        Object.keys(standards).forEach(k => catSelect.innerHTML += `<option value="${k}">${k}</option>`);
-
-        window.loadActivities = () => {
-            const cat = catSelect.value;
-            actSelect.innerHTML = "";
-            if(standards[cat]) {
-                standards[cat].forEach(a => actSelect.innerHTML += `<option value="${a}">${a}</option>`);
-                actSelect.disabled = false;
-            } else {
-                actSelect.disabled = true;
-                actSelect.innerHTML = "<option>-- Select Trade First --</option>";
-            }
-        };
-
-        // Escribir en Base de Datos
-        window.addItem = () => {
-            const cat = catSelect.value;
-            const name = actSelect.value;
-            if(!cat || !name) return alert("Select category and item");
-            
-            db.collection('activities').add({
-                category: cat, name: name, status: 'Approved', progress: 0, photo: null, createdAt: Date.now()
-            });
-            alert("Item Added!");
-        };
-
-        window.addVariation = () => {
-            const val = document.getElementById('customItem').value;
-            if(!val) return;
-            db.collection('activities').add({
-                category: "Variation", name: val, status: 'Pending', progress: 0, photo: null, createdAt: Date.now()
-            });
-            document.getElementById('customItem').value = "";
-            alert("Variation requested!");
-        };
-
-        // Leer Base de Datos (Tiempo Real)
-        function initListener() {
-            db.collection('activities').orderBy('createdAt', 'desc').onSnapshot(snap => {
-                const tbody = document.getElementById('tableBody');
-                tbody.innerHTML = "";
-                
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const id = doc.id;
-                    
-                    // Lógica Visual
-                    let statusColor = d.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
-                    let isDisabled = (role === 'ENGINEER' && d.status === 'Pending') ? 'disabled' : '';
-                    
-                    // Botones Admin
-                    let actions = "";
-                    if(role === 'MANAGER') {
-                        if(d.status === 'Pending') actions += `<button onclick="updateStatus('${id}', 'Approved')" class="text-green-600 font-bold mr-2 text-xs border p-1 rounded hover:bg-green-50">APPROVE</button>`;
-                        actions += `<button onclick="deleteItem('${id}')" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>`;
-                    } else {
-                        if(d.status === 'Pending') actions = `<span class="text-xs text-slate-400 italic">Waiting...</span>`;
-                    }
-
-                    // Foto
-                    let photoHTML = d.photo 
-                        ? `<img src="${d.photo}" class="w-10 h-10 rounded object-cover cursor-pointer border" onclick="window.open('${d.photo}')">`
-                        : `<label class="cursor-pointer text-slate-300 hover:text-blue-500"><i class="fas fa-camera"></i><input type="file" class="hidden" accept="image/*" onchange="uploadPhoto('${id}', this)"></label>`;
-
-                    tbody.innerHTML += `
-                        <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
-                            <td class="py-3 pl-2">
-                                <div class="font-bold text-slate-700 text-sm">${d.name}</div>
-                                <div class="text-xs text-slate-400">${d.category}</div>
-                            </td>
-                            <td class="py-3"><span class="px-2 py-1 rounded-full text-xs font-bold ${statusColor}">${d.status}</span></td>
-                            <td class="py-3">
-                                <div class="flex items-center gap-2">
-                                    <input type="range" value="${d.progress}" class="w-20 accent-brand-600 cursor-pointer" 
-                                        ${isDisabled} onchange="updateProg('${id}', this.value)">
-                                    <span class="text-xs font-bold">${d.progress}%</span>
-                                </div>
-                            </td>
-                            <td class="py-3 text-center">${photoHTML}</td>
-                            <td class="py-3 text-right pr-2">${actions}</td>
-                        </tr>
-                    `;
+        function loadProjects() {
+            // Load Active projects only
+            db.collection('projects').where('status', '==', 'Active').get().then(snapshot => {
+                const select = document.getElementById('projectSelect');
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    select.innerHTML += `<option value="${doc.id}">${p.name}</option>`;
                 });
-                
-                if(snap.empty) tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 italic">No items yet. Add one!</td></tr>`;
             });
         }
 
-        // Acciones DB
-        window.updateStatus = (id, st) => db.collection('activities').doc(id).update({status: st});
-        window.deleteItem = (id) => { if(confirm("Delete?")) db.collection('activities').doc(id).delete(); };
-        window.updateProg = (id, val) => db.collection('activities').doc(id).update({progress: parseInt(val)});
-        window.uploadPhoto = (id, input) => {
-            if(input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => db.collection('activities').doc(id).update({photo: e.target.result});
-                reader.readAsDataURL(input.files[0]);
+        function loadProjectItems() {
+            const pid = document.getElementById('projectSelect').value;
+            if(!pid) return;
+
+            db.collection('projects').doc(pid).get().then(doc => {
+                activeProject = doc.data();
+                projectItems = activeProject.items || [];
+                
+                const itemSelect = document.getElementById('itemSelect');
+                itemSelect.innerHTML = '<option value="">-- Select Activity --</option>';
+                
+                projectItems.forEach((item, idx) => {
+                    itemSelect.innerHTML += `<option value="${idx}">${item.name}</option>`;
+                });
+
+                document.getElementById('logForm').classList.remove('hidden');
+                loadLocalLogs(pid);
+            });
+        }
+
+        document.getElementById('itemSelect').addEventListener('change', (e) => {
+            const idx = e.target.value;
+            if(idx !== "") {
+                document.getElementById('logUnit').value = projectItems[idx].unit;
             }
-        };
+        });
+
+        function saveLog() {
+            const pid = document.getElementById('projectSelect').value;
+            const itemIdx = document.getElementById('itemSelect').value;
+            const qty = document.getElementById('logQty').value;
+            const notes = document.getElementById('logNotes').value;
+            const date = document.getElementById('logDate').value;
+
+            if(!pid || itemIdx === "" || !qty || !notes) return alert("All fields are required.");
+
+            const logEntry = {
+                projectId: pid,
+                projectName: activeProject.name,
+                itemIdx: parseInt(itemIdx),
+                itemName: projectItems[itemIdx].name,
+                unit: projectItems[itemIdx].unit,
+                qty: parseFloat(qty),
+                notes: notes,
+                date: date,
+                timestamp: Date.now()
+            };
+
+            db.collection('site_logs').add(logEntry).then(() => {
+                alert("✅ Record Saved!");
+                document.getElementById('logQty').value = "";
+                document.getElementById('logNotes').value = "";
+                loadLocalLogs(pid);
+            });
+        }
+
+        function loadLocalLogs(pid) {
+            const container = document.getElementById('recentLogs');
+            container.innerHTML = "<i>Loading...</i>";
+            
+            db.collection('site_logs')
+              .where('projectId', '==', pid)
+              .orderBy('timestamp', 'desc')
+              .limit(5)
+              .onSnapshot(snapshot => {
+                  container.innerHTML = "";
+                  if(snapshot.empty) container.innerHTML = "No logs yet.";
+                  
+                  snapshot.forEach(doc => {
+                      const log = doc.data();
+                      container.innerHTML += `
+                        <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                            <div class="flex justify-between font-bold text-xs text-slate-400 mb-1">
+                                <span>${log.date}</span>
+                                <span class="text-white">${log.qty} ${log.unit}</span>
+                            </div>
+                            <div class="font-bold text-white mb-1">${log.itemName}</div>
+                            <div class="text-xs text-blue-400 italic">${log.notes}</div>
+                        </div>
+                      `;
+                  });
+              });
+        }
     </script>
 </body>
 </html>
