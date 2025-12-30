@@ -8,20 +8,24 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>body { background-color: #f1f5f9; font-family: sans-serif; color: #1e293b; }</style>
+    <style>
+        body { background-color: #f8fafc; font-family: sans-serif; color: #334155; }
+        /* Títulos de secciones */
+        .section-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid #e2e8f0; }
+        .col-lab { color: #d97706; border-color: #d97706; } /* Amber */
+        .col-plant { color: #16a34a; border-color: #16a34a; } /* Green */
+        .col-mat { color: #2563eb; border-color: #2563eb; } /* Blue */
+    </style>
 </head>
 <body class="p-2 md:p-6 max-w-[1400px] mx-auto">
 
     <header class="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200 gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">CivilMate Estimator</h1>
-            <p class="text-xs text-slate-500">NZS Standard Library (Free Tier) + Custom Builder</p>
+            <h1 class="text-2xl font-bold text-slate-800">CivilMate Estimator Pro</h1>
+            <p class="text-xs text-slate-500">Structured APU Builder (Labor / Plant / Materials)</p>
         </div>
         <div class="flex gap-3">
-            <button onclick="alert('Upsell: Access to Live Pricing Feeds (Placemakers, Carters, Hynds) is a Paid Feature.')" class="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-200 transition border border-amber-200">
-                <i class="fas fa-crown mr-2"></i> Upgrade to Pro DB
-            </button>
-            <a href="index.html" class="text-slate-400 hover:text-slate-600 px-2"><i class="fas fa-times text-xl"></i></a>
+             <a href="index.html" class="text-slate-400 hover:text-slate-600 px-2"><i class="fas fa-times text-xl"></i></a>
         </div>
     </header>
 
@@ -29,61 +33,82 @@
         
         <div class="lg:col-span-7 space-y-4">
             
-            <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="font-bold text-base text-slate-700">1. Select NZS Discipline</h2>
-                    <button onclick="createNewItem()" class="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded font-bold border border-blue-100 hover:bg-blue-100">+ Custom Item</button>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 bg-slate-50 border rounded text-sm outline-none focus:border-blue-500 cursor-pointer font-medium">
+            <div class="bg-white p-4 rounded-xl shadow border border-slate-200 flex gap-4 items-center">
+                <div class="flex-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Load Standard Item</label>
+                    <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer">
                         <option value="">-- Select Category --</option>
                     </select>
-                    <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 bg-slate-50 border rounded text-sm outline-none focus:border-blue-500 cursor-pointer" disabled>
+                </div>
+                <div class="flex-1">
+                     <label class="text-[10px] font-bold text-slate-400 uppercase">Activity</label>
+                    <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer" disabled>
                         <option>-- Select Category First --</option>
                     </select>
                 </div>
+                <div>
+                     <label class="text-[10px] font-bold text-transparent uppercase">.</label>
+                    <button onclick="createNewItem()" class="text-xs bg-slate-800 text-white px-3 py-2.5 rounded font-bold hover:bg-black transition">New Empty</button>
+                </div>
             </div>
 
-            <div id="builderArea" class="hidden bg-white p-5 rounded-xl shadow border-t-4 border-blue-500 flex flex-col gap-4">
+            <div id="builderArea" class="hidden bg-white p-5 rounded-xl shadow border-t-4 border-blue-600 flex flex-col gap-4">
                 
-                <div class="flex gap-3">
+                <div class="flex gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
                     <div class="flex-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Description / Item Name</label>
-                        <input type="text" id="itemName" class="w-full font-bold text-lg text-slate-800 border-b border-dashed border-slate-300 focus:border-blue-500 outline-none" value="...">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Item Description</label>
+                        <input type="text" id="itemName" class="w-full bg-transparent font-bold text-lg text-slate-800 border-b border-slate-300 focus:border-blue-500 outline-none" value="...">
                     </div>
-                    <div class="w-24">
+                    <div class="w-20">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Unit</label>
-                        <input type="text" id="itemUnit" class="w-full text-center font-bold text-slate-600 border-b border-dashed border-slate-300 focus:border-blue-500 outline-none" value="m">
+                        <input type="text" id="itemUnit" class="w-full bg-transparent text-center font-bold text-slate-600 border-b border-slate-300 focus:border-blue-500 outline-none" value="m">
                     </div>
                 </div>
 
-                <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase">Rate Analysis (Recursos)</h3>
-                        <button onclick="addResourceRow()" class="text-xs text-blue-600 hover:underline font-bold">+ Add Resource</button>
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     
-                    <div id="resourcesList" class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                    <div class="bg-orange-50/50 p-3 rounded-lg border border-orange-100">
+                        <div class="flex justify-between items-center section-title col-lab">
+                            <span class="text-orange-700">Labor (Mano de Obra)</span>
+                            <button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-800 text-xs"><i class="fas fa-plus"></i></button>
                         </div>
+                        <div id="listLab" class="space-y-2 min-h-[50px]"></div>
+                    </div>
+
+                    <div class="bg-green-50/50 p-3 rounded-lg border border-green-100">
+                        <div class="flex justify-between items-center section-title col-plant">
+                            <span class="text-green-700">Plant (Equipos)</span>
+                            <button onclick="addRes('Plant')" class="text-green-600 hover:text-green-800 text-xs"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div id="listPlant" class="space-y-2 min-h-[50px]"></div>
+                    </div>
+
+                    <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                        <div class="flex justify-between items-center section-title col-mat">
+                            <span class="text-blue-700">Materials</span>
+                            <button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-800 text-xs"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <div id="listMat" class="space-y-2 min-h-[50px]"></div>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 items-center pt-2">
+                <div class="grid grid-cols-2 gap-4 items-center pt-4 border-t border-slate-100">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Markup / Profit</label>
-                        <div class="flex items-center w-24">
-                            <input type="number" id="marginInput" value="15" onchange="updateCalculations()" class="w-full p-2 border border-r-0 rounded-l font-bold text-center bg-white text-sm">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Overheads & Profit (Margin)</label>
+                        <div class="flex items-center w-32">
+                            <input type="number" id="marginInput" value="15" onchange="updateCalculations()" class="w-full p-2 border border-r-0 rounded-l font-bold text-center bg-white text-sm focus:outline-none focus:ring-1 ring-blue-500">
                             <div class="bg-slate-100 text-slate-500 p-2 border rounded-r text-xs font-bold">%</div>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-xs text-slate-400">Total Unit Rate</p>
-                        <p class="text-3xl font-bold text-blue-600 leading-none" id="finalRateDisplay">$0.00</p>
+                        <p class="text-xs text-slate-400">Direct Cost: <span id="rawCostDisplay" class="font-mono">$0.00</span></p>
+                        <p class="text-sm text-slate-500 font-bold">Unit Price: <span id="finalRateDisplay" class="text-2xl text-blue-700">$0.00</span></p>
                     </div>
                 </div>
 
                 <div class="flex gap-3 pt-2">
                     <div class="w-1/3">
-                        <input type="number" id="qtyInput" class="w-full p-3 border-2 border-slate-200 rounded-lg font-bold text-center focus:border-blue-500 outline-none" placeholder="Qty">
+                        <input type="number" id="qtyInput" class="w-full p-3 border-2 border-slate-200 rounded-lg font-bold text-center focus:border-blue-500 outline-none" placeholder="Total Qty">
                     </div>
                     <button onclick="addToQuote()" class="w-2/3 bg-slate-800 text-white font-bold rounded-lg shadow hover:bg-slate-900 transition flex items-center justify-center gap-2">
                         Add to Budget <i class="fas fa-arrow-right"></i>
@@ -93,33 +118,33 @@
             </div>
         </div>
 
-        <div class="lg:col-span-5 flex flex-col h-full">
-            <div class="bg-white p-5 rounded-xl shadow border border-slate-200 flex-1 flex flex-col h-[600px] sticky top-4">
+        <div class="lg:col-span-5 flex flex-col h-full sticky top-4">
+            <div class="bg-white p-5 rounded-xl shadow border border-slate-200 flex-1 flex flex-col h-[600px]">
                 <div class="flex justify-between items-center mb-4 pb-4 border-b">
-                    <h2 class="font-bold text-lg text-slate-800">Project Budget</h2>
-                    <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold uppercase">Draft</span>
+                    <h2 class="font-bold text-lg text-slate-800">Project Estimate</h2>
+                    <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-bold uppercase">Draft Mode</span>
                 </div>
 
                 <div class="flex-1 overflow-y-auto mb-4 bg-slate-50 rounded border border-slate-200">
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-100 text-slate-500 font-bold uppercase text-[10px] sticky top-0 z-10">
                             <tr>
-                                <th class="p-2">Item</th>
+                                <th class="p-2">Description</th>
                                 <th class="p-2 text-center">Qty</th>
-                                <th class="p-2 text-right">Total</th>
+                                <th class="p-2 text-right">Amount</th>
                                 <th class="p-2"></th>
                             </tr>
                         </thead>
                         <tbody id="quoteTable">
-                            <tr><td colspan="4" class="p-8 text-center text-slate-400 italic text-xs">Quote is empty.</td></tr>
+                            <tr><td colspan="4" class="p-8 text-center text-slate-400 italic text-xs">No items yet.</td></tr>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="space-y-1 pt-2 border-t">
-                    <div class="flex justify-between text-sm text-slate-500"><span>Net</span><span id="subtotalDisplay">$0.00</span></div>
+                    <div class="flex justify-between text-sm text-slate-500"><span>Direct Cost (Subtotal)</span><span id="subtotalDisplay">$0.00</span></div>
                     <div class="flex justify-between text-sm text-slate-500"><span>GST (15%)</span><span id="gstDisplay">$0.00</span></div>
-                    <div class="flex justify-between text-xl font-bold text-slate-800 pt-2"><span>Total</span><span id="totalDisplay">$0.00</span></div>
+                    <div class="flex justify-between text-xl font-bold text-slate-800 pt-2 border-t mt-2"><span>TOTAL (Inc GST)</span><span id="totalDisplay">$0.00</span></div>
                 </div>
 
                 <button onclick="saveProject()" class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition shadow">
@@ -142,59 +167,56 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- DATABASE BASE AMPLIADA ---
+        // --- DB ACTUALIZADA (Separada por Tipo) ---
+        // t: 'Lab' | 'Plant' | 'Mat'
+        // q: Quantity per unit (Rendimiento inverso: 0.5 = 2 unidades por dia si es jornal)
         const standardDB = {
-            "Earthworks (NZS 4402)": [
-                { name: "Site Clearance & Strip", unit: "m2", resources: [{n: "Excavator 13T", t:"Plant", c:8.50}, {n:"Operator", t:"Lab", c:35}, {n:"Tip Fees", t:"Mat", c:4.00}] },
-                { name: "Bulk Excavation (Cut to Waste)", unit: "m3", resources: [{n: "Excavator 20T", t:"Plant", c:25}, {n:"Operator", t:"Lab", c:40}, {n:"6-Wheel Truck", t:"Plant", c:30}, {n:"Tip Fees", t:"Mat", c:45}] },
-                { name: "Hardfill GAP40 Supply & Place", unit: "m3", resources: [{n: "GAP40 Aggregate", t:"Mat", c:65}, {n:"Bobcat", t:"Plant", c:20}, {n:"Laborer", t:"Lab", c:28}] },
-                { name: "Detail Excavation (Footings)", unit: "m3", resources: [{n: "Excavator 5T", t:"Plant", c:45}, {n:"Operator", t:"Lab", c:35}, {n:"Spotter/Laborer", t:"Lab", c:28}] },
-                { name: "Cartage (Disposal)", unit: "load", resources: [{n: "Truck & Driver", t:"Sub", c:180}] }
+            "Earthworks": [
+                { 
+                    name: "Bulk Excavation", unit: "m3", 
+                    resources: [
+                        {n: "Excavator 20T", t:"Plant", c:45, q:0.1}, // 0.1 hr/m3
+                        {n: "Operator", t:"Lab", c:35, q:0.1}, 
+                        {n: "Tip Fees", t:"Mat", c:25, q:1}
+                    ] 
+                },
+                { 
+                    name: "Trenching < 1.5m", unit: "m", 
+                    resources: [
+                        {n: "Excavator 5T", t:"Plant", c:35, q:0.2}, 
+                        {n: "Drainlayer", t:"Lab", c:45, q:0.2},
+                        {n: "Laborer", t:"Lab", c:28, q:0.2}
+                    ] 
+                }
             ],
-            "Concrete (NZS 3109)": [
-                { name: "Footings 20MPa (Direct Pour)", unit: "m3", resources: [{n: "Concrete 20MPa", t:"Mat", c:260}, {n:"Line Pump", t:"Plant", c:40}, {n:"Concrete Placers (x2)", t:"Lab", c:70}, {n:"Leading Hand", t:"Lab", c:45}] },
-                { name: "Slab on Grade 25MPa", unit: "m2", resources: [{n: "Concrete 25MPa", t:"Mat", c:45}, {n:"Mesh SE62", t:"Mat", c:12}, {n:"Chairs/Polythene", t:"Mat", c:5}, {n:"Finishing Crew", t:"Sub", c:25}] },
-                { name: "Concrete Wall (150mm)", unit: "m2", resources: [{n: "Concrete 25MPa", t:"Mat", c:40}, {n:"Blocklayer", t:"Sub", c:85}, {n:"Rebar D12", t:"Mat", c:15}] },
-                { name: "Formwork (Timber)", unit: "m2", resources: [{n: "Ply/Timber", t:"Mat", c:35}, {n:"Carpenter", t:"Lab", c:65}, {n:"Hammer Hand", t:"Lab", c:35}] }
+            "Concrete": [
+                { 
+                    name: "Footing 20MPa", unit: "m3", 
+                    resources: [
+                        {n: "Concrete 20MPa", t:"Mat", c:260, q:1.05}, // 5% waste
+                        {n: "Line Pump", t:"Plant", c:40, q:1},
+                        {n: "Leading Hand", t:"Lab", c:45, q:2}, // 2 hrs labor per m3
+                        {n: "Laborer", t:"Lab", c:30, q:2}
+                    ] 
+                }
             ],
-            "Roading & Asphalt (NZS 4404)": [
-                { name: "Basecourse GAP40 Prep", unit: "m2", resources: [{n: "Grader", t:"Plant", c:15}, {n:"Roller", t:"Plant", c:10}, {n:"Operator", t:"Lab", c:35}] },
-                { name: "Asphalt AC10 (40mm thick)", unit: "m2", resources: [{n: "Asphalt Supply", t:"Mat", c:25}, {n:"Paving Crew (3 men)", t:"Sub", c:45}, {n:"Bitumen Spray", t:"Mat", c:5}] },
-                { name: "Kerb & Channel (Standard)", unit: "m", resources: [{n: "Concrete", t:"Mat", c:25}, {n:"Kerb Machine", t:"Plant", c:15}, {n:"Kerb Crew", t:"Lab", c:45}] },
-                { name: "Road Marking (White Lines)", unit: "m", resources: [{n: "Paint Supply", t:"Mat", c:2}, {n:"Painter", t:"Lab", c:15}] }
-            ],
-            "Structural Steel (NZS 3404)": [
-                { name: "Universal Beam Install (150UB)", unit: "m", resources: [{n: "Steel 150UB", t:"Mat", c:120}, {n:"Hiab/Crane", t:"Plant", c:45}, {n:"Rigger", t:"Lab", c:55}] },
-                { name: "SHS Column (100x100)", unit: "m", resources: [{n: "Steel SHS", t:"Mat", c:85}, {n:"Welder", t:"Lab", c:65}, {n:"Consumables", t:"Mat", c:10}] }
-            ],
-            "Plumbing & Drainage (NZS 4452)": [
-                { name: "100mm PVC Stormwater", unit: "m", resources: [{n: "Pipe 100mm", t:"Mat", c:15}, {n:"Fittings/Glue", t:"Mat", c:5}, {n:"Drainlayer (Cert)", t:"Lab", c:75}, {n:"Laborer", t:"Lab", c:28}] },
-                { name: "150mm PVC Sewer", unit: "m", resources: [{n: "Pipe 150mm", t:"Mat", c:38}, {n:"Bedding GAP7", t:"Mat", c:12}, {n:"Drainlayer", t:"Lab", c:75}] },
-                { name: "Manhole 1050mm Ø", unit: "ea", resources: [{n: "Manhole Risers", t:"Mat", c:800}, {n:"Lid/Frame", t:"Mat", c:350}, {n:"Concrete Base", t:"Mat", c:150}, {n:"Install Crew (3 pax)", t:"Lab", c:250}] }
-            ],
-            "Electrical Services": [
-                { name: "Switchboard Install (Domestic)", unit: "ea", resources: [{n: "Board & Breakers", t:"Mat", c:450}, {n:"Electrician", t:"Lab", c:85}] },
-                { name: "Power Point (Double)", unit: "ea", resources: [{n: "GPO Unit", t:"Mat", c:15}, {n:"Cable TPS", t:"Mat", c:10}, {n:"Electrician", t:"Lab", c:85}] },
-                { name: "LED Downlight", unit: "ea", resources: [{n: "Light Unit", t:"Mat", c:25}, {n:"Electrician", t:"Lab", c:45}] }
-            ],
-            "Interior & Finishing": [
-                { name: "Drywall (GIB) Install", unit: "m2", resources: [{n: "GIB Board 10mm", t:"Mat", c:12}, {n:"Screws/Glue", t:"Mat", c:3}, {n:"GIB Fixer", t:"Sub", c:18}] },
-                { name: "Plaster & Stop (Lvl 4)", unit: "m2", resources: [{n: "Compound", t:"Mat", c:5}, {n:"GIB Stopper", t:"Sub", c:22}] },
-                { name: "Painting (2 Coats)", unit: "m2", resources: [{n: "Paint Dulux", t:"Mat", c:8}, {n:"Painter", t:"Lab", c:25}] },
-                { name: "Waterproofing (Wet Area)", unit: "m2", resources: [{n: "Membrane", t:"Mat", c:45}, {n:"Applicator", t:"Sub", c:35}] }
-            ],
-            "Landscaping & External": [
-                { name: "Grass Seeding (Hydro)", unit: "m2", resources: [{n: "Seed Mix", t:"Mat", c:5}, {n:"Spraying Unit", t:"Plant", c:3}, {n:"Operator", t:"Lab", c:5}] },
-                { name: "Timber Retaining Wall (<1m)", unit: "m2", resources: [{n: "Posts H5", t:"Mat", c:65}, {n:"Rails H4", t:"Mat", c:45}, {n:"Draincoil/Metal", t:"Mat", c:30}, {n:"Builder", t:"Lab", c:55}, {n:"Laborer", t:"Lab", c:28}] }
+             "Drainage": [
+                { 
+                    name: "100mm PVC Pipe", unit: "m", 
+                    resources: [
+                        {n: "PVC Pipe 100mm", t:"Mat", c:15, q:1}, 
+                        {n: "Bedding GAP7", t:"Mat", c:12, q:0.1},
+                        {n: "Drainlayer", t:"Lab", c:55, q:0.5},
+                        {n: "Laborer", t:"Lab", c:28, q:0.5}
+                    ] 
+                }
             ]
         };
 
-        // ... EL RESTO DEL CÓDIGO JS ES IGUAL ...
-        // (Copiar lógica de edición del mensaje anterior, solo cambia la variable standardDB de arriba)
-        
-        // INIT LOGIC
         let currentResources = [];
         let quoteItems = [];
+
+        // INIT
         const discSelect = document.getElementById('disciplineSelect');
         Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
 
@@ -215,8 +237,9 @@
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
+            
             currentResources = JSON.parse(JSON.stringify(item.resources));
-            renderResources();
+            renderAllLists();
             updateCalculations();
         }
 
@@ -224,50 +247,73 @@
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = "New Item";
             document.getElementById('itemUnit').value = "ea";
-            currentResources = [{n: "Labor", t:"Lab", c:0}];
+            currentResources = [];
             document.getElementById('kitSelect').value = "";
-            renderResources();
+            renderAllLists();
             updateCalculations();
         }
 
-        function renderResources() {
-            const list = document.getElementById('resourcesList');
+        // --- SISTEMA ORGANIZADO DE RECURSOS ---
+        function renderAllLists() {
+            renderList('Lab', 'listLab');
+            renderList('Plant', 'listPlant');
+            renderList('Mat', 'listMat');
+        }
+
+        function renderList(type, elementId) {
+            const list = document.getElementById(elementId);
             list.innerHTML = "";
+            
+            // Filtrar recursos por tipo
             currentResources.forEach((res, idx) => {
-                let color = res.t === 'Mat' ? 'bg-blue-100 text-blue-700' : (res.t === 'Lab' ? 'bg-orange-100 text-orange-700' : (res.t === 'Plant' ? 'bg-green-100 text-green-700' : 'bg-gray-100'));
+                if(res.t !== type) return;
+
+                // Input de "Rate ($)" y "Qty (Und/hr)"
+                // Lulowin: Rendimiento = 1/Qty
                 
                 list.innerHTML += `
-                    <div class="flex items-center gap-2 mb-2 bg-white p-2 border rounded shadow-sm">
-                        <button onclick="removeResource(${idx})" class="text-red-300 hover:text-red-500"><i class="fas fa-times-circle"></i></button>
-                        <input type="text" value="${res.n}" onchange="updateResName(${idx}, this.value)" class="flex-1 text-sm font-medium border-none focus:ring-0 p-0 text-slate-700" placeholder="Name">
-                        <select onchange="updateResType(${idx}, this.value)" class="text-[10px] ${color} font-bold uppercase border-none rounded p-1 cursor-pointer w-16">
-                            <option value="Mat" ${res.t==='Mat'?'selected':''}>MAT</option>
-                            <option value="Lab" ${res.t==='Lab'?'selected':''}>LAB</option>
-                            <option value="Plant" ${res.t==='Plant'?'selected':''}>PLANT</option>
-                            <option value="Sub" ${res.t==='Sub'?'selected':''}>SUB</option>
-                        </select>
-                        <span class="text-xs text-slate-400">$</span>
-                        <input type="number" value="${res.c}" onchange="updateResCost(${idx}, this.value)" class="w-16 text-right font-mono text-sm font-bold border-b border-dashed border-slate-300 focus:border-blue-500 outline-none">
+                    <div class="flex items-center gap-1 mb-1 text-xs">
+                        <input type="text" value="${res.n}" onchange="updateRes(${idx}, 'n', this.value)" class="flex-1 bg-transparent border-b border-dotted border-slate-300 focus:border-blue-500 outline-none pb-1 font-medium" placeholder="Name">
+                        
+                        <div class="flex flex-col w-12 text-right">
+                            <span class="text-[8px] text-slate-400">Rate</span>
+                            <input type="number" value="${res.c}" onchange="updateRes(${idx}, 'c', this.value)" class="w-full bg-white/50 text-right border rounded px-1">
+                        </div>
+                        <div class="flex flex-col w-10 text-right">
+                            <span class="text-[8px] text-slate-400">Qty</span>
+                            <input type="number" value="${res.q}" onchange="updateRes(${idx}, 'q', this.value)" class="w-full bg-white/50 text-right border rounded px-1">
+                        </div>
+                        <button onclick="removeRes(${idx})" class="text-red-300 hover:text-red-500 ml-1"><i class="fas fa-times"></i></button>
                     </div>
                 `;
             });
         }
 
-        window.addResourceRow = () => { currentResources.push({n: "New Resource", t: "Mat", c: 0}); renderResources(); };
-        window.removeResource = (i) => { currentResources.splice(i, 1); renderResources(); updateCalculations(); };
-        window.updateResName = (i, v) => { currentResources[i].n = v; };
-        window.updateResType = (i, v) => { currentResources[i].t = v; renderResources(); };
-        window.updateResCost = (i, v) => { currentResources[i].c = parseFloat(v) || 0; updateCalculations(); };
+        function addRes(type) {
+            currentResources.push({n: "New " + type, t: type, c: 0, q: 1});
+            renderAllLists();
+        }
+
+        window.removeRes = (i) => { currentResources.splice(i, 1); renderAllLists(); updateCalculations(); };
+        window.updateRes = (i, field, val) => { 
+            currentResources[i][field] = field === 'n' ? val : (parseFloat(val) || 0); 
+            updateCalculations(); 
+        };
 
         function updateCalculations() {
             let rawCost = 0;
-            currentResources.forEach(r => rawCost += r.c);
+            // Costo = Rate * Qty (Ej: $35/hr * 0.5hr = $17.5)
+            currentResources.forEach(r => rawCost += (r.c * r.q));
+            
             const margin = parseFloat(document.getElementById('marginInput').value) || 0;
             const finalRate = rawCost * (1 + (margin/100));
+
+            document.getElementById('rawCostDisplay').innerText = "$" + rawCost.toFixed(2);
             document.getElementById('finalRateDisplay').innerText = "$" + finalRate.toFixed(2);
             return finalRate;
         }
 
+        // --- COTIZACIÓN ---
         function addToQuote() {
             const qty = parseFloat(document.getElementById('qtyInput').value);
             if(!qty) return alert("Enter Quantity");
@@ -279,7 +325,7 @@
                 qty: qty,
                 rate: rate,
                 total: qty * rate,
-                breakdown: JSON.parse(JSON.stringify(currentResources))
+                resources: JSON.parse(JSON.stringify(currentResources))
             });
             renderQuote();
             document.getElementById('qtyInput').value = "";
