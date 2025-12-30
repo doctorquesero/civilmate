@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract Viewer - CivilMate</title>
+    <title>Contract & Estimator - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -12,47 +12,38 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* ALINEACIÓN DE TABLAS */
-        .col-desc { width: 45%; }
-        .col-unit { width: 15%; text-align: center; }
-        .col-qty  { width: 15%; text-align: right; }
-        .col-rate { width: 15%; text-align: right; }
-        .col-total { width: 10%; text-align: right; }
+        /* TABLAS Y ESTILOS UI */
+        .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
         
         .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .res-table th { 
-            font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; 
-            padding: 6px 4px; text-align: right; border-bottom: 2px solid #e2e8f0; 
-        }
-        .res-table th.text-left { text-align: left; }
-        .res-table th.text-center { text-align: center; }
+        .res-table th { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
-        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
+        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; }
         .res-input:hover { background-color: #f1f5f9; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        /* ESTILO DE BLOQUEO (READ ONLY) */
-        .locked-input { 
-            background-color: #f1f5f9 !important; 
-            color: #64748b !important; 
-            pointer-events: none; 
-            border: none !important;
-        }
-        .locked-area { opacity: 0.7; pointer-events: none; filter: grayscale(100%); }
-
         .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; font-size: 11px; padding: 2px 0; height: 24px; }
-        
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
         
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
 
+        /* BLOQUEO DE SOLO LECTURA (Active Contract) */
+        .locked-area { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
+        .status-badge { font-size: 10px; padding: 4px 8px; border-radius: 99px; font-weight: bold; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; }
+
+        /* ESTILOS DE IMPRESIÓN (PDF) */
         @media print {
             body * { visibility: hidden; }
             #printSection, #printSection * { visibility: visible; }
             #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
+            
+            /* Si estamos imprimiendo el CONTRATO LEGAL */
+            #legalContractModal.show-print * { visibility: visible; }
+            #legalContractModal.show-print { position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 9999; display: block !important; }
+            
             .no-print { display: none !important; }
             input { border: none !important; background: transparent !important; padding: 0 !important; }
             .quote-qty-input { background: transparent !important; border: none !important; text-align: center; }
@@ -64,21 +55,22 @@
 
     <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
         <div class="flex items-center gap-3">
-            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-contract"></i></div>
+            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-signature"></i></div>
             <div>
-                <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate Contract</h1>
-                <p class="text-[10px] text-slate-500">Estimator V4.3</p>
+                <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
+                <p class="text-[10px] text-slate-500">Contract Suite V5.0</p>
             </div>
-        </div>
+            <div id="projectStatusBadge"></div> </div>
         
-        <div id="statusBanner" class="hidden px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-            </div>
-
         <div class="flex gap-2 items-center">
+            <button id="btnLegal" onclick="generateLegalContract()" class="hidden px-3 py-1.5 text-xs font-bold text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded transition flex items-center gap-2">
+                <i class="fas fa-gavel"></i> Legal Contract
+            </button>
+
             <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border">
                 <i class="fas fa-arrow-left mr-1"></i> Dashboard
             </button>
-            <button id="btnSaveHeader" onclick="saveProject()" class="px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2">
+            <button id="btnSave" onclick="saveProject()" class="px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2">
                 <i class="fas fa-save"></i> Save Changes
             </button>
         </div>
@@ -86,7 +78,7 @@
 
     <div class="flex flex-1 overflow-hidden">
         
-        <div id="leftPanel" class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
+        <div id="builderPanel" class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
             
             <div class="p-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
                 <div class="flex gap-2">
@@ -103,7 +95,7 @@
                         </select>
                     </div>
                     <div class="w-1/3 flex items-end">
-                        <button id="btnCustom" onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2">
+                        <button onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2">
                             <i class="fas fa-plus"></i> Create Custom
                         </button>
                     </div>
@@ -134,105 +126,30 @@
                     </div>
                 </div>
 
-                <div class="space-y-6">
-                    <div class="border border-orange-200 rounded-lg overflow-hidden shadow-sm">
-                        <div class="bg-orange-50 px-3 py-2 flex justify-between items-center border-b border-orange-100">
-                            <span class="text-[10px] font-bold text-orange-800 uppercase tracking-wider"><i class="fas fa-user-hard-hat mr-1"></i> Labor Cost</span>
-                            <button id="btnAddLab" onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm transition hover:shadow">+ Add</button>
-                        </div>
-                        <div class="bg-white">
-                            <table class="res-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-desc pl-3 text-left">Description</th>
-                                        <th class="col-unit text-center">Unit</th>
-                                        <th class="col-qty text-right">Yield</th>
-                                        <th class="col-rate text-right">Cost/Unit</th>
-                                        <th class="col-total text-right">Total</th>
-                                        <th class="w-[5%]"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="listLab"></tbody>
-                            </table>
-                        </div>
+                <div class="space-y-6" id="resourcesContainer">
                     </div>
-
-                    <div class="border border-green-200 rounded-lg overflow-hidden shadow-sm">
-                        <div class="bg-green-50 px-3 py-2 flex justify-between items-center border-b border-green-100">
-                            <span class="text-[10px] font-bold text-green-800 uppercase tracking-wider"><i class="fas fa-truck-monster mr-1"></i> Plant Cost</span>
-                            <button id="btnAddPlant" onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm transition hover:shadow">+ Add</button>
-                        </div>
-                        <div class="bg-white">
-                            <table class="res-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-desc pl-3 text-left">Description</th>
-                                        <th class="col-unit text-center">Unit</th>
-                                        <th class="col-qty text-right">Yield</th>
-                                        <th class="col-rate text-right">Cost/Unit</th>
-                                        <th class="col-total text-right">Total</th>
-                                        <th class="w-[5%]"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="listPlant"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="border border-blue-200 rounded-lg overflow-hidden shadow-sm">
-                        <div class="bg-blue-50 px-3 py-2 flex justify-between items-center border-b border-blue-100">
-                            <span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider"><i class="fas fa-cubes mr-1"></i> Material Cost</span>
-                            <button id="btnAddMat" onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm transition hover:shadow">+ Add</button>
-                        </div>
-                        <div class="bg-white">
-                            <table class="res-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-desc pl-3 text-left">Description</th>
-                                        <th class="col-unit text-center">Unit</th>
-                                        <th class="col-qty text-right">Qty</th>
-                                        <th class="col-rate text-right">Cost/Unit</th>
-                                        <th class="col-total text-right">Total</th>
-                                        <th class="w-[5%]"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="listMat"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="absolute bottom-0 left-0 w-full bg-slate-900 text-white p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] z-30">
                     <div class="flex items-center justify-between gap-4">
                         <div class="flex gap-8 text-xs">
-                            <div>
-                                <span class="block text-slate-400 font-bold uppercase text-[9px] mb-1">Base Cost</span>
-                                <span class="font-mono text-slate-200 text-xl font-bold" id="rawCostDisplay">$0.00</span>
-                            </div>
+                            <div><span class="block text-slate-400 font-bold uppercase text-[9px] mb-1">Base Cost</span><span class="font-mono text-slate-200 text-xl font-bold" id="rawCostDisplay">$0.00</span></div>
                             <div>
                                 <span class="block text-yellow-500 font-bold uppercase text-[9px] mb-1">Margin %</span>
-                                <div class="flex items-center gap-1">
-                                    <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 transition">
-                                </div>
+                                <div class="flex items-center gap-1"><input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 transition"></div>
                             </div>
-                            <div>
-                                <span class="block text-green-400 font-bold uppercase text-[9px] mb-1">Unit Rate</span>
-                                <span class="font-mono text-green-400 text-3xl font-bold leading-none" id="finalRateDisplay">$0.00</span>
-                            </div>
+                            <div><span class="block text-green-400 font-bold uppercase text-[9px] mb-1">Unit Rate</span><span class="font-mono text-green-400 text-3xl font-bold leading-none" id="finalRateDisplay">$0.00</span></div>
                         </div>
-
                         <div class="flex items-center gap-3">
                             <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
                                 <label class="text-[9px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
                                 <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1">
                             </div>
-                            <button id="btnAddToQuote" onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded font-bold shadow-lg shadow-blue-900/50 transition flex items-center gap-2">
+                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded font-bold shadow-lg shadow-blue-900/50 transition flex items-center gap-2">
                                 <i class="fas fa-arrow-right"></i> Add to Quote
                             </button>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -242,13 +159,13 @@
                 
                 <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
                     <div>
-                        <h2 class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
+                        <h2 id="docTitle" class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
                         <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2024-001</span></p>
                     </div>
                     <div class="w-1/2 text-right">
-                        <input type="text" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
-                        <input type="text" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
-                        <input type="text" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
+                        <input type="text" id="myCompany" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
+                        <input type="text" id="myAddress" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
+                        <input type="text" id="myPhone" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
                         <input type="text" value="www.civilmate.nz" class="company-input text-xs text-blue-500">
                     </div>
                 </div>
@@ -305,21 +222,94 @@
                 </div>
 
                 <div class="border-t-2 border-slate-100 pt-6 text-[10px] text-slate-400">
-                    <p class="font-bold uppercase mb-2 text-slate-500">Terms & Conditions</p>
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>This quotation is based on the NZS 3910 conditions of contract.</li>
-                        <li>Acceptance of this quote indicates acceptance of our standard terms of trade.</li>
-                        <li>Prices are valid for 30 days from the date of this quotation.</li>
-                    </ul>
+                    <p class="font-bold uppercase mb-2 text-slate-500">Conditions of Contract</p>
+                    <div id="termsText">
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>This document is a quotation based on current rates.</li>
+                            <li>Acceptance is subject to NZS 3910 conditions unless otherwise specified.</li>
+                            <li>Prices are valid for 30 days.</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             
             <div class="fixed bottom-8 right-8 no-print z-50">
                 <button onclick="printQuote()" class="bg-slate-800 hover:bg-black text-white px-6 py-4 rounded-full shadow-2xl font-bold flex items-center gap-3 transition transform hover:-translate-y-1">
-                    <i class="fas fa-print text-xl"></i> <span>Download PDF</span>
+                    <i class="fas fa-print text-xl"></i> <span>Download / Print</span>
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <div id="legalContractModal" class="fixed inset-0 bg-white z-[9999] hidden overflow-y-auto">
+        <div class="max-w-[21cm] mx-auto p-12 bg-white min-h-screen">
+            <div class="no-print flex justify-between items-center mb-8 border-b pb-4">
+                <h2 class="text-xl font-bold text-slate-800">Preview: Construction Contract</h2>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Print / Save PDF</button>
+                    <button onclick="document.getElementById('legalContractModal').classList.add('hidden')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold hover:bg-slate-300">Close</button>
+                </div>
+            </div>
+
+            <div class="font-serif text-slate-800 leading-relaxed text-sm">
+                <div class="text-center mb-10">
+                    <h1 class="text-3xl font-bold uppercase tracking-widest border-b-2 border-black pb-2 inline-block">Short Form Agreement</h1>
+                    <p class="mt-2 text-slate-500 italic">For Construction Works</p>
+                </div>
+
+                <div class="mb-8">
+                    <p class="mb-4"><strong>DATE:</strong> <span id="contractDate"></span></p>
+                    
+                    <div class="grid grid-cols-2 gap-8">
+                        <div>
+                            <p class="font-bold uppercase text-xs text-slate-500">THE PRINCIPAL (CLIENT)</p>
+                            <p class="text-lg font-bold" id="contractClientName">Client Name</p>
+                            <p id="contractClientAddr">Address</p>
+                        </div>
+                        <div>
+                            <p class="font-bold uppercase text-xs text-slate-500">THE CONTRACTOR</p>
+                            <p class="text-lg font-bold" id="contractMyCompany">My Company</p>
+                            <p id="contractMyAddr">Address</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="font-bold uppercase border-b border-slate-300 mb-2">1. The Works</h3>
+                    <p>The Contractor agrees to carry out and complete the works described in the attached <strong>Schedule of Rates</strong> at the location: <strong id="contractSiteAddr"></strong>.</p>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="font-bold uppercase border-b border-slate-300 mb-2">2. Contract Price</h3>
+                    <p>The Principal shall pay the Contractor the sum of <strong id="contractTotal"></strong> (inclusive of GST), subject to remeasurement of quantities as per the attached Schedule.</p>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="font-bold uppercase border-b border-slate-300 mb-2">3. Payment Terms (CCA 2002)</h3>
+                    <p>Payment Claims shall be submitted monthly. The Principal must provide a Payment Schedule within 5 working days and pay the scheduled amount by the 20th of the month following the claim, in accordance with the <em>Construction Contracts Act 2002</em>.</p>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="font-bold uppercase border-b border-slate-300 mb-2">4. Disputes</h3>
+                    <p>Any dispute shall be referred to adjudication under the Construction Contracts Act 2002.</p>
+                </div>
+
+                <div class="mt-16 grid grid-cols-2 gap-16">
+                    <div>
+                        <div class="border-b border-black h-8"></div>
+                        <p class="text-xs uppercase mt-1 font-bold">Signed by the Principal</p>
+                    </div>
+                    <div>
+                        <div class="border-b border-black h-8"></div>
+                        <p class="text-xs uppercase mt-1 font-bold">Signed by the Contractor</p>
+                    </div>
+                </div>
+                
+                <div class="mt-12 text-center text-xs text-slate-400">
+                    <p>Attached: Schedule of Rates (Financial Summary)</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -357,17 +347,77 @@
 
         function init() {
             renderDisciplineSelect();
+            // Render table structure initially
+            renderAllLists();
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
+        // --- RENDER TABLES (FIXED) ---
+        function renderAllLists() {
+            renderList('Lab', 'listLab');
+            renderList('Plant', 'listPlant');
+            renderList('Mat', 'listMat');
+        }
+
+        function renderList(type, elementId) {
+            const list = document.getElementById(elementId);
+            if(!list) {
+                // Si el contenedor no existe aún, lo inyectamos (Lazy loading)
+                const container = document.getElementById('resourcesContainer');
+                if(!container.innerHTML.trim()) {
+                    container.innerHTML = `
+                        <div class="border border-orange-200 rounded-lg overflow-hidden shadow-sm mb-4">
+                            <div class="bg-orange-50 px-3 py-2 flex justify-between items-center border-b border-orange-100">
+                                <span class="text-[10px] font-bold text-orange-800 uppercase tracking-wider"><i class="fas fa-user-hard-hat mr-1"></i> Labor Cost</span>
+                                <button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm transition hover:shadow">+ Add</button>
+                            </div>
+                            <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="listLab"></tbody></table></div>
+                        </div>
+                        <div class="border border-green-200 rounded-lg overflow-hidden shadow-sm mb-4">
+                            <div class="bg-green-50 px-3 py-2 flex justify-between items-center border-b border-green-100">
+                                <span class="text-[10px] font-bold text-green-800 uppercase tracking-wider"><i class="fas fa-truck-monster mr-1"></i> Plant Cost</span>
+                                <button onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm transition hover:shadow">+ Add</button>
+                            </div>
+                            <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="listPlant"></tbody></table></div>
+                        </div>
+                        <div class="border border-blue-200 rounded-lg overflow-hidden shadow-sm">
+                            <div class="bg-blue-50 px-3 py-2 flex justify-between items-center border-b border-blue-100">
+                                <span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider"><i class="fas fa-cubes mr-1"></i> Material Cost</span>
+                                <button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm transition hover:shadow">+ Add</button>
+                            </div>
+                            <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Qty</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="listMat"></tbody></table></div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Ahora si renderizamos las filas
+            const target = document.getElementById(elementId);
+            if(target) {
+                target.innerHTML = "";
+                currentResources.forEach((res, idx) => {
+                    if(res.t !== type) return;
+                    const total = (res.c * res.q).toFixed(2);
+                    target.innerHTML += `
+                        <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
+                            <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
+                            <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
+                            <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
+                            <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td>
+                            <td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td>
+                            <td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        // --- CORE FUNCTIONS (Same logic as before) ---
         function renderDisciplineSelect() {
             const discSelect = document.getElementById('disciplineSelect');
             discSelect.innerHTML = '<option value="">-- Select --</option>';
-            Object.keys(standardDB).forEach(d => {
-                if(standardDB[d].length > 0) discSelect.innerHTML += `<option value="${d}">${d}</option>`;
-            });
+            Object.keys(standardDB).forEach(d => { if(standardDB[d].length > 0) discSelect.innerHTML += `<option value="${d}">${d}</option>`; });
         }
-
         function loadKits() {
             const d = document.getElementById('disciplineSelect').value;
             const k = document.getElementById('kitSelect');
@@ -375,25 +425,20 @@
             k.disabled = !d;
             if(d && standardDB[d]) standardDB[d].forEach((item, i) => k.innerHTML += `<option value="${d}|${i}">${item.name}</option>`);
         }
-
         function loadKitDetails() {
             const val = document.getElementById('kitSelect').value;
             if(!val.includes("|")) return;
             const [d, i] = val.split("|");
             const item = standardDB[d][i];
-            
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
-            
             currentResources = JSON.parse(JSON.stringify(item.resources));
             unitModeSnapshot = null;
-            
             switchPricingMode('UNIT', false);
             renderAllLists();
             updateCalculations();
         }
-
         function createNewItem() {
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = "New Item";
@@ -404,33 +449,6 @@
             renderAllLists();
             updateCalculations();
         }
-
-        // --- UI LOGIC ---
-        function renderAllLists() {
-            renderList('Lab', 'listLab');
-            renderList('Plant', 'listPlant');
-            renderList('Mat', 'listMat');
-        }
-
-        function renderList(type, elementId) {
-            const list = document.getElementById(elementId);
-            list.innerHTML = "";
-            currentResources.forEach((res, idx) => {
-                if(res.t !== type) return;
-                const total = (res.c * res.q).toFixed(2);
-                list.innerHTML += `
-                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
-                        <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
-                        <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
-                        <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
-                        <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td>
-                        <td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td>
-                        <td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td>
-                    </tr>
-                `;
-            });
-        }
-
         window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
@@ -439,11 +457,9 @@
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
             const unitInput = document.getElementById('itemUnit');
-
             if(targetMode === 'TIME') {
                 btnT.classList.replace('text-slate-400', 'bg-blue-600'); btnT.classList.add('text-white', 'shadow-md');
                 btnU.classList.replace('bg-white', 'text-slate-400'); btnU.classList.remove('text-blue-700', 'shadow-sm');
-                
                 unitModeSnapshot = { resources: JSON.parse(JSON.stringify(currentResources)), unit: unitInput.value };
                 unitInput.value = 'hr';
                 currentResources.forEach(r => { if(r.t !== 'Mat') r.q = 1; });
@@ -473,7 +489,6 @@
             let qtyVal = parseFloat(document.getElementById('qtyInput').value);
             if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) { qtyVal = 1; document.getElementById('qtyInput').value = 1; }
             const rate = updateCalculations();
-            
             quoteItems.push({
                 name: document.getElementById('itemName').value,
                 unit: document.getElementById('itemUnit').value,
@@ -490,63 +505,93 @@
             const tbody = document.getElementById('quoteTable');
             tbody.innerHTML = "";
             let sub = 0;
-            
             if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
+            
+            // Check status for lock
+            const isLocked = projectStatus === 'Active' || projectStatus === 'Completed';
 
             quoteItems.forEach((item, i) => {
                 item.total = item.qty * item.rate;
                 sub += item.total;
                 
-                // Disable input if locked
-                const disableAttr = projectStatus === 'Active' ? 'disabled' : '';
-                const delBtn = projectStatus === 'Active' ? '' : `<button onclick="delQuoteItem(${i})" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>`;
+                const deleteBtn = isLocked ? '' : `<button onclick="delQuoteItem(${i})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>`;
+                const disabled = isLocked ? 'disabled' : '';
 
                 tbody.innerHTML += `
                     <tr class="border-b border-slate-100 group hover:bg-slate-50 transition">
                         <td class="p-3 font-bold text-slate-700">${item.name}</td>
                         <td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td>
                         <td class="p-3 text-center">
-                            <input type="number" value="${item.qty}" ${disableAttr} onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print">
+                            <input type="number" value="${item.qty}" ${disabled} onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print">
                             <span class="hidden print-only">${item.qty}</span>
                         </td>
                         <td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         <td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                        <td class="p-3 text-right no-print">${delBtn}</td>
+                        <td class="p-3 text-right no-print">${deleteBtn}</td>
                     </tr>
                 `;
             });
 
+            const total = sub * 1.15;
             document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalDisplay').innerText = "$" + total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            // Pass total to modal
+            document.getElementById('contractTotal').innerText = "$" + total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         function updateQuoteQty(index, newVal) {
             const val = parseFloat(newVal);
             if (val > 0) { quoteItems[index].qty = val; renderQuote(); }
         }
-
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
-
-        // --- LOCK LOGIC FOR ACTIVE PROJECTS ---
-        function lockProjectUI() {
-            // Visual
-            document.getElementById('statusBanner').classList.remove('hidden');
-            document.getElementById('statusBanner').classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-200');
-            document.getElementById('statusBanner').innerHTML = '<i class="fas fa-lock"></i> ACTIVE CONTRACT (LOCKED)';
-            
-            // Disable Inputs & Buttons
-            document.getElementById('leftPanel').classList.add('locked-area');
-            document.getElementById('btnSaveHeader').classList.add('hidden');
-            
-            // Disable Quote Header Inputs
-            const inputs = document.querySelectorAll('.company-input, #clientName, #clientAddress, #clientEmail, #clientPhone');
-            inputs.forEach(inp => inp.classList.add('locked-input'));
-        }
 
         function printQuote() {
             if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
             window.print();
+        }
+
+        // --- NEW: LEGAL CONTRACT GENERATOR ---
+        function generateLegalContract() {
+            // Populate Modal Data
+            document.getElementById('contractDate').innerText = new Date().toLocaleDateString('en-NZ');
+            document.getElementById('contractClientName').innerText = document.getElementById('clientName').value || "Client Name";
+            document.getElementById('contractClientAddr').innerText = document.getElementById('clientAddress').value || "Address";
+            document.getElementById('contractMyCompany').innerText = document.getElementById('myCompany').value;
+            document.getElementById('contractMyAddr').innerText = document.getElementById('myAddress').value;
+            document.getElementById('contractSiteAddr').innerText = document.getElementById('clientAddress').value; // Usually same as client addr for small works
+            
+            // Show Modal & Add Print Class for CSS
+            const modal = document.getElementById('legalContractModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('show-print');
+        }
+
+        // --- LOCK LOGIC ---
+        function lockProjectUI() {
+            // Change Title
+            document.getElementById('docTitle').innerText = "SCHEDULE OF RATES (CONTRACT)";
+            document.getElementById('termsText').innerHTML = "<strong>Status: APPROVED CONTRACT</strong><br>Rates are fixed as per agreement.";
+            
+            // Show Badge
+            const badge = document.getElementById('projectStatusBadge');
+            badge.innerHTML = '<span class="bg-green-100 text-green-700 border border-green-200 px-3 py-1 rounded-full text-xs font-bold uppercase flex items-center gap-2"><i class="fas fa-check-circle"></i> Active Contract</span>';
+            
+            // Hide Builder & Save
+            document.getElementById('builderPanel').classList.add('locked-area');
+            document.getElementById('btnSave').classList.add('hidden');
+            
+            // Show Legal Button
+            document.getElementById('btnLegal').classList.remove('hidden');
+            
+            // Lock Inputs
+            const inputs = document.querySelectorAll('.company-input, #clientName, #clientAddress, #clientEmail, #clientPhone');
+            inputs.forEach(inp => {
+                inp.disabled = true;
+                inp.classList.add('text-slate-600', 'bg-transparent');
+                inp.classList.remove('border-dashed');
+            });
         }
 
         function saveProject() {
@@ -566,7 +611,7 @@
                 total: totalRev,
                 profit: totalRev * 0.18, 
                 items: quoteItems,
-                status: "Pending", // Always saves as pending initially. Status changes in Dashboard.
+                status: "Pending",
                 updatedAt: Date.now()
             };
 
@@ -595,7 +640,6 @@
                     projectStatus = data.status || "Pending";
                     renderQuote();
 
-                    // IF ACTIVE -> LOCK
                     if(projectStatus === 'Active' || projectStatus === 'Completed') {
                         lockProjectUI();
                     }
