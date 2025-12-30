@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
         /* ALINEACIÓN DE TABLAS */
         .col-desc { width: 45%; }
@@ -29,12 +29,11 @@
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
         .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
-        .res-input:hover { background-color: #f1f5f9; border-color: #e2e8f0; }
+        .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
         .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; font-size: 11px; padding: 4px 0; }
         
-        /* Ocultar Spinners */
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
         
@@ -52,27 +51,31 @@
         }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden relative">
 
     <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
         <div class="flex items-center gap-3">
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-layer-group"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V3.6</p>
+                <p class="text-[10px] text-slate-500">Estimator V4.1 (Pro Data)</p>
             </div>
         </div>
         
         <div class="flex gap-2 items-center">
-            <input type="file" id="importFile" class="hidden" onchange="handleImport(this)">
+            <input type="file" id="importFile" class="hidden" accept=".csv" onchange="handleCSVImport(this)">
             
             <div class="bg-slate-50 p-1 rounded-lg border border-slate-200 flex gap-1 mr-4">
-                <button onclick="downloadTemplate()" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-white rounded transition flex items-center gap-1" title="Download Standard Format">
-                    <i class="fas fa-file-code"></i> Template
+                <button onclick="downloadCSVTemplate()" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-white rounded transition flex items-center gap-1" title="Download Excel Template">
+                    <i class="fas fa-file-csv text-green-600"></i> Template
                 </button>
                 <div class="w-px bg-slate-300 my-1"></div>
-                <button onclick="document.getElementById('importFile').click()" class="px-3 py-1 text-[10px] font-bold text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition flex items-center gap-1" title="Import JSON Database">
-                    <i class="fas fa-upload"></i> Import DB
+                <button onclick="document.getElementById('importFile').click()" class="px-3 py-1 text-[10px] font-bold text-slate-700 hover:bg-white rounded transition flex items-center gap-1" title="Append to current DB">
+                    <i class="fas fa-upload text-blue-600"></i> Import
+                </button>
+                <div class="w-px bg-slate-300 my-1"></div>
+                <button onclick="openDBManager()" class="px-3 py-1 text-[10px] font-bold text-slate-700 hover:bg-white rounded transition flex items-center gap-1" title="Manage & Clear DB">
+                    <i class="fas fa-database text-slate-500"></i> Manage DB
                 </button>
             </div>
 
@@ -315,7 +318,6 @@
                         <li>This quotation is based on the NZS 3910 conditions of contract.</li>
                         <li>Acceptance of this quote indicates acceptance of our standard terms of trade.</li>
                         <li>Prices are valid for 30 days from the date of this quotation.</li>
-                        <li>Excludes unforeseen ground conditions unless explicitly stated.</li>
                     </ul>
                 </div>
             </div>
@@ -326,6 +328,41 @@
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <div id="dbModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">Database Manager</h3>
+                    <p class="text-xs text-slate-500">Total Items: <span id="dbCount" class="font-bold">0</span></p>
+                </div>
+                <button onclick="document.getElementById('dbModal').classList.add('hidden')" class="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="p-3 bg-white border-b border-slate-100 flex justify-between items-center">
+                <p class="text-xs text-slate-400 italic">Manage your items below. Changes are saved to memory.</p>
+                <button onclick="clearAllData()" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-200 rounded text-xs font-bold transition flex items-center gap-2">
+                    <i class="fas fa-trash-alt"></i> Delete All Data
+                </button>
+            </div>
+
+            <div class="overflow-y-auto p-0 flex-1 bg-slate-50">
+                <table class="w-full text-sm">
+                    <thead class="text-[10px] uppercase bg-slate-100 text-slate-500 font-bold sticky top-0 shadow-sm">
+                        <tr>
+                            <th class="p-3 text-left w-1/4">Discipline</th>
+                            <th class="p-3 text-left w-1/3">Item Name</th>
+                            <th class="p-3 text-center w-1/6">Unit</th>
+                            <th class="p-3 text-right w-1/6">Resources</th>
+                            <th class="p-3 text-center w-1/12">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbTableBody" class="bg-white divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -388,7 +425,7 @@
             const discSelect = document.getElementById('disciplineSelect');
             discSelect.innerHTML = '<option value="">-- Select --</option>';
             Object.keys(standardDB).forEach(d => {
-                if(standardDB[d].length > 0 || d === "User Custom") {
+                if(standardDB[d].length > 0) {
                     discSelect.innerHTML += `<option value="${d}">${d}</option>`;
                 }
             });
@@ -449,7 +486,7 @@
                 
                 const total = (res.c * res.q).toFixed(2);
                 list.innerHTML += `
-                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
+                    <tr class="group hover:bg-slate-50 transition">
                         <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
                         <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
                         <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
@@ -469,7 +506,7 @@
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
 
-        // --- PRICING MODE LOGIC ---
+        // --- LOGICA REVERSIBLE ---
         function switchPricingMode(targetMode) {
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
@@ -481,13 +518,11 @@
                 btnU.classList.replace('bg-white', 'text-slate-400');
                 btnU.classList.remove('text-blue-700', 'shadow-sm');
                 
-                // SAVE SNAPSHOT
                 unitModeSnapshot = {
                     resources: JSON.parse(JSON.stringify(currentResources)),
                     unit: unitInput.value
                 };
 
-                // CONVERT TO HOURLY
                 unitInput.value = 'hr';
                 currentResources.forEach(r => {
                     if(r.t !== 'Mat') r.q = 1; 
@@ -499,13 +534,11 @@
                 btnT.classList.replace('bg-blue-600', 'text-slate-400');
                 btnT.classList.remove('text-white', 'shadow-md');
 
-                // RESTORE SNAPSHOT
                 if(unitModeSnapshot) {
                     currentResources = JSON.parse(JSON.stringify(unitModeSnapshot.resources));
                     unitInput.value = unitModeSnapshot.unit;
                 }
             }
-            
             renderAllLists();
             updateCalculations();
         }
@@ -522,7 +555,7 @@
             return price;
         }
 
-        // --- ADD TO QUOTE ---
+        // --- QUOTE LOGIC ---
         function addToQuote() {
             let qtyVal = parseFloat(document.getElementById('qtyInput').value);
             
@@ -541,9 +574,7 @@
                 total: qtyVal * rate,
                 resources: JSON.parse(JSON.stringify(currentResources))
             });
-            
             renderQuote();
-            
             if(window.innerWidth < 1024) document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -557,7 +588,6 @@
             }
 
             quoteItems.forEach((item, i) => {
-                // Update total in case rate changed
                 item.total = item.qty * item.rate;
                 sub += item.total;
                 
@@ -593,59 +623,133 @@
 
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
 
-        // --- DATA MANAGEMENT ---
+        // --- DATA MANAGEMENT (CSV + DB Manager) ---
         function saveToLibrary() {
             const name = document.getElementById('itemName').value;
             const unit = document.getElementById('itemUnit').value;
+            const discipline = document.getElementById('disciplineSelect').value || "User Custom";
             
+            if(!standardDB[discipline]) standardDB[discipline] = [];
+            
+            const idx = standardDB[discipline].findIndex(i => i.name === name);
             const newItem = {
                 name: name,
                 unit: unit,
                 resources: JSON.parse(JSON.stringify(currentResources))
             };
-            
-            standardDB["User Custom"].push(newItem);
+
+            if(idx >= 0) {
+                standardDB[discipline][idx] = newItem;
+                alert(`Updated existing item "${name}" in ${discipline}.`);
+            } else {
+                standardDB[discipline].push(newItem);
+                alert(`Saved new item "${name}" to ${discipline}.`);
+            }
             renderDisciplineSelect();
-            alert(`✅ Saved "${name}" to 'User Custom' category!`);
         }
 
-        // --- EXPORT/IMPORT ---
-        function downloadTemplate() {
-            const sample = {
-                "User Custom": [
-                    { 
-                        name: "Sample Item", 
-                        unit: "m3", 
-                        resources: [{n:"Material A", u:"m3", q:1, c:50, t:"Mat"}]
-                    }
-                ]
-            };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sample, null, 2));
-            const dlNode = document.createElement('a');
-            dlNode.setAttribute("href", dataStr);
-            dlNode.setAttribute("download", "CivilMate_Template.json");
-            document.body.appendChild(dlNode);
-            dlNode.click();
-            dlNode.remove();
+        function downloadCSVTemplate() {
+            let csvContent = "Discipline,Item Name,Item Unit,Res Name,Res Unit,Res Yield,Res Rate,Res Type\n";
+            csvContent += "Earthworks,Example Excavation,m3,Digger 20T,hr,0.05,140,Plant\n";
+            csvContent += "Earthworks,Example Excavation,m3,Operator,hr,0.05,45,Lab\n";
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "CivilMate_Template.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
 
-        function handleImport(input) {
+        function handleCSVImport(input) {
             const file = input.files[0];
             if (!file) return;
-            
             const reader = new FileReader();
+            
             reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    // Simple merge logic
-                    standardDB = { ...standardDB, ...imported };
-                    renderDisciplineSelect();
-                    alert("✅ Database Imported Successfully!");
-                } catch(err) {
-                    alert("❌ Error: Invalid JSON format. Please use the Template.");
+                const text = e.target.result;
+                const rows = text.split('\n');
+                
+                for(let i = 1; i < rows.length; i++) {
+                    const row = rows[i].split(',');
+                    if(row.length < 8) continue;
+                    
+                    const disc = row[0].trim();
+                    const itemName = row[1].trim();
+                    const itemUnit = row[2].trim();
+                    const res = {
+                        n: row[3].trim(),
+                        u: row[4].trim(),
+                        q: parseFloat(row[5]),
+                        c: parseFloat(row[6]),
+                        t: row[7].trim()
+                    };
+
+                    if(!standardDB[disc]) standardDB[disc] = [];
+                    let item = standardDB[disc].find(it => it.name === itemName);
+                    if(!item) {
+                        item = { name: itemName, unit: itemUnit, resources: [] };
+                        standardDB[disc].push(item);
+                    }
+                    item.resources.push(res);
                 }
+                renderDisciplineSelect();
+                alert("✅ Database Imported from CSV!");
             };
             reader.readAsText(file);
+        }
+
+        // DB MANAGER (NEW)
+        function openDBManager() {
+            const tbody = document.getElementById('dbTableBody');
+            tbody.innerHTML = "";
+            let count = 0;
+            
+            Object.keys(standardDB).forEach(disc => {
+                standardDB[disc].forEach((item, index) => {
+                    count++;
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3 text-slate-700 font-bold text-xs">${disc}</td>
+                            <td class="p-3 text-slate-600 text-xs">${item.name}</td>
+                            <td class="p-3 text-center text-slate-500 text-xs bg-slate-50 rounded">${item.unit}</td>
+                            <td class="p-3 text-right text-xs text-slate-400 font-mono">${item.resources.length} items</td>
+                            <td class="p-3 text-center">
+                                <button onclick="deleteItem('${disc}', ${index})" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+            document.getElementById('dbCount').innerText = count;
+            document.getElementById('dbModal').classList.remove('hidden');
+        }
+
+        function deleteItem(disc, index) {
+            if(confirm("Delete this item?")) {
+                standardDB[disc].splice(index, 1);
+                if(standardDB[disc].length === 0) delete standardDB[disc];
+                openDBManager();
+                renderDisciplineSelect();
+            }
+        }
+
+        function clearAllData() {
+            if(confirm("⚠️ DANGER: This will delete ALL database items.\n\nAre you sure?")) {
+                if(confirm("Really sure? This cannot be undone.")) {
+                    standardDB = { "User Custom": [] };
+                    openDBManager();
+                    renderDisciplineSelect();
+                    // Optional: Reset current builder
+                    document.getElementById('kitSelect').innerHTML = "<option>-- Empty --</option>";
+                    document.getElementById('kitSelect').disabled = true;
+                }
+            }
         }
 
         // --- SAVE PROJECT ---
