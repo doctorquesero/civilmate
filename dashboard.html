@@ -22,7 +22,7 @@
             <p class="text-slate-500 text-sm">Sales Pipeline & Active Contracts Manager</p>
         </div>
         <div class="flex gap-3">
-             <button onclick="window.location.href='contracts.html'" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 shadow flex items-center">
+             <button onclick="createNewQuote()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 shadow flex items-center">
                 <i class="fas fa-plus mr-2"></i> New Quote
             </button>
             <a href="index.html" class="bg-slate-800 text-white px-5 py-2 rounded-lg font-bold hover:bg-black transition">
@@ -209,7 +209,7 @@
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-slate-50 transition">
                         <td class="p-4">
-                            <div class="font-bold text-slate-700">${p.name}</div>
+                            <div class="font-bold text-slate-700">${p.name || 'Untitled Project'}</div>
                             <div class="text-[10px] text-slate-400 uppercase tracking-wide">Created: ${new Date(p.createdAt).toLocaleDateString()}</div>
                         </td>
                         <td class="p-4 text-center text-xs text-slate-500">${getTimeAgo(p.createdAt)} ago</td>
@@ -241,10 +241,6 @@
                     btn.className = "tab-inactive flex-1 py-4 text-sm font-bold text-center transition cursor-pointer hover:bg-slate-50";
                 }
             });
-            
-            // Show/Hide Column header for "Allowance" (Only useful in Active)
-            // document.getElementById('col-allowance').style.opacity = status === 'Active' ? '1' : '0.5';
-
             renderTable();
         }
 
@@ -256,6 +252,14 @@
 
         function editProject(id) {
             localStorage.setItem('civilmate_current_project_id', id);
+            window.location.href = 'contracts.html';
+        }
+
+        // --- NUEVA FUNCIÓN PARA CORREGIR EL BUG DE CREAR NUEVO ---
+        function createNewQuote() {
+            // Esto borra la "memoria" del proyecto anterior
+            localStorage.removeItem('civilmate_current_project_id');
+            // Ahora sí vamos a la página de contratos limpia
             window.location.href = 'contracts.html';
         }
 
