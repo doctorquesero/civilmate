@@ -70,7 +70,7 @@
             <i class="fas fa-paper-plane mr-2"></i> Quotes Pipeline
         </button>
         <button onclick="filterStatus('Active')" id="tab-Active" class="tab-inactive flex-1 py-4 text-sm font-bold text-center transition">
-            <i class="fas fa-hard-hat mr-2"></i> Active Contracts
+            <i class="fas fa-file-contract mr-2"></i> Active Contracts
         </button>
         <button onclick="filterStatus('Rejected')" id="tab-Rejected" class="tab-inactive flex-1 py-4 text-sm font-bold text-center transition">
             <i class="fas fa-archive mr-2"></i> Archived / Lost
@@ -178,17 +178,29 @@
                 let statusBadge = "";
                 let actionBtns = "";
                 
-                // Configurar Botones
-                const btnEdit = `
-                    <button onclick="editProject('${p.id}')" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-blue-200 transition flex items-center justify-center gap-1 w-full mb-1">
-                        <i class="fas fa-folder-open"></i> Open Budget
+                // LÓGICA DE BOTÓN DINÁMICO (CORRECCIÓN AQUI)
+                let mainBtnText = "Open Budget";
+                let mainBtnIcon = "fa-folder-open";
+                let mainBtnStyle = "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border-blue-200";
+                
+                // Si está ACTIVO, cambiamos el botón a "View Contract" con Candado
+                if (p.status === 'Active' || p.status === 'Completed') {
+                    mainBtnText = "View Contract";
+                    mainBtnIcon = "fa-lock";
+                    mainBtnStyle = "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-300";
+                }
+
+                const btnMain = `
+                    <button onclick="editProject('${p.id}')" class="${mainBtnStyle} px-3 py-1.5 rounded-md text-xs font-bold border transition flex items-center justify-center gap-2 w-full mb-1">
+                        <i class="fas ${mainBtnIcon}"></i> ${mainBtnText}
                     </button>`;
 
+                // Lógica de Estado
                 if(currentTab === 'Pending') {
                     statusBadge = `<span class="bg-orange-100 text-orange-600 px-2 py-1 rounded text-[10px] font-bold uppercase">Pending Quote</span>`;
                     actionBtns = `
                         <div class="flex flex-col gap-1">
-                            ${btnEdit}
+                            ${btnMain}
                             <div class="flex gap-1">
                                 <button onclick="updateStatus('${p.id}', 'Active')" class="flex-1 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-green-200 transition">Won</button>
                                 <button onclick="updateStatus('${p.id}', 'Rejected')" class="flex-1 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-red-200 transition">Lost</button>
@@ -199,7 +211,7 @@
                     statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase">Active Contract</span>`;
                     actionBtns = `
                         <div class="flex flex-col gap-1">
-                            ${btnEdit}
+                            ${btnMain}
                             <button onclick="updateStatus('${p.id}', 'Completed')" class="text-xs text-slate-400 hover:text-slate-600 underline">Archive / Close</button>
                         </div>
                     `;
