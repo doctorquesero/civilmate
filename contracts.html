@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contracts & Pricing - CivilMate</title>
+    <title>Contracts & Budgeting - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8fafc; font-family: sans-serif; color: #334155; }
-        /* Estilos anteriores... */
-        .section-header { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; padding-bottom: 0.25rem; border-bottom: 2px solid; }
         .border-lab { border-color: #f59e0b; color: #b45309; }
         .border-plant { border-color: #22c55e; color: #15803d; }
         .border-mat { border-color: #3b82f6; color: #1d4ed8; }
+        .mode-btn { transition: all 0.2s; }
         .mode-active { background-color: #1e293b; color: white; border-color: #1e293b; }
-        .mode-inactive { background-color: white; color: #64748b; border-color: #cbd5e1; }
+        .view-toggle { cursor: pointer; user-select: none; }
     </style>
 </head>
 <body class="p-2 md:p-6 max-w-[1600px] mx-auto h-screen flex flex-col">
@@ -24,11 +23,13 @@
     <header class="flex flex-col md:flex-row justify-between items-center mb-4 bg-white p-3 rounded-xl shadow-sm border border-slate-200 shrink-0">
         <div>
             <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="fas fa-calculator text-blue-600"></i> Estimator Pro
-                <span id="projectNameLabel" class="text-sm font-normal text-slate-500 ml-2">(New Project)</span>
+                <i class="fas fa-coins text-blue-600"></i> Estimator & Budget Manager
             </h1>
         </div>
         <div class="flex gap-3">
+             <button onclick="toggleViewMode()" class="bg-purple-100 text-purple-700 px-4 py-1 rounded text-xs font-bold border border-purple-200 hover:bg-purple-200 transition flex items-center gap-2">
+                 <i class="fas fa-eye"></i> <span id="viewLabel">Showing: Client Price</span>
+             </button>
              <button onclick="window.location.href='dashboard.html'" class="bg-slate-800 text-white px-3 py-1 rounded text-xs font-bold hover:bg-black">
                  <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
              </button>
@@ -39,32 +40,37 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
         
         <div class="lg:col-span-7 flex flex-col gap-4 min-h-0 overflow-y-auto pb-2">
+            
             <div class="bg-white p-4 rounded-xl shadow border border-slate-200 shrink-0">
                  <div class="flex gap-4 items-end">
                     <div class="flex-1">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">1. Discipline</label>
-                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer h-10">
+                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 h-10">
                             <option value="">-- Select Trade --</option>
                         </select>
                     </div>
                     <div class="flex-1">
                          <label class="text-[10px] font-bold text-slate-400 uppercase">2. Select Item</label>
-                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer h-10" disabled>
+                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 h-10" disabled>
                             <option>-- Select Trade First --</option>
                         </select>
                     </div>
+                    <button onclick="createNewItem()" class="h-10 px-4 bg-slate-800 text-white rounded font-bold text-xs hover:bg-black whitespace-nowrap">
+                        <i class="fas fa-plus mr-1"></i> Custom
+                    </button>
                 </div>
             </div>
             
             <div id="builderArea" class="hidden bg-white p-4 rounded-xl shadow border-t-4 border-blue-600 flex flex-col gap-3 flex-1">
                  <div class="flex bg-slate-100 p-1 rounded-lg mb-2">
-                    <button id="btnModeUnit" onclick="setPricingMode('UNIT')" class="flex-1 py-2 text-xs font-bold rounded-md border transition flex items-center justify-center gap-2 mode-active shadow-sm">
-                        <i class="fas fa-ruler-combined"></i> Unit Rate
+                    <button id="btnModeUnit" onclick="setPricingMode('UNIT')" class="mode-btn flex-1 py-2 text-xs font-bold rounded-md border flex items-center justify-center gap-2 mode-active">
+                        <i class="fas fa-ruler-combined"></i> Unit Rate (Price/Qty)
                     </button>
-                    <button id="btnModeTime" onclick="setPricingMode('TIME')" class="flex-1 py-2 text-xs font-bold rounded-md border transition flex items-center justify-center gap-2 mode-inactive">
-                        <i class="fas fa-clock"></i> Charge-Up
+                    <button id="btnModeTime" onclick="setPricingMode('TIME')" class="mode-btn flex-1 py-2 text-xs font-bold rounded-md border flex items-center justify-center gap-2 bg-white text-slate-500">
+                        <i class="fas fa-clock"></i> Hourly Rate (Charge-up)
                     </button>
                 </div>
+
                 <div class="flex gap-3 bg-slate-50 p-2 rounded border border-slate-200">
                     <div class="flex-1">
                         <label class="text-[9px] font-bold text-slate-400 uppercase">Description</label>
@@ -75,40 +81,52 @@
                         <input type="text" id="itemUnit" class="w-full bg-transparent text-center font-bold text-slate-600 border-b border-transparent focus:border-blue-500 outline-none" value="m">
                     </div>
                 </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 min-h-0">
                     <div class="bg-orange-50/40 p-2 rounded border border-orange-100 flex flex-col">
-                        <div class="flex justify-between items-center section-header border-lab"><span>Labor</span><button onclick="addRes('Lab')" class="text-orange-600"><i class="fas fa-plus-circle"></i></button></div>
+                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-orange-700 border-b border-orange-200 pb-1 mb-2">
+                            <span>Labor Cost</span><button onclick="addRes('Lab')" class="text-orange-600"><i class="fas fa-plus-circle"></i></button>
+                        </div>
                         <div id="listLab" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
                     </div>
                     <div class="bg-green-50/40 p-2 rounded border border-green-100 flex flex-col">
-                        <div class="flex justify-between items-center section-header border-plant"><span>Plant</span><button onclick="addRes('Plant')" class="text-green-600"><i class="fas fa-plus-circle"></i></button></div>
+                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-green-700 border-b border-green-200 pb-1 mb-2">
+                            <span>Plant Cost</span><button onclick="addRes('Plant')" class="text-green-600"><i class="fas fa-plus-circle"></i></button>
+                        </div>
                         <div id="listPlant" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
                     </div>
                     <div class="bg-blue-50/40 p-2 rounded border border-blue-100 flex flex-col">
-                        <div class="flex justify-between items-center section-header border-mat"><span>Materials</span><button onclick="addRes('Mat')" class="text-blue-600"><i class="fas fa-plus-circle"></i></button></div>
+                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-blue-700 border-b border-blue-200 pb-1 mb-2">
+                            <span>Material Cost</span><button onclick="addRes('Mat')" class="text-blue-600"><i class="fas fa-plus-circle"></i></button>
+                        </div>
                         <div id="listMat" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
                     </div>
                 </div>
-                <div class="bg-slate-900 text-white p-3 rounded-lg mt-auto">
-                    <div class="flex justify-between items-end">
-                        <div class="flex gap-4 items-center">
-                            <div><label class="text-[9px] text-slate-400 uppercase block">Cost</label><span id="rawCostDisplay" class="font-mono text-sm text-slate-300">$0.00</span></div>
-                            <div class="text-center">
-                                <label class="text-[9px] text-slate-400 uppercase block">+ Margin %</label>
-                                <div class="flex items-center bg-slate-800 rounded px-2 py-1">
-                                    <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-8 bg-transparent text-center font-bold text-sm outline-none text-yellow-400">
-                                </div>
-                            </div>
+
+                <div class="bg-slate-900 text-white p-3 rounded-lg mt-auto grid grid-cols-3 gap-4 border border-slate-700">
+                    <div class="text-left border-r border-slate-700 pr-4">
+                        <label class="text-[9px] text-red-400 uppercase block font-bold mb-1">Internal Cost (Budget)</label>
+                        <span id="rawCostDisplay" class="font-mono text-xl text-red-300">$0.00</span>
+                    </div>
+                    
+                    <div class="text-center border-r border-slate-700 px-4">
+                        <label class="text-[9px] text-yellow-400 uppercase block font-bold mb-1">Profit / Margin</label>
+                        <div class="flex items-center justify-center gap-1">
+                            <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-10 bg-slate-800 text-center font-bold text-sm outline-none text-yellow-400 rounded border border-slate-600">
+                            <span class="text-xs text-yellow-400">%</span>
                         </div>
-                        <div class="text-right">
-                            <label class="text-[9px] text-slate-400 uppercase block">Rate</label>
-                            <span id="finalRateDisplay" class="text-2xl font-bold text-green-400">$0.00</span>
-                        </div>
+                        <span id="profitValueDisplay" class="block text-[10px] text-slate-400 mt-1">+$0.00</span>
+                    </div>
+
+                    <div class="text-right pl-4">
+                        <label class="text-[9px] text-green-400 uppercase block font-bold mb-1">Client Price (Quote)</label>
+                        <span id="finalRateDisplay" class="font-bold text-2xl text-green-400">$0.00</span>
                     </div>
                 </div>
+
                 <div class="flex gap-3 pt-1">
-                    <div class="w-1/4"><input type="number" id="qtyInput" class="w-full p-3 border-2 border-slate-200 rounded-lg font-bold text-center focus:border-blue-500 outline-none text-lg" placeholder="Total"></div>
-                    <button onclick="addToQuote()" class="w-3/4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg"><i class="fas fa-plus"></i> Add Item</button>
+                    <div class="w-1/4"><input type="number" id="qtyInput" class="w-full p-3 border-2 border-slate-200 rounded-lg font-bold text-center focus:border-blue-500 outline-none text-lg" placeholder="Total Qty"></div>
+                    <button onclick="addToQuote()" class="w-3/4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg"><i class="fas fa-plus"></i> Add to List</button>
                 </div>
             </div>
         </div>
@@ -116,10 +134,8 @@
         <div class="lg:col-span-5 flex flex-col h-full min-h-0">
             <div class="bg-white p-4 rounded-xl shadow border border-slate-200 flex-1 flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center mb-2 pb-2 border-b shrink-0">
-                    <h2 class="font-bold text-lg text-slate-800">Quote Schedule</h2>
-                    <div class="text-right">
-                         <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase">NZS 3910 Format</span>
-                    </div>
+                    <h2 class="font-bold text-lg text-slate-800">Financial Summary</h2>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase">NZS 3910</span>
                 </div>
 
                 <div class="flex-1 overflow-y-auto mb-2 bg-slate-50 rounded border border-slate-200">
@@ -127,34 +143,57 @@
                         <thead class="bg-slate-100 text-slate-500 font-bold uppercase text-[9px] sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="p-2">Description</th>
-                                <th class="p-2 text-center">Unit</th>
-                                <th class="p-2 text-right">Rate</th>
-                                <th class="p-2 text-center">Qty</th>
-                                <th class="p-2 text-right">Amount</th>
+                                <th class="p-2 text-right">Unit Rate</th> <th class="p-2 text-center">Qty</th>
+                                <th class="p-2 text-right">Total</th>
                                 <th class="p-2"></th>
                             </tr>
                         </thead>
                         <tbody id="quoteTable">
-                            <tr><td colspan="6" class="p-10 text-center text-slate-400 italic text-xs">No items added yet.</td></tr>
+                            <tr><td colspan="5" class="p-10 text-center text-slate-400 italic text-xs">No items added.</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="space-y-1 pt-2 border-t shrink-0">
-                    <div class="flex justify-between text-sm text-slate-500"><span>Subtotal (Net)</span><span id="subtotalDisplay">$0.00</span></div>
-                    <div class="flex justify-between text-sm text-slate-500"><span>GST (15%)</span><span id="gstDisplay">$0.00</span></div>
-                    <div class="flex justify-between text-xl font-bold text-slate-800 pt-2 border-t mt-1"><span>TOTAL</span><span id="totalDisplay">$0.00</span></div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 shrink-0 space-y-2">
+                    
+                    <div id="rowInternalCost" class="flex justify-between text-xs text-red-500 hidden">
+                        <span>Total Build Cost (Budget)</span>
+                        <span id="totalCostDisplay" class="font-bold">$0.00</span>
+                    </div>
+
+                    <div id="rowInternalProfit" class="flex justify-between text-xs text-blue-600 hidden border-b border-slate-200 pb-2 mb-2">
+                        <span>Projected Net Profit</span>
+                        <span id="totalProfitDisplay" class="font-bold">$0.00</span>
+                    </div>
+
+                    <div class="flex justify-between text-sm text-slate-600">
+                        <span>Contract Sum (Ex GST)</span>
+                        <span id="subtotalDisplay" class="font-bold text-slate-800">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm text-slate-500">
+                        <span>GST (15%)</span>
+                        <span id="gstDisplay">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-bold text-slate-800 pt-2 border-t mt-1">
+                        <span>TOTAL CLIENT PRICE</span>
+                        <span id="totalDisplay">$0.00</span>
+                    </div>
                 </div>
 
-                <button onclick="saveProject()" class="mt-3 w-full bg-slate-800 text-white py-3 rounded-lg font-bold hover:bg-black transition shadow shrink-0">
-                    <i class="fas fa-save mr-2"></i> Save Changes
-                </button>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button onclick="saveProject()" class="bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 text-xs flex justify-center items-center">
+                        <i class="fas fa-save mr-2"></i> Save Contract
+                    </button>
+                    <button onclick="alert('Exporting Budget for Site Engineer (Costs Only)...')" class="bg-slate-200 text-slate-700 py-3 rounded-lg font-bold hover:bg-slate-300 text-xs flex justify-center items-center">
+                        <i class="fas fa-print mr-2"></i> Print Budget
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        /* ... TU CONFIG DE FIREBASE ... */
+        // FIREBASE SETUP
         const firebaseConfig = {
             apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
             authDomain: "civilmate-933db.firebaseapp.com",
@@ -166,152 +205,239 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        /* ... TU MEGA BASE DE DATOS NZS (MOCKUP) DEL MENSAJE ANTERIOR ... */
-        // (Ahorro espacio aqui, asegúrate de mantener la variable standardDB que ya tenías)
+        // --- DATABASE NZS EXPANDIDA ---
         const standardDB = {
-            "Preliminaries": [ { name: "Site Fencing", unit: "m", resources: [{n:"Hire", t:"Plant", c:3.5, q:1}] } ],
-            "Earthworks": [ { name: "Bulk Excavation", unit: "m3", resources: [{n:"Digger", t:"Plant", c:140, q:0.05}] } ]
-            // ... AGREGA EL RESTO DE TUS PARTIDAS AQUI
+            "Preliminaries": [ 
+                { name: "Site Fencing", unit: "m", resources: [{n:"Hire", t:"Plant", c:3.5, q:1}] },
+                { name: "Site Toilet", unit: "wk", resources: [{n:"Hire", t:"Plant", c:45, q:1}, {n:"Clean", t:"Sub", c:25, q:1}] }
+            ],
+            "Earthworks": [ 
+                { name: "Bulk Excavation", unit: "m3", resources: [{n:"Excavator 20T", t:"Plant", c:140, q:0.05}, {n:"Tip Fees", t:"Mat", c:35, q:1}] },
+                { name: "Trenching", unit: "m", resources: [{n:"Excavator 5T", t:"Plant", c:65, q:0.2}, {n:"Labor", t:"Lab", c:35, q:0.2}] }
+            ],
+            "Concrete": [
+                { name: "Footing 20MPa", unit: "m3", resources: [{n:"Conc 20MPa", t:"Mat", c:250, q:1.05}, {n:"Pump", t:"Plant", c:180, q:0.2}, {n:"Labor", t:"Lab", c:70, q:1}] },
+                { name: "Slab on Grade", unit: "m2", resources: [{n:"Conc 25MPa", t:"Mat", c:45, q:1}, {n:"Mesh", t:"Mat", c:12, q:1}, {n:"Finisher", t:"Lab", c:35, q:0.5}] }
+            ],
+            "Drainage": [
+                { name: "PVC 100mm Stormwater", unit: "m", resources: [{n:"Pipe", t:"Mat", c:14, q:1}, {n:"Install", t:"Lab", c:55, q:0.4}] }
+            ],
+            "Labor Rates (Hourly)": [
+                { name: "General Laborer", unit: "hr", resources: [{n:"Wages+Tax", t:"Lab", c:28, q:1}, {n:"PPE/Overheads", t:"Mat", c:5, q:1}] },
+                { name: "Carpenter", unit: "hr", resources: [{n:"Wages+Tax", t:"Lab", c:45, q:1}, {n:"Tool Allow", t:"Plant", c:5, q:1}] }
+            ]
         };
 
-        // VARIABLES GLOBALES
-        let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+        // VARIABLES
         let quoteItems = [];
         let currentResources = [];
-        let originalResources = [];
-        let originalUnit = "";
-        
+        let viewMode = 'CLIENT'; // 'CLIENT' (Price) or 'INTERNAL' (Cost)
+        let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+
         // INIT
-        init();
+        const discSelect = document.getElementById('disciplineSelect');
+        Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
+        if(currentProjectId) loadProjectFromDB(currentProjectId);
 
-        function init() {
-            // Llenar Selectores
-            const discSelect = document.getElementById('disciplineSelect');
-            Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
-            
-            // Cargar Proyecto si existe ID
-            if(currentProjectId) {
-                loadProjectFromDB(currentProjectId);
-            }
+        // --- CORE FUNCTIONS ---
+        function loadKits() {
+            const d = discSelect.value;
+            const k = document.getElementById('kitSelect');
+            k.innerHTML = '<option>-- Select Item --</option>';
+            k.disabled = !d;
+            if(d) standardDB[d].forEach((item, i) => k.innerHTML += `<option value="${d}|${i}">${item.name}</option>`);
         }
 
-        // CARGAR PROYECTO DESDE FIREBASE
-        function loadProjectFromDB(id) {
-            db.collection('projects').doc(id).get().then(doc => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('projectNameLabel').innerText = `(${data.name})`;
-                    quoteItems = data.items || [];
-                    renderQuote();
-                } else {
-                    alert("Project not found!");
-                }
-            });
+        function loadKitDetails() {
+            const val = document.getElementById('kitSelect').value;
+            if(!val.includes("|")) return;
+            const [d, i] = val.split("|");
+            const item = standardDB[d][i];
+            
+            document.getElementById('builderArea').classList.remove('hidden');
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemUnit').value = item.unit;
+            currentResources = JSON.parse(JSON.stringify(item.resources));
+            
+            setPricingMode('UNIT'); // Reset UI logic
+            renderAllLists();
+            updateCalculations();
         }
 
-        // RENDER QUOTE TABLE (LA TABLA MEJORADA)
-        function renderQuote() {
-            const tbody = document.getElementById('quoteTable');
-            tbody.innerHTML = "";
-            let sub = 0;
-            
-            quoteItems.forEach((item, i) => {
-                sub += item.total;
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-slate-50 group">
-                        <td class="p-2 font-medium text-slate-700 text-xs">${item.name}</td>
-                        <td class="p-2 text-center text-xs bg-slate-100 rounded">${item.unit}</td>
-                        <td class="p-2 text-right text-xs font-mono">$${item.rate.toFixed(2)}</td>
-                        <td class="p-2 text-center text-xs font-bold">${item.qty}</td>
-                        <td class="p-2 text-right text-xs font-bold text-slate-800">$${item.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                        <td class="p-2 text-right">
-                            <button onclick="removeQuoteItem(${i})" class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-            document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString(undefined, {minimumFractionDigits: 2});
-        }
-
-        // GUARDAR CON PROFIT
-        function saveProject() {
-            if(quoteItems.length === 0) return alert("Quote is empty");
-            
-            const btn = document.querySelector('button[onclick="saveProject()"]');
-            btn.innerHTML = "Saving...";
-
-            // Calcular Profit Global
-            let totalRevenue = 0;
-            let totalBaseCost = 0;
-
-            quoteItems.forEach(item => {
-                totalRevenue += item.total;
-                // Calculamos el costo base sumando recursos
-                let itemBaseRate = 0;
-                item.resources.forEach(r => itemBaseRate += (r.c * r.q));
-                totalBaseCost += (itemBaseRate * item.qty);
-            });
-
-            const profit = totalRevenue - totalBaseCost;
-
-            const projectData = {
-                name: "Project " + new Date().toLocaleDateString(),
-                total: totalRevenue,
-                profit: profit, // Guardamos el profit para el Dashboard
-                items: quoteItems,
-                status: "Active", // Cambiamos a Active
-                updatedAt: Date.now()
-            };
-
-            // Si es nuevo creamos, si existe actualizamos
-            if(currentProjectId) {
-                db.collection('projects').doc(currentProjectId).update(projectData).then(() => {
-                    alert("✅ Project Updated!");
-                    window.location.href = "dashboard.html";
-                });
+        function setPricingMode(mode) {
+            // UI Toggle Logic (Visual only for this demo)
+            const bU = document.getElementById('btnModeUnit');
+            const bT = document.getElementById('btnModeTime');
+            if(mode === 'UNIT') {
+                bU.classList.add('bg-slate-800', 'text-white'); bU.classList.remove('bg-white', 'text-slate-500');
+                bT.classList.remove('bg-slate-800', 'text-white'); bT.classList.add('bg-white', 'text-slate-500');
             } else {
-                projectData.createdAt = Date.now();
-                db.collection('projects').add(projectData).then((doc) => {
-                    alert("✅ New Project Created!");
-                    window.location.href = "dashboard.html";
-                });
+                bT.classList.add('bg-slate-800', 'text-white'); bT.classList.remove('bg-white', 'text-slate-500');
+                bU.classList.remove('bg-slate-800', 'text-white'); bU.classList.add('bg-white', 'text-slate-500');
+                document.getElementById('itemUnit').value = 'hr';
             }
         }
 
-        // ... (Mantén aquí el resto de funciones del Builder: loadKits, loadKitDetails, addRes, updateCalculations, etc.) ...
-        /* COPIA LAS FUNCIONES DEL MENSAJE ANTERIOR AQUI ABAJO */
-        function loadKits() { /* ... */ }
-        function loadKitDetails() { /* ... */ }
-        // Asegúrate de incluir setPricingMode, renderAllLists, etc.
+        function createNewItem() {
+            document.getElementById('builderArea').classList.remove('hidden');
+            document.getElementById('itemName').value = "Custom Item";
+            document.getElementById('itemUnit').value = "ea";
+            currentResources = [{n:"Item", t:"Mat", c:0, q:1}];
+            renderAllLists();
+            updateCalculations();
+        }
+
+        function renderAllLists() {
+            renderList('Lab', 'listLab');
+            renderList('Plant', 'listPlant');
+            renderList('Mat', 'listMat');
+        }
+
+        function renderList(type, elementId) {
+            const list = document.getElementById(elementId);
+            list.innerHTML = "";
+            currentResources.forEach((res, idx) => {
+                if(res.t !== type) return;
+                list.innerHTML += `
+                    <div class="grid grid-cols-5 gap-1 mb-1 items-center group text-[10px]">
+                        <div class="col-span-3"><input type="text" value="${res.n}" onchange="updateRes(${idx},'n',this.value)" class="w-full bg-transparent border-b border-dotted border-slate-300 font-bold text-slate-700"></div>
+                        <div><input type="number" value="${res.c}" onchange="updateRes(${idx},'c',this.value)" class="w-full text-right bg-slate-50 border rounded px-1"></div>
+                        <div class="flex items-center relative">
+                            <input type="number" value="${res.q}" onchange="updateRes(${idx},'q',this.value)" class="w-full text-right bg-slate-50 border rounded px-1 font-bold">
+                            <button onclick="removeRes(${idx})" class="absolute -right-3 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        window.updateRes = (i, f, v) => { currentResources[i][f] = f==='n'?v:parseFloat(v)||0; updateCalculations(); };
+        window.removeRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
+        window.addRes = (t) => { currentResources.push({n:"New", t:t, c:0, q:1}); renderAllLists(); };
+
+        function updateCalculations() {
+            let cost = 0;
+            currentResources.forEach(r => cost += (r.c * r.q));
+            const margin = parseFloat(document.getElementById('marginInput').value) || 0;
+            const price = cost * (1 + (margin/100));
+            
+            document.getElementById('rawCostDisplay').innerText = "$" + cost.toFixed(2);
+            document.getElementById('profitValueDisplay').innerText = "+$" + (price - cost).toFixed(2);
+            document.getElementById('finalRateDisplay').innerText = "$" + price.toFixed(2);
+            return { cost, price };
+        }
+
         function addToQuote() {
-             const qty = parseFloat(document.getElementById('qtyInput').value);
-             if(!qty) return alert("Enter Quantity");
-             // Nota: Lógica simple para demo
-             const rate = parseFloat(document.getElementById('finalRateDisplay').innerText.replace('$',''));
-             
-             quoteItems.push({
+            const qty = parseFloat(document.getElementById('qtyInput').value);
+            if(!qty) return alert("Qty required");
+            const calcs = updateCalculations();
+            
+            quoteItems.push({
                 name: document.getElementById('itemName').value,
                 unit: document.getElementById('itemUnit').value,
                 qty: qty,
-                rate: rate,
-                total: qty * rate,
+                unitCost: calcs.cost, // Costo Unitario Interno
+                unitPrice: calcs.price, // Precio Unitario Cliente
+                totalCost: calcs.cost * qty,
+                totalPrice: calcs.price * qty,
                 resources: JSON.parse(JSON.stringify(currentResources))
-             });
-             renderQuote();
-             document.getElementById('qtyInput').value = "";
+            });
+            renderQuote();
+            document.getElementById('qtyInput').value = "";
         }
-        function updateCalculations() { /* Copia la lógica del mensaje anterior */ 
-             let rawCost = 0;
-             currentResources.forEach(r => rawCost += (r.c * r.q));
-             const margin = parseFloat(document.getElementById('marginInput').value) || 0;
-             const finalRate = rawCost * (1 + (margin/100));
-             document.getElementById('rawCostDisplay').innerText = "$" + rawCost.toFixed(2);
-             document.getElementById('finalRateDisplay').innerText = "$" + finalRate.toFixed(2);
+
+        // --- VIEW TOGGLE LOGIC ---
+        function toggleViewMode() {
+            viewMode = viewMode === 'CLIENT' ? 'INTERNAL' : 'CLIENT';
+            
+            const label = document.getElementById('viewLabel');
+            const rowCost = document.getElementById('rowInternalCost');
+            const rowProfit = document.getElementById('rowInternalProfit');
+
+            if (viewMode === 'INTERNAL') {
+                label.innerText = "Showing: Internal Budget";
+                label.parentElement.classList.replace('bg-purple-100', 'bg-red-100');
+                label.parentElement.classList.replace('text-purple-700', 'text-red-700');
+                rowCost.classList.remove('hidden');
+                rowProfit.classList.remove('hidden');
+            } else {
+                label.innerText = "Showing: Client Price";
+                label.parentElement.classList.replace('bg-red-100', 'bg-purple-100');
+                label.parentElement.classList.replace('text-red-700', 'text-purple-700');
+                rowCost.classList.add('hidden');
+                rowProfit.classList.add('hidden');
+            }
+            renderQuote();
         }
-        function removeQuoteItem(i) { quoteItems.splice(i, 1); renderQuote(); }
-        // etc...
+
+        function renderQuote() {
+            const tbody = document.getElementById('quoteTable');
+            tbody.innerHTML = "";
+            let subPrice = 0;
+            let subCost = 0;
+
+            quoteItems.forEach((item, i) => {
+                subPrice += item.totalPrice;
+                subCost += item.totalCost;
+                
+                // Que mostramos? Costo o Precio?
+                const displayRate = viewMode === 'INTERNAL' ? item.unitCost : item.unitPrice;
+                const displayTotal = viewMode === 'INTERNAL' ? item.totalCost : item.totalPrice;
+                const colorClass = viewMode === 'INTERNAL' ? 'text-red-600' : 'text-slate-800';
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50 group">
+                        <td class="p-2 text-xs font-bold text-slate-700">${item.name}</td>
+                        <td class="p-2 text-right text-xs font-mono text-slate-500">$${displayRate.toFixed(2)}</td>
+                        <td class="p-2 text-center text-xs font-bold">${item.qty}</td>
+                        <td class="p-2 text-right text-xs font-mono font-bold ${colorClass}">$${displayTotal.toFixed(2)}</td>
+                        <td class="p-2 text-right"><button onclick="removeQuoteItem(${i})" class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button></td>
+                    </tr>
+                `;
+            });
+
+            // Update Summary Box
+            document.getElementById('subtotalDisplay').innerText = "$" + subPrice.toFixed(2);
+            document.getElementById('gstDisplay').innerText = "$" + (subPrice*0.15).toFixed(2);
+            document.getElementById('totalDisplay').innerText = "$" + (subPrice*1.15).toFixed(2);
+            
+            // Internal Data
+            document.getElementById('totalCostDisplay').innerText = "$" + subCost.toFixed(2);
+            document.getElementById('totalProfitDisplay').innerText = "$" + (subPrice - subCost).toFixed(2);
+        }
+
+        window.removeQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
+        
+        function saveProject() {
+            if(!quoteItems.length) return alert("Empty");
+            const btn = document.querySelector('button[onclick="saveProject()"]');
+            btn.innerHTML = "Saving...";
+            
+            // Calculate totals
+            let totalRev = 0, totalCost = 0;
+            quoteItems.forEach(i => { totalRev += i.totalPrice; totalCost += i.totalCost; });
+
+            const pData = {
+                name: "Project " + new Date().toLocaleDateString(),
+                total: totalRev,
+                profit: totalRev - totalCost,
+                items: quoteItems,
+                status: "Active",
+                updatedAt: Date.now()
+            };
+
+            if(currentProjectId) {
+                db.collection('projects').doc(currentProjectId).update(pData).then(()=>window.location.href="dashboard.html");
+            } else {
+                pData.createdAt = Date.now();
+                db.collection('projects').add(pData).then(()=>window.location.href="dashboard.html");
+            }
+        }
+        
+        function loadProjectFromDB(id) {
+            db.collection('projects').doc(id).get().then(doc => {
+                if(doc.exists) { quoteItems = doc.data().items || []; renderQuote(); }
+            });
+        }
     </script>
 </body>
 </html>
