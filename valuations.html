@@ -3,268 +3,323 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Valuations & Claims - CivilMate</title>
+    <title>Payment Claim Generator - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #f1f5f9; font-family: sans-serif; color: #334155; }
-        .table-header { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; background: #f8fafc; }
-        .input-qty { background: #fffbeb; border: 1px solid #fcd34d; font-weight: bold; color: #b45309; } /* Amarillo para inputs */
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; }
+        .tab-inactive { color: #64748b; }
+        /* Hoja de papel para la carátula */
+        .a4-page { background: white; padding: 40px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 800px; margin: 0 auto; }
     </style>
 </head>
-<body class="p-2 md:p-6 max-w-[1400px] mx-auto min-h-screen flex flex-col">
+<body class="p-2 md:p-6 max-w-[1200px] mx-auto min-h-screen flex flex-col">
 
-    <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <header class="flex justify-between items-center mb-6">
         <div>
-            <div class="flex items-center gap-2">
-                <h1 class="text-2xl font-bold text-slate-800">Payment Claim #01</h1>
-                <span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded font-bold uppercase">Draft</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-1">Ref: Construction Contracts Act 2002</p>
+            <h1 class="text-2xl font-bold text-slate-800">Financial Manager</h1>
+            <p class="text-xs text-slate-500">NZS 3910 / CCA 2002 Compliant</p>
         </div>
-        
-        <div class="flex gap-4 text-right">
-            <div>
-                <p class="text-[10px] text-slate-400 uppercase font-bold">Original Contract</p>
-                <p class="text-sm font-bold text-slate-600" id="originalSumDisplay">$85,400.00</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-slate-400 uppercase font-bold">Variations</p>
-                <p class="text-sm font-bold text-purple-600" id="varsSumDisplay">$0.00</p>
-            </div>
-            <div class="bg-green-50 px-3 py-1 rounded border border-green-100">
-                <p class="text-[10px] text-green-600 uppercase font-bold">This Claim (Ex GST)</p>
-                <p class="text-xl font-bold text-green-700" id="claimTotalDisplay">$0.00</p>
-            </div>
-        </div>
-        <a href="index.html" class="text-slate-300 hover:text-slate-500"><i class="fas fa-times text-xl"></i></a>
+        <a href="index.html" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></a>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-1 gap-6">
+    <div class="flex border-b border-slate-200 mb-6 bg-white rounded-t-xl px-4 pt-2">
+        <button onclick="switchTab('works')" id="tab-works" class="tab-active flex-1 py-3 text-sm text-center">
+            <i class="fas fa-list mr-2"></i>1. Contract Works
+        </button>
+        <button onclick="switchTab('vars')" id="tab-vars" class="tab-inactive flex-1 py-3 text-sm text-center">
+            <i class="fas fa-random mr-2"></i>2. Variations Register
+        </button>
+        <button onclick="switchTab('claim')" id="tab-claim" class="tab-inactive flex-1 py-3 text-sm text-center bg-green-50 text-green-700">
+            <i class="fas fa-file-invoice-dollar mr-2"></i>3. Claim Cover Sheet
+        </button>
+    </div>
 
-        <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
-            <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
-                <h2 class="font-bold text-slate-700"><i class="fas fa-list-alt mr-2"></i>Scheduled Items</h2>
-                <div class="text-xs text-slate-500 bg-white px-2 py-1 rounded border">
-                    <i class="fas fa-info-circle text-blue-500 mr-1"></i> Input Quantity Done This Period
+    <div id="view-works" class="view-section">
+        <div class="bg-white rounded-b-xl shadow p-4 border border-t-0 border-slate-200">
+            <h2 class="font-bold text-slate-700 mb-4">Original Contract Schedule</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                        <tr>
+                            <th class="p-3">Item Description</th>
+                            <th class="p-3 text-center">Unit</th>
+                            <th class="p-3 text-right">Rate</th>
+                            <th class="p-3 text-center w-24">This Claim Qty</th>
+                            <th class="p-3 w-1/3">Evidence (Site Log / QA Ref)</th>
+                            <th class="p-3 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="worksTable">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-vars" class="view-section hidden">
+        <div class="bg-white rounded-b-xl shadow p-4 border border-t-0 border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="font-bold text-slate-700">Variations Register</h2>
+                    <p class="text-xs text-slate-400">Only <strong>APPROVED</strong> variations will appear on the Payment Claim.</p>
+                </div>
+                <button onclick="addVariation()" class="bg-purple-600 text-white px-3 py-2 rounded text-xs font-bold hover:bg-purple-700">+ New VO</button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-purple-50 text-purple-800 font-bold uppercase text-xs">
+                        <tr>
+                            <th class="p-3">Ref</th>
+                            <th class="p-3">Variation Description</th>
+                            <th class="p-3 text-right">Value ($)</th>
+                            <th class="p-3 text-center">Status</th>
+                            <th class="p-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="varsTable">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-claim" class="view-section hidden">
+        <div class="a4-page">
+            <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-800 uppercase tracking-widest">Payment Claim</h1>
+                    <p class="text-sm font-bold text-slate-500 mt-1">Under Construction Contracts Act 2002</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-xl">Claim #<span id="claimNumber">1</span></p>
+                    <p class="text-sm text-slate-500" id="claimDate">Date: ...</p>
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="table-header">
-                        <tr>
-                            <th class="p-3 w-1/4">Description</th>
-                            <th class="p-3 text-right">Rate</th>
-                            <th class="p-3 text-center">Unit</th>
-                            <th class="p-3 text-right">Prev Claimed</th>
-                            <th class="p-3 text-center w-24">This Period</th>
-                            <th class="p-3 w-1/3">Evidence / Traceability (Required)</th>
-                            <th class="p-3 text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="claimsTable">
-                        </tbody>
-                </table>
+            <div class="grid grid-cols-2 gap-8 mb-8 text-sm">
+                <div>
+                    <p class="font-bold text-slate-400 uppercase text-xs">Project</p>
+                    <p class="font-bold text-slate-800 text-lg">Auckland Central - Stage 1</p>
+                    <p>123 Queen Street, Auckland CBD</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold text-slate-400 uppercase text-xs">To (Principal)</p>
+                    <p class="font-bold text-slate-800">Main Contractor Ltd</p>
+                    <p>Attn: Project Manager</p>
+                </div>
             </div>
-        </div>
 
-        <div class="bg-white rounded-xl shadow border border-purple-200 overflow-hidden">
-            <div class="p-4 border-b bg-purple-50 flex justify-between items-center">
-                <h2 class="font-bold text-purple-800"><i class="fas fa-bolt mr-2"></i>Variations (Additions / Omissions)</h2>
-                <button onclick="addVariation()" class="text-xs bg-purple-600 text-white px-3 py-1 rounded font-bold hover:bg-purple-700">
-                    + Add VO
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="table-header bg-purple-50/50">
-                        <tr>
-                            <th class="p-3 w-1/3">Variation Description</th>
-                            <th class="p-3 text-center">Ref (VO#)</th>
-                            <th class="p-3 text-right">Agreed Rate</th>
-                            <th class="p-3 text-center">Qty</th>
-                            <th class="p-3 w-1/4">Justification / Site Instruction</th>
-                            <th class="p-3 text-right">Total</th>
-                            <th class="p-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="variationsTable">
-                        </tbody>
-                </table>
-            </div>
-        </div>
+            <table class="w-full text-sm mb-6 border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-600 uppercase text-xs">
+                        <th class="p-2 text-left">Description</th>
+                        <th class="p-2 text-right">Amount (NZD)</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-700">
+                    <tr class="border-b">
+                        <td class="p-2">Original Contract Sum</td>
+                        <td class="p-2 text-right font-mono" id="doc-original">$0.00</td>
+                    </tr>
+                    <tr class="border-b">
+                        <td class="p-2">Approved Variations (Net)</td>
+                        <td class="p-2 text-right font-mono text-purple-600" id="doc-vars">$0.00</td>
+                    </tr>
+                    <tr class="bg-slate-50 font-bold border-b-2 border-slate-300">
+                        <td class="p-2">Revised Contract Sum</td>
+                        <td class="p-2 text-right font-mono" id="doc-revised">$0.00</td>
+                    </tr>
+                    
+                    <tr><td class="p-2 h-4"></td><td></td></tr> <tr class="border-b">
+                        <td class="p-2 font-bold">Value of Work Completed to Date</td>
+                        <td class="p-2 text-right font-mono font-bold" id="doc-gross">$0.00</td>
+                    </tr>
+                    <tr class="border-b text-red-500">
+                        <td class="p-2">Less: Retention (10%)</td>
+                        <td class="p-2 text-right font-mono" id="doc-retention">-$0.00</td>
+                    </tr>
+                    <tr class="border-b text-slate-400">
+                        <td class="p-2">Less: Previous Payments</td>
+                        <td class="p-2 text-right font-mono" id="doc-prev">-$0.00</td>
+                    </tr>
+                    
+                    <tr class="bg-slate-800 text-white font-bold text-lg">
+                        <td class="p-4">NET CLAIM AMOUNT (Ex GST)</td>
+                        <td class="p-4 text-right" id="doc-net">$0.00</td>
+                    </tr>
+                    <tr class="bg-slate-200 text-slate-600 font-bold">
+                        <td class="p-2 text-right">Plus GST (15%)</td>
+                        <td class="p-2 text-right" id="doc-gst">$0.00</td>
+                    </tr>
+                    <tr class="bg-green-100 text-green-800 font-bold text-xl border border-green-300">
+                        <td class="p-4 text-right">TOTAL PAYABLE</td>
+                        <td class="p-4 text-right" id="doc-total">$0.00</td>
+                    </tr>
+                </tbody>
+            </table>
 
-        <div class="flex justify-end gap-4 pb-10">
-            <button class="px-6 py-3 rounded-xl border border-slate-300 font-bold text-slate-500 hover:bg-slate-50">Save Draft</button>
-            <button onclick="submitClaim()" class="px-6 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-200 flex items-center">
-                <i class="fas fa-paper-plane mr-2"></i> Generate Payment Claim PDF
+            <div class="border-t pt-4 text-[10px] text-slate-400 leading-tight">
+                <p class="font-bold mb-1">NOTICE TO PRINCIPAL:</p>
+                <p>This is a payment claim under the Construction Contracts Act 2002. You must pay the amount claimed by the due date for payment or provide a payment schedule strictly within the time required by the construction contract (or the Act).</p>
+            </div>
+            
+            <button onclick="alert('PDF Generated & Sent to Xero/MYOB')" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-bold shadow-lg flex justify-center items-center gap-2">
+                <i class="fas fa-paper-plane"></i> Send Claim to Client
             </button>
         </div>
-
     </div>
 
     <script>
-        // MOCK DATA (Simulando lo que vendría de Firebase 'projects')
-        // En producción, esto se carga con db.collection('projects').doc(id).get()
+        // --- DATA MOCKUP (Simulando Firebase) ---
         const contractItems = [
-            { id: 1, name: "Preliminaries (P&G)", rate: 5500.00, unit: "LS", prev: 0.5 }, // LS = Lump Sum
-            { id: 2, name: "Bulk Excavation", rate: 45.00, unit: "m3", prev: 100 },
-            { id: 3, name: "Concrete Footings", rate: 260.00, unit: "m3", prev: 0 },
-            { id: 4, name: "Drainlayer (Dayworks)", rate: 85.00, unit: "hr", prev: 10 }, // Hourly Item
-            { id: 5, name: "Timber Retaining Wall", rate: 180.00, unit: "m2", prev: 0 }
+            { id: "3.1", name: "Bulk Excavation", unit: "m3", rate: 45.00, claimed: 0, evidence: "" },
+            { id: "4.2", name: "Concrete Footings", unit: "m3", rate: 260.00, claimed: 0, evidence: "" },
+            { id: "4.5", name: "Blockfill", unit: "m3", rate: 300.00, claimed: 0, evidence: "" },
+            { id: "6.1", name: "Drainlayer (Hourly)", unit: "hr", rate: 85.00, claimed: 0, evidence: "" }
         ];
 
-        let variations = [];
-        const originalContractSum = 85400.00; // Mock total
+        let variations = [
+            { ref: "VO-001", desc: "Remove Unforeseen Rock", val: 1500.00, status: "Pending" }
+        ];
 
-        // INITIALIZE
-        renderTable();
-        updateSummary();
+        // --- RENDERIZADO INICIAL ---
+        renderWorks();
+        renderVars();
+        document.getElementById('claimDate').innerText = "Date: " + new Date().toLocaleDateString();
 
-        function renderTable() {
-            const tbody = document.getElementById('claimsTable');
-            tbody.innerHTML = "";
+        // --- LOGICA DE TABS ---
+        function switchTab(tab) {
+            // Ocultar todos
+            document.getElementById('view-works').classList.add('hidden');
+            document.getElementById('view-vars').classList.add('hidden');
+            document.getElementById('view-claim').classList.add('hidden');
             
-            contractItems.forEach((item, index) => {
-                // Calculamos lo acumulado
-                const prevTotal = item.prev * item.rate;
-                
-                // Determinar el placeholder de evidencia según el tipo
-                let evidencePlaceholder = "e.g. Site Log #...";
-                if(item.unit === 'hr') evidencePlaceholder = "Attach Timesheets / Tracker Ref";
-                if(item.unit === 'm3') evidencePlaceholder = "Survey Data / Truck Dockets";
+            // Reset botones
+            document.getElementById('tab-works').className = "tab-inactive flex-1 py-3 text-sm text-center cursor-pointer";
+            document.getElementById('tab-vars').className = "tab-inactive flex-1 py-3 text-sm text-center cursor-pointer";
+            document.getElementById('tab-claim').className = "tab-inactive flex-1 py-3 text-sm text-center bg-green-50 text-green-700 cursor-pointer";
 
+            // Mostrar Activo
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            document.getElementById('tab-' + tab).className = "tab-active flex-1 py-3 text-sm text-center cursor-pointer";
+
+            if(tab === 'claim') calculateCoverSheet();
+        }
+
+        // --- 1. CONTRACT WORKS ---
+        function renderWorks() {
+            const tbody = document.getElementById('worksTable');
+            tbody.innerHTML = "";
+            contractItems.forEach((item, i) => {
                 tbody.innerHTML += `
-                    <tr class="border-b hover:bg-slate-50 group transition">
-                        <td class="p-3 font-medium text-slate-700">
-                            ${item.name}
-                            <div class="text-[10px] text-slate-400">Code: 3910-${item.id}</div>
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="p-3">
+                            <span class="font-bold text-slate-700">${item.name}</span>
+                            <div class="text-[10px] text-slate-400">ID: ${item.id}</div>
                         </td>
-                        <td class="p-3 text-right font-mono text-slate-600">$${item.rate.toFixed(2)}</td>
+                        <td class="p-3 text-center text-xs bg-slate-100 rounded">${item.unit}</td>
+                        <td class="p-3 text-right font-mono text-xs">$${item.rate.toFixed(2)}</td>
                         <td class="p-3 text-center">
-                            <span class="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-500">${item.unit}</span>
-                        </td>
-                        <td class="p-3 text-right text-slate-400">
-                            ${item.prev} <span class="text-[9px]">($${prevTotal.toLocaleString()})</span>
-                        </td>
-                        <td class="p-3 text-center">
-                            <input type="number" id="qty-${index}" oninput="calcRow(${index})" class="input-qty w-20 p-2 rounded text-center outline-none focus:ring-2 ring-orange-400" placeholder="0">
+                            <input type="number" onchange="updateWork(${i}, 'claimed', this.value)" class="w-20 p-2 border border-yellow-400 bg-yellow-50 font-bold text-center rounded focus:ring-2 ring-blue-500 outline-none" placeholder="0">
                         </td>
                         <td class="p-3">
-                            <div class="relative">
-                                <i class="fas fa-link absolute left-2 top-2.5 text-slate-400"></i>
-                                <input type="text" id="evidence-${index}" class="w-full pl-7 p-2 text-xs border border-slate-200 rounded focus:border-blue-500 outline-none bg-white" placeholder="${evidencePlaceholder}">
-                            </div>
+                            <input type="text" onchange="updateWork(${i}, 'evidence', this.value)" class="w-full text-xs p-2 border rounded" placeholder="Required for Traceability">
                         </td>
-                        <td class="p-3 text-right font-bold text-green-700" id="total-${index}">$0.00</td>
+                        <td class="p-3 text-right font-bold text-slate-700" id="row-total-${i}">$0.00</td>
                     </tr>
                 `;
             });
         }
 
-        function calcRow(index) {
-            const qty = parseFloat(document.getElementById(`qty-${index}`).value) || 0;
-            const item = contractItems[index];
-            const total = qty * item.rate;
-            
-            document.getElementById(`total-${index}`).innerText = "$" + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            
-            updateSummary();
+        function updateWork(i, field, val) {
+            contractItems[i][field] = field === 'claimed' ? (parseFloat(val) || 0) : val;
+            const total = contractItems[i].claimed * contractItems[i].rate;
+            document.getElementById(`row-total-${i}`).innerText = "$" + total.toFixed(2);
         }
 
-        // --- VARIATIONS LOGIC ---
+        // --- 2. VARIATIONS ---
         function addVariation() {
-            const desc = prompt("Variation Description (e.g. Soft Spot Undercut):");
-            if(!desc) return;
-            
-            variations.push({
-                desc: desc,
-                ref: "VO-" + (variations.length + 1),
-                rate: 0,
-                qty: 0
-            });
-            renderVariations();
+            const desc = prompt("Variation Description:");
+            const val = prompt("Value ($):");
+            if(desc && val) {
+                variations.push({ 
+                    ref: "VO-" + (variations.length + 1).toString().padStart(3, '0'), 
+                    desc: desc, 
+                    val: parseFloat(val), 
+                    status: "Pending" 
+                });
+                renderVars();
+            }
         }
 
-        function renderVariations() {
-            const tbody = document.getElementById('variationsTable');
+        function renderVars() {
+            const tbody = document.getElementById('varsTable');
             tbody.innerHTML = "";
-            
             variations.forEach((v, i) => {
+                let statusClass = v.status === "Approved" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700";
+                let btnAction = v.status === "Approved" 
+                    ? `<button onclick="toggleVar(${i})" class="text-xs text-orange-500 underline">Set Pending</button>`
+                    : `<button onclick="toggleVar(${i})" class="text-xs bg-green-600 text-white px-2 py-1 rounded">Approve</button>`;
+
                 tbody.innerHTML += `
-                    <tr class="border-b border-purple-100 bg-purple-50/30">
-                        <td class="p-3 font-medium text-purple-900">${v.desc}</td>
-                        <td class="p-3 text-center text-xs text-purple-500">${v.ref}</td>
-                        <td class="p-3 text-right">
-                            <input type="number" value="${v.rate}" onchange="updateVar(${i}, 'rate', this.value)" class="w-20 p-1 text-right text-xs border border-purple-200 rounded">
-                        </td>
-                        <td class="p-3 text-center">
-                             <input type="number" value="${v.qty}" onchange="updateVar(${i}, 'qty', this.value)" class="w-16 p-1 text-center text-xs border border-purple-200 rounded font-bold">
-                        </td>
-                        <td class="p-3">
-                             <input type="text" class="w-full text-xs p-1 bg-transparent border-b border-purple-200 focus:border-purple-500 outline-none" placeholder="Reason (e.g. Engineer Instruction)">
-                        </td>
-                        <td class="p-3 text-right font-bold text-purple-700" id="varTotal-${i}">
-                            $${(v.rate * v.qty).toFixed(2)}
-                        </td>
-                        <td class="p-3 text-right">
-                            <button onclick="removeVar(${i})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
-                        </td>
+                    <tr class="border-b">
+                        <td class="p-3 text-xs font-bold">${v.ref}</td>
+                        <td class="p-3">${v.desc}</td>
+                        <td class="p-3 text-right font-mono">$${v.val.toFixed(2)}</td>
+                        <td class="p-3 text-center"><span class="text-[10px] px-2 py-1 rounded font-bold uppercase ${statusClass}">${v.status}</span></td>
+                        <td class="p-3 text-center">${btnAction}</td>
                     </tr>
                 `;
             });
-            updateSummary();
         }
 
-        function updateVar(i, field, val) {
-            variations[i][field] = parseFloat(val) || 0;
-            renderVariations(); // Re-render to update total visually is sloppy but safe for demo
-        }
-        
-        window.removeVar = (i) => { variations.splice(i, 1); renderVariations(); };
-
-        // --- TOTALS ---
-        function updateSummary() {
-            let claimTotal = 0;
-            
-            // Sum Contract Items
-            contractItems.forEach((item, i) => {
-                const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
-                claimTotal += (qty * item.rate);
-            });
-
-            // Sum Variations
-            let varsTotal = 0;
-            variations.forEach(v => varsTotal += (v.rate * v.qty));
-            claimTotal += varsTotal;
-
-            // Update UI
-            document.getElementById('originalSumDisplay').innerText = "$" + originalContractSum.toLocaleString();
-            document.getElementById('varsSumDisplay').innerText = "$" + varsTotal.toLocaleString();
-            document.getElementById('claimTotalDisplay').innerText = "$" + claimTotal.toLocaleString();
+        function toggleVar(i) {
+            variations[i].status = variations[i].status === "Pending" ? "Approved" : "Pending";
+            renderVars();
         }
 
-        function submitClaim() {
-            // Validation: Check for Evidence
+        // --- 3. CALCULATE COVER SHEET ---
+        function calculateCoverSheet() {
+            // 1. Original Contract (Mock Total)
+            let originalTotal = 65000.00; 
+
+            // 2. Approved Variations Only
+            let approvedVars = 0;
+            variations.forEach(v => { if(v.status === 'Approved') approvedVars += v.val; });
+
+            // 3. Work Completed This Period
+            let workValue = 0;
             let missingEvidence = false;
-            contractItems.forEach((item, i) => {
-                const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
-                const evidence = document.getElementById(`evidence-${i}`)?.value;
-                if (qty > 0 && (!evidence || evidence.length < 3)) {
-                    document.getElementById(`evidence-${i}`).classList.add('border-red-500', 'bg-red-50');
-                    missingEvidence = true;
-                }
+            contractItems.forEach(item => {
+                if(item.claimed > 0 && item.evidence.length < 3) missingEvidence = true;
+                workValue += (item.claimed * item.rate);
             });
 
-            if(missingEvidence) {
-                alert("⚠️ CLAIM REJECTED (Mock Logic)\n\nYou have claimed quantities without citing Evidence (Tracker Log # or Location).\n\nTraceability is required under NZ Standards.");
-                return;
-            }
+            // Alerts Logic
+            if(missingEvidence) alert("⚠️ WARNING: You have items claimed without Traceability (Evidence). The Engineer may reject this claim.");
 
-            alert("✅ Payment Claim Generated!\n\nStatus: Submitted to Engineer\nCompliance: CCA 2002\nEvidence Attached: Yes");
+            // Totals
+            const grossClaim = workValue; // En realidad sería Work + Material On Site
+            const retention = grossClaim * 0.10; // 10% Retention Standard
+            const netClaim = grossClaim - retention; // Menos pagos previos (asumimos 0 para demo)
+            const gst = netClaim * 0.15;
+            const totalPayable = netClaim + gst;
+
+            // Render DOM
+            document.getElementById('doc-original').innerText = "$" + originalTotal.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('doc-vars').innerText = "$" + approvedVars.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('doc-revised').innerText = "$" + (originalTotal + approvedVars).toLocaleString(undefined, {minimumFractionDigits:2});
+            
+            document.getElementById('doc-gross').innerText = "$" + grossClaim.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('doc-retention').innerText = "-$" + retention.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('doc-prev').innerText = "-$0.00"; // Hardcoded for demo
+            
+            document.getElementById('doc-net').innerText = "$" + netClaim.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('doc-gst').innerText = "$" + gst.toLocaleString(undefined, {minimumFractionDigits:2});
+            document.getElementById('doc-total').innerText = "$" + totalPayable.toLocaleString(undefined, {minimumFractionDigits:2});
         }
     </script>
 </body>
