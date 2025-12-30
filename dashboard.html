@@ -3,95 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Dashboard - CivilMate</title>
+    <title>Business Dashboard - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>body { background-color: #f8fafc; font-family: sans-serif; }</style>
+    <style>
+        body { background-color: #f1f5f9; font-family: sans-serif; }
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: bold; background-color: #eff6ff; }
+        .tab-inactive { color: #64748b; background-color: white; }
+    </style>
 </head>
-<body class="p-6 max-w-7xl mx-auto">
+<body class="p-6 max-w-[1400px] mx-auto min-h-screen">
 
-    <header class="flex justify-between items-center mb-8">
+    <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-slate-800">Executive Dashboard</h1>
-            <p class="text-slate-500">Financial Overview & Project Status</p>
+            <h1 class="text-3xl font-bold text-slate-800">Command Center</h1>
+            <p class="text-slate-500 text-sm">Sales Pipeline & Active Contracts Manager</p>
         </div>
-        <a href="index.html" class="bg-slate-800 text-white px-5 py-2 rounded-lg font-bold hover:bg-black transition">
-            <i class="fas fa-home mr-2"></i> Main Menu
-        </a>
+        <div class="flex gap-3">
+             <button onclick="window.location.href='contracts.html'" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 shadow flex items-center">
+                <i class="fas fa-plus mr-2"></i> New Quote
+            </button>
+            <a href="index.html" class="bg-slate-800 text-white px-5 py-2 rounded-lg font-bold hover:bg-black transition">
+                <i class="fas fa-home mr-2"></i> Field App
+            </a>
+        </div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase">Total Contracts Value</p>
-                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-revenue">$0.00</h3>
-                </div>
-                <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i class="fas fa-file-contract text-xl"></i></div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-orange-400">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Pending Quotes (Sent)</p>
+            <div class="flex justify-between items-end">
+                <h3 class="text-2xl font-bold text-slate-700" id="kpi-pending-val">$0</h3>
+                <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold" id="kpi-pending-count">0</span>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase">Gross Profit (Est)</p>
-                    <h3 class="text-2xl font-bold text-green-600 mt-1" id="kpi-profit">$0.00</h3>
-                </div>
-                <div class="bg-green-100 p-2 rounded-lg text-green-600"><i class="fas fa-chart-line text-xl"></i></div>
-            </div>
-            <p class="text-xs text-slate-400 mt-2">Avg Margin: <span id="kpi-margin" class="font-bold text-slate-600">0%</span></p>
-        </div>
-
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase">Active Projects</p>
-                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-active">0</h3>
-                </div>
-                <div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i class="fas fa-hard-hat text-xl"></i></div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-green-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Active Contracts (Won)</p>
+            <div class="flex justify-between items-end">
+                <h3 class="text-2xl font-bold text-green-700" id="kpi-active-val">$0</h3>
+                <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold" id="kpi-active-count">0</span>
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase">Pending Claims</p>
-                    <h3 class="text-2xl font-bold text-purple-600 mt-1">$0.00</h3>
-                </div>
-                <div class="bg-purple-100 p-2 rounded-lg text-purple-600"><i class="fas fa-file-invoice-dollar text-xl"></i></div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Success Rate</p>
+            <div class="flex justify-between items-end">
+                <h3 class="text-2xl font-bold text-blue-700" id="kpi-winrate">0%</h3>
+                <i class="fas fa-trophy text-blue-200 text-2xl"></i>
             </div>
-            <p class="text-xs text-slate-400 mt-2">Valuations awaiting approval</p>
+        </div>
+
+        <div class="bg-slate-800 p-5 rounded-xl shadow-sm text-white">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Projected Net Profit (Active)</p>
+            <div class="flex justify-between items-end">
+                <h3 class="text-2xl font-bold text-yellow-400" id="kpi-profit">$0</h3>
+                <i class="fas fa-coins text-yellow-600 text-2xl"></i>
+            </div>
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h2 class="font-bold text-lg text-slate-700">Contract Register</h2>
-            <button onclick="window.location.href='contracts.html'" class="text-xs bg-blue-600 text-white px-3 py-2 rounded font-bold hover:bg-blue-700">
-                + New Contract
-            </button>
-        </div>
+    <div class="flex border-b border-slate-200 bg-white rounded-t-xl overflow-hidden">
+        <button onclick="filterStatus('Pending')" id="tab-Pending" class="tab-active flex-1 py-4 text-sm font-bold text-center transition">
+            <i class="fas fa-paper-plane mr-2"></i> Quotes Pipeline (Pending)
+        </button>
+        <button onclick="filterStatus('Active')" id="tab-Active" class="tab-inactive flex-1 py-4 text-sm font-bold text-center transition">
+            <i class="fas fa-hard-hat mr-2"></i> Active Sites (Contracts)
+        </button>
+        <button onclick="filterStatus('Rejected')" id="tab-Rejected" class="tab-inactive flex-1 py-4 text-sm font-bold text-center transition">
+            <i class="fas fa-archive mr-2"></i> Lost / Archived
+        </button>
+    </div>
+
+    <div class="bg-white shadow-sm border border-t-0 border-slate-200 rounded-b-xl overflow-hidden min-h-[400px]">
         <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b">
                 <tr>
                     <th class="p-4">Project / Client</th>
-                    <th class="p-4 text-center">Date</th>
+                    <th class="p-4 text-center">Submitted Date</th>
+                    <th class="p-4 text-right">Quote Value (Ex GST)</th>
+                    <th class="p-4 text-right text-slate-400" id="col-allowance">Cost Allowance</th>
                     <th class="p-4 text-center">Status</th>
-                    <th class="p-4 text-right">Contract Value</th>
-                    <th class="p-4 text-right">Est. Profit</th>
                     <th class="p-4 text-center">Actions</th>
                 </tr>
             </thead>
             <tbody id="projectsTable">
-                <tr><td colspan="6" class="p-8 text-center text-slate-400">Loading projects from Australia...</td></tr>
+                <tr><td colspan="6" class="p-10 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading Pipeline...</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        // FIREBASE CONFIG
+        // FIREBASE SETUP
         const firebaseConfig = {
             apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
             authDomain: "civilmate-933db.firebaseapp.com",
@@ -103,68 +108,170 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // LOAD DATA
-        db.collection('projects').orderBy('createdAt', 'desc').get().then(snapshot => {
-            let totalRevenue = 0;
-            let totalProfit = 0;
-            let activeCount = 0;
-            
+        let allProjects = [];
+        let currentTab = 'Pending';
+
+        // CARGAR DATOS
+        function loadData() {
+            db.collection('projects').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+                allProjects = [];
+                let pendingVal = 0, pendingCount = 0;
+                let activeVal = 0, activeCount = 0, activeProfit = 0;
+                let lostCount = 0;
+
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    p.id = doc.id;
+                    allProjects.push(p);
+
+                    // Calculos KPI
+                    const total = p.total || 0;
+                    const profit = p.profit || 0;
+                    
+                    if(p.status === 'Pending') {
+                        pendingVal += total;
+                        pendingCount++;
+                    } else if (p.status === 'Active') {
+                        activeVal += total;
+                        activeProfit += profit;
+                        activeCount++;
+                    } else if (p.status === 'Rejected') {
+                        lostCount++;
+                    }
+                });
+
+                // Render KPIs
+                document.getElementById('kpi-pending-val').innerText = fmtMoney(pendingVal);
+                document.getElementById('kpi-pending-count').innerText = pendingCount;
+                
+                document.getElementById('kpi-active-val').innerText = fmtMoney(activeVal);
+                document.getElementById('kpi-active-count').innerText = activeCount;
+                
+                document.getElementById('kpi-profit').innerText = fmtMoney(activeProfit);
+
+                // Win Rate = Active / (Active + Lost)
+                const totalClosed = activeCount + lostCount;
+                const winRate = totalClosed > 0 ? Math.round((activeCount / totalClosed) * 100) : 0;
+                document.getElementById('kpi-winrate').innerText = winRate + "%";
+
+                renderTable();
+            });
+        }
+
+        // RENDER TABLA
+        function renderTable() {
             const tbody = document.getElementById('projectsTable');
             tbody.innerHTML = "";
+            
+            // Filtrar por pestaña
+            const filtered = allProjects.filter(p => p.status === currentTab || (!p.status && currentTab === 'Pending'));
 
-            if(snapshot.empty) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">No contracts found. Go create one!</td></tr>`;
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-400 italic">No ${currentTab} items found.</td></tr>`;
                 return;
             }
 
-            snapshot.forEach(doc => {
-                const p = doc.data();
-                const id = doc.id;
-                
-                // Calculos KPI
-                totalRevenue += p.total || 0;
-                totalProfit += p.profit || 0; // Necesitamos guardar esto en contracts.html
-                if(p.status === 'Pending' || p.status === 'Active') activeCount++;
+            filtered.forEach(p => {
+                const total = p.total || 0;
+                const profit = p.profit || 0;
+                const cost = total - profit; // El Allowance interno
 
-                // Badge Color
-                let statusClass = "bg-gray-100 text-gray-600";
-                if(p.status === 'Pending') statusClass = "bg-orange-100 text-orange-600";
-                if(p.status === 'Active') statusClass = "bg-green-100 text-green-600";
-                if(p.status === 'Completed') statusClass = "bg-blue-100 text-blue-600";
+                let actionBtns = "";
+                
+                // Botones Inteligentes según estado
+                if(currentTab === 'Pending') {
+                    // Botones para Aprobar (Win) o Rechazar (Lose)
+                    actionBtns = `
+                        <div class="flex justify-center gap-2">
+                            <button onclick="updateStatus('${p.id}', 'Active')" class="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold hover:bg-green-200 border border-green-200" title="Client Signed (Win)">
+                                <i class="fas fa-check mr-1"></i> Won
+                            </button>
+                            <button onclick="updateStatus('${p.id}', 'Rejected')" class="bg-red-50 text-red-500 px-3 py-1 rounded text-xs font-bold hover:bg-red-100 border border-red-100" title="Client Declined (Lost)">
+                                <i class="fas fa-times mr-1"></i> Lost
+                            </button>
+                            <button onclick="editProject('${p.id}')" class="text-slate-400 hover:text-blue-600 px-2"><i class="fas fa-edit"></i></button>
+                        </div>
+                    `;
+                } else if (currentTab === 'Active') {
+                    // Botón para entrar al Tracker o Editar
+                    actionBtns = `
+                         <div class="flex justify-center gap-2">
+                            <button onclick="editProject('${p.id}')" class="bg-slate-100 text-slate-600 px-3 py-1 rounded text-xs font-bold hover:bg-slate-200 border border-slate-200">
+                                <i class="fas fa-eye mr-1"></i> Manage
+                            </button>
+                            <button onclick="updateStatus('${p.id}', 'Completed')" class="text-blue-600 hover:underline text-xs">Close</button>
+                        </div>
+                    `;
+                } else {
+                    actionBtns = `<button onclick="updateStatus('${p.id}', 'Pending')" class="text-xs text-slate-400 underline">Restore</button>`;
+                }
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-slate-50 transition">
-                        <td class="p-4 font-bold text-slate-700">
-                            ${p.name || "Untitled Project"}
-                            <div class="text-[10px] text-slate-400 font-normal">ID: ${id.substring(0,6)}...</div>
+                        <td class="p-4">
+                            <div class="font-bold text-slate-700">${p.name}</div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-wide">Created: ${new Date(p.createdAt).toLocaleDateString()}</div>
                         </td>
-                        <td class="p-4 text-center text-slate-500">${new Date(p.createdAt).toLocaleDateString()}</td>
-                        <td class="p-4 text-center"><span class="text-[10px] px-2 py-1 rounded font-bold uppercase ${statusClass}">${p.status || 'Draft'}</span></td>
-                        <td class="p-4 text-right font-mono font-bold">$${(p.total || 0).toLocaleString()}</td>
-                        <td class="p-4 text-right font-mono text-green-600">$${(p.profit || 0).toLocaleString()}</td>
+                        <td class="p-4 text-center text-xs text-slate-500">${getTimeAgo(p.createdAt)} ago</td>
+                        <td class="p-4 text-right font-mono font-bold text-slate-700">${fmtMoney(total)}</td>
+                        <td class="p-4 text-right font-mono text-xs text-red-400">${fmtMoney(cost)}</td>
                         <td class="p-4 text-center">
-                            <button onclick="loadProject('${id}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs border border-blue-200 px-2 py-1 rounded">
-                                Open
-                            </button>
+                            <span class="text-[10px] uppercase font-bold px-2 py-1 rounded 
+                                ${p.status === 'Active' ? 'bg-green-100 text-green-700' : (p.status === 'Rejected' ? 'bg-red-50 text-red-400' : 'bg-orange-100 text-orange-600')}">
+                                ${p.status || 'Pending'}
+                            </span>
                         </td>
+                        <td class="p-4 text-center">${actionBtns}</td>
                     </tr>
                 `;
             });
+        }
 
-            // Update KPI Cards
-            document.getElementById('kpi-revenue').innerText = "$" + totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('kpi-profit').innerText = "$" + totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('kpi-active').innerText = activeCount;
+        // --- LÓGICA DE CONTROL ---
+        
+        function filterStatus(status) {
+            currentTab = status;
             
-            const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-            document.getElementById('kpi-margin').innerText = margin.toFixed(1) + "%";
-        });
+            // Update UI Tabs
+            ['Pending', 'Active', 'Rejected'].forEach(s => {
+                const btn = document.getElementById('tab-'+s);
+                if(s === status) {
+                    btn.className = "tab-active flex-1 py-4 text-sm font-bold text-center transition cursor-default";
+                } else {
+                    btn.className = "tab-inactive flex-1 py-4 text-sm font-bold text-center transition cursor-pointer hover:bg-slate-50";
+                }
+            });
+            
+            // Show/Hide Column header for "Allowance" (Only useful in Active)
+            // document.getElementById('col-allowance').style.opacity = status === 'Active' ? '1' : '0.5';
 
-        function loadProject(id) {
-            // Guardamos el ID en memoria local para que contracts.html sepa qué cargar
+            renderTable();
+        }
+
+        function updateStatus(id, newStatus) {
+            if(confirm(`Mark this project as ${newStatus}?`)) {
+                db.collection('projects').doc(id).update({ status: newStatus });
+            }
+        }
+
+        function editProject(id) {
             localStorage.setItem('civilmate_current_project_id', id);
             window.location.href = 'contracts.html';
         }
+
+        // HELPERS
+        function fmtMoney(n) { return "$" + (n || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0}); }
+        
+        function getTimeAgo(ts) {
+            const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
+            if(days === 0) return "Today";
+            if(days === 1) return "Yesterday";
+            return days + " days";
+        }
+
+        // Start
+        loadData();
+
     </script>
 </body>
 </html>
