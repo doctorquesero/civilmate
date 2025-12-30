@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Valuations & Claims - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f1f5f9; font-family: sans-serif; color: #334155; }
+        .table-header { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; background: #f8fafc; }
+        .input-qty { background: #fffbeb; border: 1px solid #fcd34d; font-weight: bold; color: #b45309; } /* Amarillo para inputs */
+    </style>
+</head>
+<body class="p-2 md:p-6 max-w-[1400px] mx-auto min-h-screen flex flex-col">
+
+    <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-bold text-slate-800">Payment Claim #01</h1>
+                <span class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded font-bold uppercase">Draft</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Ref: Construction Contracts Act 2002</p>
+        </div>
+        
+        <div class="flex gap-4 text-right">
+            <div>
+                <p class="text-[10px] text-slate-400 uppercase font-bold">Original Contract</p>
+                <p class="text-sm font-bold text-slate-600" id="originalSumDisplay">$85,400.00</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-slate-400 uppercase font-bold">Variations</p>
+                <p class="text-sm font-bold text-purple-600" id="varsSumDisplay">$0.00</p>
+            </div>
+            <div class="bg-green-50 px-3 py-1 rounded border border-green-100">
+                <p class="text-[10px] text-green-600 uppercase font-bold">This Claim (Ex GST)</p>
+                <p class="text-xl font-bold text-green-700" id="claimTotalDisplay">$0.00</p>
+            </div>
+        </div>
+        <a href="index.html" class="text-slate-300 hover:text-slate-500"><i class="fas fa-times text-xl"></i></a>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-1 gap-6">
+
+        <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+                <h2 class="font-bold text-slate-700"><i class="fas fa-list-alt mr-2"></i>Scheduled Items</h2>
+                <div class="text-xs text-slate-500 bg-white px-2 py-1 rounded border">
+                    <i class="fas fa-info-circle text-blue-500 mr-1"></i> Input Quantity Done This Period
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="table-header">
+                        <tr>
+                            <th class="p-3 w-1/4">Description</th>
+                            <th class="p-3 text-right">Rate</th>
+                            <th class="p-3 text-center">Unit</th>
+                            <th class="p-3 text-right">Prev Claimed</th>
+                            <th class="p-3 text-center w-24">This Period</th>
+                            <th class="p-3 w-1/3">Evidence / Traceability (Required)</th>
+                            <th class="p-3 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="claimsTable">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow border border-purple-200 overflow-hidden">
+            <div class="p-4 border-b bg-purple-50 flex justify-between items-center">
+                <h2 class="font-bold text-purple-800"><i class="fas fa-bolt mr-2"></i>Variations (Additions / Omissions)</h2>
+                <button onclick="addVariation()" class="text-xs bg-purple-600 text-white px-3 py-1 rounded font-bold hover:bg-purple-700">
+                    + Add VO
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="table-header bg-purple-50/50">
+                        <tr>
+                            <th class="p-3 w-1/3">Variation Description</th>
+                            <th class="p-3 text-center">Ref (VO#)</th>
+                            <th class="p-3 text-right">Agreed Rate</th>
+                            <th class="p-3 text-center">Qty</th>
+                            <th class="p-3 w-1/4">Justification / Site Instruction</th>
+                            <th class="p-3 text-right">Total</th>
+                            <th class="p-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="variationsTable">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-4 pb-10">
+            <button class="px-6 py-3 rounded-xl border border-slate-300 font-bold text-slate-500 hover:bg-slate-50">Save Draft</button>
+            <button onclick="submitClaim()" class="px-6 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-200 flex items-center">
+                <i class="fas fa-paper-plane mr-2"></i> Generate Payment Claim PDF
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // MOCK DATA (Simulando lo que vendría de Firebase 'projects')
+        // En producción, esto se carga con db.collection('projects').doc(id).get()
+        const contractItems = [
+            { id: 1, name: "Preliminaries (P&G)", rate: 5500.00, unit: "LS", prev: 0.5 }, // LS = Lump Sum
+            { id: 2, name: "Bulk Excavation", rate: 45.00, unit: "m3", prev: 100 },
+            { id: 3, name: "Concrete Footings", rate: 260.00, unit: "m3", prev: 0 },
+            { id: 4, name: "Drainlayer (Dayworks)", rate: 85.00, unit: "hr", prev: 10 }, // Hourly Item
+            { id: 5, name: "Timber Retaining Wall", rate: 180.00, unit: "m2", prev: 0 }
+        ];
+
+        let variations = [];
+        const originalContractSum = 85400.00; // Mock total
+
+        // INITIALIZE
+        renderTable();
+        updateSummary();
+
+        function renderTable() {
+            const tbody = document.getElementById('claimsTable');
+            tbody.innerHTML = "";
+            
+            contractItems.forEach((item, index) => {
+                // Calculamos lo acumulado
+                const prevTotal = item.prev * item.rate;
+                
+                // Determinar el placeholder de evidencia según el tipo
+                let evidencePlaceholder = "e.g. Site Log #...";
+                if(item.unit === 'hr') evidencePlaceholder = "Attach Timesheets / Tracker Ref";
+                if(item.unit === 'm3') evidencePlaceholder = "Survey Data / Truck Dockets";
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50 group transition">
+                        <td class="p-3 font-medium text-slate-700">
+                            ${item.name}
+                            <div class="text-[10px] text-slate-400">Code: 3910-${item.id}</div>
+                        </td>
+                        <td class="p-3 text-right font-mono text-slate-600">$${item.rate.toFixed(2)}</td>
+                        <td class="p-3 text-center">
+                            <span class="text-xs font-bold bg-slate-100 px-2 py-1 rounded text-slate-500">${item.unit}</span>
+                        </td>
+                        <td class="p-3 text-right text-slate-400">
+                            ${item.prev} <span class="text-[9px]">($${prevTotal.toLocaleString()})</span>
+                        </td>
+                        <td class="p-3 text-center">
+                            <input type="number" id="qty-${index}" oninput="calcRow(${index})" class="input-qty w-20 p-2 rounded text-center outline-none focus:ring-2 ring-orange-400" placeholder="0">
+                        </td>
+                        <td class="p-3">
+                            <div class="relative">
+                                <i class="fas fa-link absolute left-2 top-2.5 text-slate-400"></i>
+                                <input type="text" id="evidence-${index}" class="w-full pl-7 p-2 text-xs border border-slate-200 rounded focus:border-blue-500 outline-none bg-white" placeholder="${evidencePlaceholder}">
+                            </div>
+                        </td>
+                        <td class="p-3 text-right font-bold text-green-700" id="total-${index}">$0.00</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function calcRow(index) {
+            const qty = parseFloat(document.getElementById(`qty-${index}`).value) || 0;
+            const item = contractItems[index];
+            const total = qty * item.rate;
+            
+            document.getElementById(`total-${index}`).innerText = "$" + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            updateSummary();
+        }
+
+        // --- VARIATIONS LOGIC ---
+        function addVariation() {
+            const desc = prompt("Variation Description (e.g. Soft Spot Undercut):");
+            if(!desc) return;
+            
+            variations.push({
+                desc: desc,
+                ref: "VO-" + (variations.length + 1),
+                rate: 0,
+                qty: 0
+            });
+            renderVariations();
+        }
+
+        function renderVariations() {
+            const tbody = document.getElementById('variationsTable');
+            tbody.innerHTML = "";
+            
+            variations.forEach((v, i) => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-purple-100 bg-purple-50/30">
+                        <td class="p-3 font-medium text-purple-900">${v.desc}</td>
+                        <td class="p-3 text-center text-xs text-purple-500">${v.ref}</td>
+                        <td class="p-3 text-right">
+                            <input type="number" value="${v.rate}" onchange="updateVar(${i}, 'rate', this.value)" class="w-20 p-1 text-right text-xs border border-purple-200 rounded">
+                        </td>
+                        <td class="p-3 text-center">
+                             <input type="number" value="${v.qty}" onchange="updateVar(${i}, 'qty', this.value)" class="w-16 p-1 text-center text-xs border border-purple-200 rounded font-bold">
+                        </td>
+                        <td class="p-3">
+                             <input type="text" class="w-full text-xs p-1 bg-transparent border-b border-purple-200 focus:border-purple-500 outline-none" placeholder="Reason (e.g. Engineer Instruction)">
+                        </td>
+                        <td class="p-3 text-right font-bold text-purple-700" id="varTotal-${i}">
+                            $${(v.rate * v.qty).toFixed(2)}
+                        </td>
+                        <td class="p-3 text-right">
+                            <button onclick="removeVar(${i})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            updateSummary();
+        }
+
+        function updateVar(i, field, val) {
+            variations[i][field] = parseFloat(val) || 0;
+            renderVariations(); // Re-render to update total visually is sloppy but safe for demo
+        }
+        
+        window.removeVar = (i) => { variations.splice(i, 1); renderVariations(); };
+
+        // --- TOTALS ---
+        function updateSummary() {
+            let claimTotal = 0;
+            
+            // Sum Contract Items
+            contractItems.forEach((item, i) => {
+                const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+                claimTotal += (qty * item.rate);
+            });
+
+            // Sum Variations
+            let varsTotal = 0;
+            variations.forEach(v => varsTotal += (v.rate * v.qty));
+            claimTotal += varsTotal;
+
+            // Update UI
+            document.getElementById('originalSumDisplay').innerText = "$" + originalContractSum.toLocaleString();
+            document.getElementById('varsSumDisplay').innerText = "$" + varsTotal.toLocaleString();
+            document.getElementById('claimTotalDisplay').innerText = "$" + claimTotal.toLocaleString();
+        }
+
+        function submitClaim() {
+            // Validation: Check for Evidence
+            let missingEvidence = false;
+            contractItems.forEach((item, i) => {
+                const qty = parseFloat(document.getElementById(`qty-${i}`)?.value) || 0;
+                const evidence = document.getElementById(`evidence-${i}`)?.value;
+                if (qty > 0 && (!evidence || evidence.length < 3)) {
+                    document.getElementById(`evidence-${i}`).classList.add('border-red-500', 'bg-red-50');
+                    missingEvidence = true;
+                }
+            });
+
+            if(missingEvidence) {
+                alert("⚠️ CLAIM REJECTED (Mock Logic)\n\nYou have claimed quantities without citing Evidence (Tracker Log # or Location).\n\nTraceability is required under NZ Standards.");
+                return;
+            }
+
+            alert("✅ Payment Claim Generated!\n\nStatus: Submitted to Engineer\nCompliance: CCA 2002\nEvidence Attached: Yes");
+        }
+    </script>
+</body>
+</html>
