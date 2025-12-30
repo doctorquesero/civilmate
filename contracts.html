@@ -3,197 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contracts & Budgeting - CivilMate</title>
+    <title>Estimator Pro - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8fafc; font-family: sans-serif; color: #334155; }
-        .border-lab { border-color: #f59e0b; color: #b45309; }
-        .border-plant { border-color: #22c55e; color: #15803d; }
-        .border-mat { border-color: #3b82f6; color: #1d4ed8; }
-        .mode-btn { transition: all 0.2s; }
-        .mode-active { background-color: #1e293b; color: white; border-color: #1e293b; }
-        .view-toggle { cursor: pointer; user-select: none; }
+        body { background-color: #f1f5f9; font-family: sans-serif; color: #334155; }
+        
+        /* Estilos de Tablas de Recursos */
+        .res-table th { font-size: 9px; text-transform: uppercase; color: #64748b; padding: 4px; text-align: left; }
+        .res-table td { padding: 2px; }
+        .res-input { width: 100%; background: transparent; border-bottom: 1px dashed #cbd5e1; font-size: 11px; padding: 2px; outline: none; }
+        .res-input:focus { border-bottom: 1px solid #3b82f6; }
+        
+        /* Estilos de Impresión (PDF) */
+        @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; }
+            .no-print { display: none !important; }
+            /* Forzar colores de fondo */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     </style>
 </head>
-<body class="p-2 md:p-6 max-w-[1600px] mx-auto h-screen flex flex-col">
+<body class="h-screen flex flex-col overflow-hidden">
 
-    <header class="flex flex-col md:flex-row justify-between items-center mb-4 bg-white p-3 rounded-xl shadow-sm border border-slate-200 shrink-0">
-        <div>
-            <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <i class="fas fa-coins text-blue-600"></i> Estimator & Budget Manager
-            </h1>
+    <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-10">
+        <div class="flex items-center gap-2">
+            <div class="bg-blue-600 text-white p-2 rounded-lg"><i class="fas fa-calculator"></i></div>
+            <div>
+                <h1 class="font-bold text-slate-800 leading-tight">Estimator Pro</h1>
+                <p class="text-xs text-slate-500" id="projectStatusLabel">New Estimation</p>
+            </div>
         </div>
-        <div class="flex gap-3">
-             <button onclick="toggleViewMode()" class="bg-purple-100 text-purple-700 px-4 py-1 rounded text-xs font-bold border border-purple-200 hover:bg-purple-200 transition flex items-center gap-2">
-                 <i class="fas fa-eye"></i> <span id="viewLabel">Showing: Client Price</span>
-             </button>
-             <button onclick="window.location.href='dashboard.html'" class="bg-slate-800 text-white px-3 py-1 rounded text-xs font-bold hover:bg-black">
-                 <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
-             </button>
-             <a href="index.html" class="text-slate-400 hover:text-slate-600 px-2"><i class="fas fa-times text-lg"></i></a>
+        <div class="flex gap-2">
+            <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border">
+                <i class="fas fa-arrow-left mr-1"></i> Dashboard
+            </button>
+            <button onclick="saveProject()" class="px-4 py-2 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow">
+                <i class="fas fa-save mr-1"></i> Save Progress
+            </button>
         </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
+    <div class="flex flex-1 overflow-hidden">
         
-        <div class="lg:col-span-7 flex flex-col gap-4 min-h-0 overflow-y-auto pb-2">
+        <div class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto">
             
-            <div class="bg-white p-4 rounded-xl shadow border border-slate-200 shrink-0">
-                 <div class="flex gap-4 items-end">
+            <div class="p-4 border-b border-slate-100 bg-slate-50">
+                <div class="flex gap-2 mb-2">
                     <div class="flex-1">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">1. Discipline</label>
-                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 h-10">
-                            <option value="">-- Select Trade --</option>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Library / Discipline</label>
+                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 text-sm border rounded bg-white font-bold text-slate-700 outline-none focus:ring-2 ring-blue-500">
+                            <option value="">-- Select --</option>
                         </select>
                     </div>
                     <div class="flex-1">
-                         <label class="text-[10px] font-bold text-slate-400 uppercase">2. Select Item</label>
-                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 bg-slate-50 border rounded text-sm font-bold text-slate-700 outline-none focus:border-blue-500 h-10" disabled>
-                            <option>-- Select Trade First --</option>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Standard Item</label>
+                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 text-sm border rounded bg-white font-bold text-slate-700 outline-none focus:ring-2 ring-blue-500" disabled>
+                            <option>-- Select Discipline --</option>
                         </select>
                     </div>
-                    <button onclick="createNewItem()" class="h-10 px-4 bg-slate-800 text-white rounded font-bold text-xs hover:bg-black whitespace-nowrap">
-                        <i class="fas fa-plus mr-1"></i> Custom
-                    </button>
+                    <div class="flex items-end">
+                        <button onclick="createNewItem()" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-black transition">
+                            + Custom
+                        </button>
+                    </div>
                 </div>
             </div>
-            
-            <div id="builderArea" class="hidden bg-white p-4 rounded-xl shadow border-t-4 border-blue-600 flex flex-col gap-3 flex-1">
-                 <div class="flex bg-slate-100 p-1 rounded-lg mb-2">
-                    <button id="btnModeUnit" onclick="setPricingMode('UNIT')" class="mode-btn flex-1 py-2 text-xs font-bold rounded-md border flex items-center justify-center gap-2 mode-active">
-                        <i class="fas fa-ruler-combined"></i> Unit Rate (Price/Qty)
+
+            <div id="builderArea" class="hidden flex-1 flex flex-col p-4">
+                
+                <div class="flex justify-center mb-4 bg-slate-100 p-1 rounded-lg self-center w-full max-w-md">
+                    <button id="btnModeUnit" onclick="setPricingMode('UNIT')" class="flex-1 py-1 text-xs font-bold rounded shadow bg-white text-blue-600 transition">
+                        Unit Rate (m3, m2, etc)
                     </button>
-                    <button id="btnModeTime" onclick="setPricingMode('TIME')" class="mode-btn flex-1 py-2 text-xs font-bold rounded-md border flex items-center justify-center gap-2 bg-white text-slate-500">
-                        <i class="fas fa-clock"></i> Hourly Rate (Charge-up)
+                    <button id="btnModeTime" onclick="setPricingMode('TIME')" class="flex-1 py-1 text-xs font-bold rounded text-slate-500 hover:bg-white hover:shadow transition">
+                        Hourly Rate (Charge-up)
                     </button>
                 </div>
 
-                <div class="flex gap-3 bg-slate-50 p-2 rounded border border-slate-200">
+                <div class="flex gap-4 mb-4">
                     <div class="flex-1">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase">Description</label>
-                        <input type="text" id="itemName" class="w-full bg-transparent font-bold text-base text-slate-800 border-b border-transparent focus:border-blue-500 outline-none" value="...">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Item Description</label>
+                        <input type="text" id="itemName" class="w-full text-lg font-bold text-slate-800 border-b border-slate-300 outline-none focus:border-blue-600" placeholder="e.g. Excavation">
                     </div>
-                    <div class="w-20">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase">Unit</label>
-                        <input type="text" id="itemUnit" class="w-full bg-transparent text-center font-bold text-slate-600 border-b border-transparent focus:border-blue-500 outline-none" value="m">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 min-h-0">
-                    <div class="bg-orange-50/40 p-2 rounded border border-orange-100 flex flex-col">
-                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-orange-700 border-b border-orange-200 pb-1 mb-2">
-                            <span>Labor Cost</span><button onclick="addRes('Lab')" class="text-orange-600"><i class="fas fa-plus-circle"></i></button>
-                        </div>
-                        <div id="listLab" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
-                    </div>
-                    <div class="bg-green-50/40 p-2 rounded border border-green-100 flex flex-col">
-                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-green-700 border-b border-green-200 pb-1 mb-2">
-                            <span>Plant Cost</span><button onclick="addRes('Plant')" class="text-green-600"><i class="fas fa-plus-circle"></i></button>
-                        </div>
-                        <div id="listPlant" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
-                    </div>
-                    <div class="bg-blue-50/40 p-2 rounded border border-blue-100 flex flex-col">
-                        <div class="flex justify-between items-center text-[10px] font-bold uppercase text-blue-700 border-b border-blue-200 pb-1 mb-2">
-                            <span>Material Cost</span><button onclick="addRes('Mat')" class="text-blue-600"><i class="fas fa-plus-circle"></i></button>
-                        </div>
-                        <div id="listMat" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
+                    <div class="w-24">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Unit (U.M.)</label>
+                        <input type="text" id="itemUnit" class="w-full text-center text-lg font-bold text-slate-600 border-b border-slate-300 outline-none focus:border-blue-600" placeholder="m3">
                     </div>
                 </div>
 
-                <div class="bg-slate-900 text-white p-3 rounded-lg mt-auto grid grid-cols-3 gap-4 border border-slate-700">
-                    <div class="text-left border-r border-slate-700 pr-4">
-                        <label class="text-[9px] text-red-400 uppercase block font-bold mb-1">Internal Cost (Budget)</label>
-                        <span id="rawCostDisplay" class="font-mono text-xl text-red-300">$0.00</span>
+                <div class="space-y-4 mb-6">
+                    
+                    <div class="border border-orange-200 rounded-lg overflow-hidden">
+                        <div class="bg-orange-50 px-3 py-1 flex justify-between items-center">
+                            <span class="text-xs font-bold text-orange-700 uppercase">Labor Cost (Mano de Obra)</span>
+                            <button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-800"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                        <div class="p-2">
+                            <table class="w-full res-table">
+                                <thead><tr><th class="w-5/12">Description</th><th class="w-2/12">Unit</th><th class="w-2/12 text-right">Qty/Yield</th><th class="w-2/12 text-right">Rate</th><th class="w-1/12 text-right">Total</th><th></th></tr></thead>
+                                <tbody id="listLab"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="border border-green-200 rounded-lg overflow-hidden">
+                        <div class="bg-green-50 px-3 py-1 flex justify-between items-center">
+                            <span class="text-xs font-bold text-green-700 uppercase">Plant Cost (Equipos)</span>
+                            <button onclick="addRes('Plant')" class="text-green-600 hover:text-green-800"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                        <div class="p-2">
+                            <table class="w-full res-table">
+                                <thead><tr><th class="w-5/12">Description</th><th class="w-2/12">Unit</th><th class="w-2/12 text-right">Qty/Yield</th><th class="w-2/12 text-right">Rate</th><th class="w-1/12 text-right">Total</th><th></th></tr></thead>
+                                <tbody id="listPlant"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="border border-blue-200 rounded-lg overflow-hidden">
+                        <div class="bg-blue-50 px-3 py-1 flex justify-between items-center">
+                            <span class="text-xs font-bold text-blue-700 uppercase">Material Cost</span>
+                            <button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-800"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                        <div class="p-2">
+                            <table class="w-full res-table">
+                                <thead><tr><th class="w-5/12">Description</th><th class="w-2/12">Unit</th><th class="w-2/12 text-right">Qty/Yield</th><th class="w-2/12 text-right">Rate</th><th class="w-1/12 text-right">Total</th><th></th></tr></thead>
+                                <tbody id="listMat"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-4 rounded-xl mt-auto shadow-lg">
+                    <div class="grid grid-cols-3 gap-6 mb-4 border-b border-slate-700 pb-4">
+                        <div>
+                            <p class="text-[10px] text-slate-400 uppercase">Direct Cost (Budget)</p>
+                            <p class="text-xl font-mono text-slate-200" id="rawCostDisplay">$0.00</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-slate-400 uppercase">Margin / Overhead</p>
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 text-center text-yellow-400 font-bold rounded">
+                                <span class="text-sm font-bold text-yellow-400">%</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-green-400 uppercase font-bold">Unit Price (Quote)</p>
+                            <p class="text-2xl font-bold text-green-400" id="finalRateDisplay">$0.00</p>
+                            <p class="text-[10px] text-slate-500" id="finalRateUnit">per unit</p>
+                        </div>
                     </div>
                     
-                    <div class="text-center border-r border-slate-700 px-4">
-                        <label class="text-[9px] text-yellow-400 uppercase block font-bold mb-1">Profit / Margin</label>
-                        <div class="flex items-center justify-center gap-1">
-                            <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-10 bg-slate-800 text-center font-bold text-sm outline-none text-yellow-400 rounded border border-slate-600">
-                            <span class="text-xs text-yellow-400">%</span>
+                    <div class="flex gap-2 items-center">
+                        <div class="flex-1 bg-white rounded flex items-center px-2">
+                            <span class="text-xs font-bold text-slate-500 mr-2">QTY:</span>
+                            <input type="number" id="qtyInput" class="w-full p-2 text-lg font-bold text-center outline-none text-slate-800" placeholder="0">
                         </div>
-                        <span id="profitValueDisplay" class="block text-[10px] text-slate-400 mt-1">+$0.00</span>
-                    </div>
-
-                    <div class="text-right pl-4">
-                        <label class="text-[9px] text-green-400 uppercase block font-bold mb-1">Client Price (Quote)</label>
-                        <span id="finalRateDisplay" class="font-bold text-2xl text-green-400">$0.00</span>
+                        <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded font-bold transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Add to Quote
+                        </button>
                     </div>
                 </div>
 
-                <div class="flex gap-3 pt-1">
-                    <div class="w-1/4"><input type="number" id="qtyInput" class="w-full p-3 border-2 border-slate-200 rounded-lg font-bold text-center focus:border-blue-500 outline-none text-lg" placeholder="Total Qty"></div>
-                    <button onclick="addToQuote()" class="w-3/4 bg-blue-600 text-white font-bold rounded-lg shadow hover:bg-blue-700 transition flex items-center justify-center gap-2 text-lg"><i class="fas fa-plus"></i> Add to List</button>
-                </div>
             </div>
         </div>
 
-        <div class="lg:col-span-5 flex flex-col h-full min-h-0">
-            <div class="bg-white p-4 rounded-xl shadow border border-slate-200 flex-1 flex flex-col overflow-hidden">
-                <div class="flex justify-between items-center mb-2 pb-2 border-b shrink-0">
-                    <h2 class="font-bold text-lg text-slate-800">Financial Summary</h2>
-                    <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded font-bold uppercase">NZS 3910</span>
-                </div>
-
-                <div class="flex-1 overflow-y-auto mb-2 bg-slate-50 rounded border border-slate-200">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-100 text-slate-500 font-bold uppercase text-[9px] sticky top-0 z-10 shadow-sm">
-                            <tr>
-                                <th class="p-2">Description</th>
-                                <th class="p-2 text-right">Unit Rate</th> <th class="p-2 text-center">Qty</th>
-                                <th class="p-2 text-right">Total</th>
-                                <th class="p-2"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="quoteTable">
-                            <tr><td colspan="5" class="p-10 text-center text-slate-400 italic text-xs">No items added.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 shrink-0 space-y-2">
-                    
-                    <div id="rowInternalCost" class="flex justify-between text-xs text-red-500 hidden">
-                        <span>Total Build Cost (Budget)</span>
-                        <span id="totalCostDisplay" class="font-bold">$0.00</span>
+        <div class="w-5/12 bg-slate-50 flex flex-col overflow-y-auto" id="printSection">
+            
+            <div class="p-8 bg-white min-h-screen shadow-sm max-w-[21cm] mx-auto" id="a4Page">
+                
+                <div class="flex justify-between items-start border-b-2 border-slate-800 pb-4 mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
+                        <p class="text-sm text-slate-500">Ref: <span id="quoteRefDisplay">#001</span></p>
                     </div>
-
-                    <div id="rowInternalProfit" class="flex justify-between text-xs text-blue-600 hidden border-b border-slate-200 pb-2 mb-2">
-                        <span>Projected Net Profit</span>
-                        <span id="totalProfitDisplay" class="font-bold">$0.00</span>
-                    </div>
-
-                    <div class="flex justify-between text-sm text-slate-600">
-                        <span>Contract Sum (Ex GST)</span>
-                        <span id="subtotalDisplay" class="font-bold text-slate-800">$0.00</span>
-                    </div>
-                    <div class="flex justify-between text-sm text-slate-500">
-                        <span>GST (15%)</span>
-                        <span id="gstDisplay">$0.00</span>
-                    </div>
-                    <div class="flex justify-between text-xl font-bold text-slate-800 pt-2 border-t mt-1">
-                        <span>TOTAL CLIENT PRICE</span>
-                        <span id="totalDisplay">$0.00</span>
+                    <div class="text-right">
+                        <p class="font-bold text-lg">My Construction Co.</p>
+                        <p class="text-xs text-slate-500">123 Builder Lane, Auckland</p>
+                        <p class="text-xs text-slate-500">www.civilmate.nz</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2 mt-3">
-                    <button onclick="saveProject()" class="bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 text-xs flex justify-center items-center">
-                        <i class="fas fa-save mr-2"></i> Save Contract
-                    </button>
-                    <button onclick="alert('Exporting Budget for Site Engineer (Costs Only)...')" class="bg-slate-200 text-slate-700 py-3 rounded-lg font-bold hover:bg-slate-300 text-xs flex justify-center items-center">
-                        <i class="fas fa-print mr-2"></i> Print Budget
-                    </button>
+                <div class="grid grid-cols-2 gap-8 mb-8 no-print-border">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">To (Client)</p>
+                        <input type="text" id="clientName" class="w-full font-bold text-slate-800 border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-300" placeholder="Enter Client Name">
+                        <input type="text" id="clientAddress" class="w-full text-sm text-slate-600 border-b border-dashed border-slate-300 focus:border-blue-500 outline-none mt-1 placeholder-slate-300" placeholder="Project Address / Location">
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Date</p>
+                        <p class="font-bold text-slate-700" id="currentDate">...</p>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mt-2">Valid Until</p>
+                        <p class="text-sm text-slate-700">30 Days from date</p>
+                    </div>
                 </div>
+
+                <table class="w-full text-left text-sm mb-6">
+                    <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[10px]">
+                        <tr>
+                            <th class="p-2 w-5/12">Description</th>
+                            <th class="p-2 text-center w-1/12">Unit</th>
+                            <th class="p-2 text-center w-1/12">Qty</th>
+                            <th class="p-2 text-right w-2/12">Rate</th>
+                            <th class="p-2 text-right w-2/12">Amount</th>
+                            <th class="p-2 w-1/12 no-print"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="quoteTable" class="text-slate-700">
+                        <tr><td colspan="6" class="p-8 text-center text-slate-300 italic text-xs">No items added yet.</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="flex justify-end">
+                    <div class="w-1/2 space-y-2">
+                        <div class="flex justify-between text-sm text-slate-500">
+                            <span>Subtotal (Ex GST)</span>
+                            <span id="subtotalDisplay" class="font-mono">$0.00</span>
+                        </div>
+                        <div class="flex justify-between text-sm text-slate-500 border-b border-slate-200 pb-2">
+                            <span>GST (15%)</span>
+                            <span id="gstDisplay" class="font-mono">$0.00</span>
+                        </div>
+                        <div class="flex justify-between text-xl font-bold text-slate-800 pt-1">
+                            <span>TOTAL (NZD)</span>
+                            <span id="totalDisplay" class="font-mono">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-12 pt-4 border-t border-slate-200">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Terms & Conditions</p>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        1. This quote is based on NZS 3910 conditions of contract.<br>
+                        2. Excludes unforeseen ground conditions unless stated.<br>
+                        3. Payment terms: 20th of the following month.
+                    </p>
+                </div>
+
             </div>
+            
+            <div class="fixed bottom-6 right-6 no-print">
+                <button onclick="printQuote()" class="bg-slate-800 text-white px-6 py-4 rounded-full shadow-xl hover:bg-black font-bold flex items-center gap-2 transition transform hover:scale-105">
+                    <i class="fas fa-print"></i> Print / Download PDF
+                </button>
+            </div>
+
         </div>
     </div>
 
     <script>
-        // FIREBASE SETUP
+        // CONFIGURACIÓN Y ESTADO
         const firebaseConfig = {
             apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
             authDomain: "civilmate-933db.firebaseapp.com",
@@ -205,43 +269,57 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- DATABASE NZS EXPANDIDA ---
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
+
+        // DATABASE MOCKUP (NZS Standard)
         const standardDB = {
-            "Preliminaries": [ 
-                { name: "Site Fencing", unit: "m", resources: [{n:"Hire", t:"Plant", c:3.5, q:1}] },
-                { name: "Site Toilet", unit: "wk", resources: [{n:"Hire", t:"Plant", c:45, q:1}, {n:"Clean", t:"Sub", c:25, q:1}] }
-            ],
-            "Earthworks": [ 
-                { name: "Bulk Excavation", unit: "m3", resources: [{n:"Excavator 20T", t:"Plant", c:140, q:0.05}, {n:"Tip Fees", t:"Mat", c:35, q:1}] },
-                { name: "Trenching", unit: "m", resources: [{n:"Excavator 5T", t:"Plant", c:65, q:0.2}, {n:"Labor", t:"Lab", c:35, q:0.2}] }
+            "Earthworks": [
+                { name: "Bulk Excavation", unit: "m3", resources: [
+                    {n:"Excavator 20T", u:"hr", q:0.05, c:140, t:"Plant"}, 
+                    {n:"Operator", u:"hr", q:0.05, c:45, t:"Lab"},
+                    {n:"Tip Fees", u:"m3", q:1, c:35, t:"Mat"}
+                ]}
             ],
             "Concrete": [
-                { name: "Footing 20MPa", unit: "m3", resources: [{n:"Conc 20MPa", t:"Mat", c:250, q:1.05}, {n:"Pump", t:"Plant", c:180, q:0.2}, {n:"Labor", t:"Lab", c:70, q:1}] },
-                { name: "Slab on Grade", unit: "m2", resources: [{n:"Conc 25MPa", t:"Mat", c:45, q:1}, {n:"Mesh", t:"Mat", c:12, q:1}, {n:"Finisher", t:"Lab", c:35, q:0.5}] }
+                { name: "Footing 20MPa", unit: "m3", resources: [
+                    {n:"Concrete 20MPa", u:"m3", q:1.05, c:250, t:"Mat"},
+                    {n:"Line Pump", u:"hr", q:0.2, c:180, t:"Plant"},
+                    {n:"Placing Crew", u:"hr", q:1, c:70, t:"Lab"}
+                ]}
             ],
             "Drainage": [
-                { name: "PVC 100mm Stormwater", unit: "m", resources: [{n:"Pipe", t:"Mat", c:14, q:1}, {n:"Install", t:"Lab", c:55, q:0.4}] }
-            ],
-            "Labor Rates (Hourly)": [
-                { name: "General Laborer", unit: "hr", resources: [{n:"Wages+Tax", t:"Lab", c:28, q:1}, {n:"PPE/Overheads", t:"Mat", c:5, q:1}] },
-                { name: "Carpenter", unit: "hr", resources: [{n:"Wages+Tax", t:"Lab", c:45, q:1}, {n:"Tool Allow", t:"Plant", c:5, q:1}] }
+                { name: "PVC 100mm Pipe", unit: "m", resources: [
+                    {n:"Pipe 100mm", u:"m", q:1, c:14, t:"Mat"},
+                    {n:"Bedding GAP7", u:"m3", q:0.1, c:60, t:"Mat"},
+                    {n:"Drainlayer", u:"hr", q:0.4, c:65, t:"Lab"}
+                ]}
             ]
         };
 
-        // VARIABLES
-        let quoteItems = [];
+        // Variables
         let currentResources = [];
-        let viewMode = 'CLIENT'; // 'CLIENT' (Price) or 'INTERNAL' (Cost)
+        let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
 
         // INIT
-        const discSelect = document.getElementById('disciplineSelect');
-        Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
-        if(currentProjectId) loadProjectFromDB(currentProjectId);
+        init();
 
-        // --- CORE FUNCTIONS ---
+        function init() {
+            // Llenar Selects
+            const discSelect = document.getElementById('disciplineSelect');
+            Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
+            
+            // Cargar Proyecto
+            if(currentProjectId) {
+                loadProjectFromDB(currentProjectId);
+            } else {
+                // Limpiar si es nuevo
+                document.getElementById('projectStatusLabel').innerText = "Creating New Quote...";
+            }
+        }
+
         function loadKits() {
-            const d = discSelect.value;
+            const d = document.getElementById('disciplineSelect').value;
             const k = document.getElementById('kitSelect');
             k.innerHTML = '<option>-- Select Item --</option>';
             k.disabled = !d;
@@ -257,36 +335,24 @@
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
+            
+            // Clonar recursos
             currentResources = JSON.parse(JSON.stringify(item.resources));
             
-            setPricingMode('UNIT'); // Reset UI logic
             renderAllLists();
             updateCalculations();
-        }
-
-        function setPricingMode(mode) {
-            // UI Toggle Logic (Visual only for this demo)
-            const bU = document.getElementById('btnModeUnit');
-            const bT = document.getElementById('btnModeTime');
-            if(mode === 'UNIT') {
-                bU.classList.add('bg-slate-800', 'text-white'); bU.classList.remove('bg-white', 'text-slate-500');
-                bT.classList.remove('bg-slate-800', 'text-white'); bT.classList.add('bg-white', 'text-slate-500');
-            } else {
-                bT.classList.add('bg-slate-800', 'text-white'); bT.classList.remove('bg-white', 'text-slate-500');
-                bU.classList.remove('bg-slate-800', 'text-white'); bU.classList.add('bg-white', 'text-slate-500');
-                document.getElementById('itemUnit').value = 'hr';
-            }
         }
 
         function createNewItem() {
             document.getElementById('builderArea').classList.remove('hidden');
             document.getElementById('itemName').value = "Custom Item";
             document.getElementById('itemUnit').value = "ea";
-            currentResources = [{n:"Item", t:"Mat", c:0, q:1}];
+            currentResources = [];
             renderAllLists();
             updateCalculations();
         }
 
+        // --- RENDER DE TABLAS DE RECURSOS (5 COLUMNAS) ---
         function renderAllLists() {
             renderList('Lab', 'listLab');
             renderList('Plant', 'listPlant');
@@ -296,146 +362,170 @@
         function renderList(type, elementId) {
             const list = document.getElementById(elementId);
             list.innerHTML = "";
+            
             currentResources.forEach((res, idx) => {
                 if(res.t !== type) return;
+                
+                // Calculo de fila
+                const total = (res.c * res.q).toFixed(2);
+
                 list.innerHTML += `
-                    <div class="grid grid-cols-5 gap-1 mb-1 items-center group text-[10px]">
-                        <div class="col-span-3"><input type="text" value="${res.n}" onchange="updateRes(${idx},'n',this.value)" class="w-full bg-transparent border-b border-dotted border-slate-300 font-bold text-slate-700"></div>
-                        <div><input type="number" value="${res.c}" onchange="updateRes(${idx},'c',this.value)" class="w-full text-right bg-slate-50 border rounded px-1"></div>
-                        <div class="flex items-center relative">
-                            <input type="number" value="${res.q}" onchange="updateRes(${idx},'q',this.value)" class="w-full text-right bg-slate-50 border rounded px-1 font-bold">
-                            <button onclick="removeRes(${idx})" class="absolute -right-3 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>`;
+                    <tr class="border-b border-dashed border-slate-200 last:border-0 group">
+                        <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-bold text-slate-600"></td>
+                        <td><input type="text" value="${res.u || 'ea'}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-400"></td>
+                        <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-slate-700"></td>
+                        <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-500"></td>
+                        <td class="text-right text-[10px] font-mono font-bold text-slate-800">$${total}</td>
+                        <td class="text-center"><button onclick="delRes(${idx})" class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-times"></i></button></td>
+                    </tr>
+                `;
             });
         }
 
-        window.updateRes = (i, f, v) => { currentResources[i][f] = f==='n'?v:parseFloat(v)||0; updateCalculations(); };
-        window.removeRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
-        window.addRes = (t) => { currentResources.push({n:"New", t:t, c:0, q:1}); renderAllLists(); };
+        window.updRes = (i, f, v) => { 
+            currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; 
+            renderAllLists(); 
+            updateCalculations(); 
+        };
+        window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
+        window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
+
+        // --- CÁLCULOS Y MODOS ---
+        function setPricingMode(mode) {
+            const btnU = document.getElementById('btnModeUnit');
+            const btnT = document.getElementById('btnModeTime');
+            
+            if(mode === 'TIME') {
+                btnT.classList.add('bg-blue-600', 'text-white', 'shadow'); btnT.classList.remove('text-slate-500');
+                btnU.classList.remove('bg-white', 'text-blue-600', 'shadow'); btnU.classList.add('text-slate-500');
+                document.getElementById('itemUnit').value = 'hr';
+                // Resetear cantidades a 1 para charge-up
+                currentResources.forEach(r => { if(r.t !== 'Mat') r.q = 1; });
+            } else {
+                btnU.classList.add('bg-white', 'text-blue-600', 'shadow'); btnU.classList.remove('text-slate-500');
+                btnT.classList.remove('bg-blue-600', 'text-white', 'shadow'); btnT.classList.add('text-slate-500');
+                // Restaurar unidad original si es posible (en este demo simple, volvemos a m3)
+                document.getElementById('itemUnit').value = 'm3'; 
+            }
+            renderAllLists();
+            updateCalculations();
+        }
 
         function updateCalculations() {
             let cost = 0;
             currentResources.forEach(r => cost += (r.c * r.q));
+            
             const margin = parseFloat(document.getElementById('marginInput').value) || 0;
             const price = cost * (1 + (margin/100));
             
             document.getElementById('rawCostDisplay').innerText = "$" + cost.toFixed(2);
-            document.getElementById('profitValueDisplay').innerText = "+$" + (price - cost).toFixed(2);
             document.getElementById('finalRateDisplay').innerText = "$" + price.toFixed(2);
-            return { cost, price };
+            document.getElementById('finalRateUnit').innerText = "per " + document.getElementById('itemUnit').value;
+            
+            return price;
         }
 
+        // --- GESTIÓN DE PRESUPUESTO ---
         function addToQuote() {
             const qty = parseFloat(document.getElementById('qtyInput').value);
-            if(!qty) return alert("Qty required");
-            const calcs = updateCalculations();
+            if(!qty) return alert("Enter Quantity");
+            
+            const rate = updateCalculations();
             
             quoteItems.push({
                 name: document.getElementById('itemName').value,
                 unit: document.getElementById('itemUnit').value,
                 qty: qty,
-                unitCost: calcs.cost, // Costo Unitario Interno
-                unitPrice: calcs.price, // Precio Unitario Cliente
-                totalCost: calcs.cost * qty,
-                totalPrice: calcs.price * qty,
+                rate: rate,
+                total: qty * rate,
                 resources: JSON.parse(JSON.stringify(currentResources))
             });
             renderQuote();
             document.getElementById('qtyInput').value = "";
         }
 
-        // --- VIEW TOGGLE LOGIC ---
-        function toggleViewMode() {
-            viewMode = viewMode === 'CLIENT' ? 'INTERNAL' : 'CLIENT';
-            
-            const label = document.getElementById('viewLabel');
-            const rowCost = document.getElementById('rowInternalCost');
-            const rowProfit = document.getElementById('rowInternalProfit');
-
-            if (viewMode === 'INTERNAL') {
-                label.innerText = "Showing: Internal Budget";
-                label.parentElement.classList.replace('bg-purple-100', 'bg-red-100');
-                label.parentElement.classList.replace('text-purple-700', 'text-red-700');
-                rowCost.classList.remove('hidden');
-                rowProfit.classList.remove('hidden');
-            } else {
-                label.innerText = "Showing: Client Price";
-                label.parentElement.classList.replace('bg-red-100', 'bg-purple-100');
-                label.parentElement.classList.replace('text-red-700', 'text-purple-700');
-                rowCost.classList.add('hidden');
-                rowProfit.classList.add('hidden');
-            }
-            renderQuote();
-        }
-
         function renderQuote() {
             const tbody = document.getElementById('quoteTable');
             tbody.innerHTML = "";
-            let subPrice = 0;
-            let subCost = 0;
+            let sub = 0;
+            
+            if(quoteItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-300 italic text-xs">No items added yet.</td></tr>`;
+            }
 
             quoteItems.forEach((item, i) => {
-                subPrice += item.totalPrice;
-                subCost += item.totalCost;
-                
-                // Que mostramos? Costo o Precio?
-                const displayRate = viewMode === 'INTERNAL' ? item.unitCost : item.unitPrice;
-                const displayTotal = viewMode === 'INTERNAL' ? item.totalCost : item.totalPrice;
-                const colorClass = viewMode === 'INTERNAL' ? 'text-red-600' : 'text-slate-800';
-
+                sub += item.total;
                 tbody.innerHTML += `
-                    <tr class="border-b hover:bg-slate-50 group">
-                        <td class="p-2 text-xs font-bold text-slate-700">${item.name}</td>
-                        <td class="p-2 text-right text-xs font-mono text-slate-500">$${displayRate.toFixed(2)}</td>
+                    <tr class="border-b border-slate-100 group hover:bg-slate-50">
+                        <td class="p-2 font-medium text-xs">${item.name}</td>
+                        <td class="p-2 text-center text-xs bg-slate-50 rounded text-slate-500 font-bold">${item.unit}</td>
                         <td class="p-2 text-center text-xs font-bold">${item.qty}</td>
-                        <td class="p-2 text-right text-xs font-mono font-bold ${colorClass}">$${displayTotal.toFixed(2)}</td>
-                        <td class="p-2 text-right"><button onclick="removeQuoteItem(${i})" class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button></td>
+                        <td class="p-2 text-right text-xs font-mono text-slate-500">$${item.rate.toFixed(2)}</td>
+                        <td class="p-2 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="p-2 text-right no-print">
+                            <button onclick="delQuoteItem(${i})" class="text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button>
+                        </td>
                     </tr>
                 `;
             });
 
-            // Update Summary Box
-            document.getElementById('subtotalDisplay').innerText = "$" + subPrice.toFixed(2);
-            document.getElementById('gstDisplay').innerText = "$" + (subPrice*0.15).toFixed(2);
-            document.getElementById('totalDisplay').innerText = "$" + (subPrice*1.15).toFixed(2);
-            
-            // Internal Data
-            document.getElementById('totalCostDisplay').innerText = "$" + subCost.toFixed(2);
-            document.getElementById('totalProfitDisplay').innerText = "$" + (subPrice - subCost).toFixed(2);
+            document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString(undefined, {minimumFractionDigits: 2});
         }
 
-        window.removeQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
-        
+        window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
+
+        // --- IMPRESIÓN Y GUARDADO ---
+        function printQuote() {
+            const client = document.getElementById('clientName').value;
+            if(!client) return alert("Please enter Client Name before printing.");
+            window.print();
+        }
+
         function saveProject() {
-            if(!quoteItems.length) return alert("Empty");
-            const btn = document.querySelector('button[onclick="saveProject()"]');
-            btn.innerHTML = "Saving...";
+            const client = document.getElementById('clientName').value;
+            const address = document.getElementById('clientAddress').value;
             
-            // Calculate totals
+            if(!quoteItems.length) return alert("Quote empty");
+            if(!client) return alert("Enter Client Name");
+
             let totalRev = 0, totalCost = 0;
-            quoteItems.forEach(i => { totalRev += i.totalPrice; totalCost += i.totalCost; });
+            quoteItems.forEach(i => { totalRev += i.total; });
 
             const pData = {
-                name: "Project " + new Date().toLocaleDateString(),
+                name: client + " - Project",
+                client: client,
+                address: address,
                 total: totalRev,
-                profit: totalRev - totalCost,
+                profit: totalRev * 0.18, // Mockup profit calc
                 items: quoteItems,
-                status: "Active",
+                status: "Pending",
                 updatedAt: Date.now()
             };
 
             if(currentProjectId) {
-                db.collection('projects').doc(currentProjectId).update(pData).then(()=>window.location.href="dashboard.html");
+                db.collection('projects').doc(currentProjectId).update(pData).then(() => alert("Updated!"));
             } else {
                 pData.createdAt = Date.now();
-                db.collection('projects').add(pData).then(()=>window.location.href="dashboard.html");
+                db.collection('projects').add(pData).then((doc) => {
+                    localStorage.setItem('civilmate_current_project_id', doc.id);
+                    currentProjectId = doc.id;
+                    alert("Saved! ID: " + doc.id);
+                });
             }
         }
-        
+
         function loadProjectFromDB(id) {
             db.collection('projects').doc(id).get().then(doc => {
-                if(doc.exists) { quoteItems = doc.data().items || []; renderQuote(); }
+                if(doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('projectStatusLabel').innerText = "Editing: " + data.name;
+                    document.getElementById('clientName').value = data.client || "";
+                    document.getElementById('clientAddress').value = data.address || "";
+                    quoteItems = data.items || [];
+                    renderQuote();
+                }
             });
         }
     </script>
