@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Diary Report - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
+        
+        /* ESTILO TIPO CUADERNO DE OBRA */
+        .diary-entry { page-break-inside: avoid; border-left: 4px solid #3b82f6; margin-bottom: 20px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .diary-date-header { background-color: #f8fafc; padding: 10px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #1e293b; display: flex; justify-content: space-between; }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #reportContainer, #reportContainer * { visibility: visible; }
+            #reportContainer { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            .no-print { display: none !important; }
+            body { background-color: white; }
+            .diary-entry { border: 1px solid #ddd; box-shadow: none; }
+        }
+    </style>
+</head>
+<body class="p-6 max-w-[1200px] mx-auto min-h-screen flex flex-col">
+
+    <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-end no-print">
+        <div class="w-full md:w-auto">
+            <h1 class="text-2xl font-bold text-slate-800"><i class="fas fa-book-open text-blue-600 mr-2"></i>Site Diary Generator</h1>
+            <p class="text-xs text-slate-500">Select project and date range to generate report.</p>
+        </div>
+        
+        <div class="flex flex-wrap gap-3 w-full md:w-auto items-end">
+            <div>
+                <label class="text-[10px] font-bold uppercase text-slate-400">Project</label>
+                <select id="projectSelect" class="w-full md:w-48 p-2 text-sm border rounded font-bold" onchange="enableGenerate()">
+                    <option value="">-- Select --</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold uppercase text-slate-400">From</label>
+                <input type="date" id="dateFrom" class="w-32 p-2 text-sm border rounded">
+            </div>
+            <div>
+                <label class="text-[10px] font-bold uppercase text-slate-400">To</label>
+                <input type="date" id="dateTo" class="w-32 p-2 text-sm border rounded">
+            </div>
+            <button onclick="generateReport()" id="btnGen" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow disabled:opacity-50 disabled:cursor-not-allowed">
+                Generate
+            </button>
+            <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black shadow">
+                <i class="fas fa-print"></i> PDF
+            </button>
+            <a href="dashboard.html" class="text-slate-400 hover:text-slate-600 px-2 py-2"><i class="fas fa-times text-xl"></i></a>
+        </div>
+    </header>
+
+    <div id="reportContainer" class="bg-white min-h-[29.7cm] p-10 shadow-xl mx-auto w-full max-w-[21cm] hidden">
+        
+        <div class="border-b-2 border-slate-800 pb-4 mb-8">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold uppercase text-slate-800 tracking-wider">Site Diary Record</h1>
+                    <p class="text-slate-500 font-bold mt-1" id="reportProjectName">Project Name</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-slate-400 uppercase font-bold">Report Period</p>
+                    <p class="text-sm font-bold" id="reportPeriod">All Dates</p>
+                    <p class="text-xs text-slate-400 mt-1">Generated: <span id="genDate"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="diaryContent" class="space-y-6">
+            <p class="text-center text-slate-400 italic py-10">Select parameters and click Generate.</p>
+        </div>
+
+        <div class="mt-12 pt-4 border-t border-slate-200 text-center">
+            <p class="text-[10px] text-slate-400">
+                CivilMate Construction Management System • Verification & Traceability Record
+            </p>
+        </div>
+
+    </div>
+
+    <script>
+        // CONFIG
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // INIT
+        init();
+
+        function init() {
+            // Cargar Proyectos al Select
+            db.collection('projects').get().then(snapshot => {
+                const select = document.getElementById('projectSelect');
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    select.innerHTML += `<option value="${doc.id}">${p.name}</option>`;
+                });
+            });
+            
+            // Set default dates (First day of month to Today)
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('dateTo').valueAsDate = today;
+            document.getElementById('dateFrom').valueAsDate = firstDay;
+        }
+
+        function generateReport() {
+            const pid = document.getElementById('projectSelect').value;
+            const dFrom = document.getElementById('dateFrom').value;
+            const dTo = document.getElementById('dateTo').value;
+            const projectName = document.getElementById('projectSelect').options[document.getElementById('projectSelect').selectedIndex].text;
+
+            if(!pid) return alert("Select a project");
+
+            // UI Updates
+            document.getElementById('reportContainer').classList.remove('hidden');
+            document.getElementById('reportProjectName').innerText = projectName;
+            document.getElementById('reportPeriod').innerText = `${dFrom} to ${dTo}`;
+            document.getElementById('genDate').innerText = new Date().toLocaleDateString();
+            document.getElementById('diaryContent').innerHTML = '<p class="text-center py-4">Loading records...</p>';
+
+            // Query Firestore
+            db.collection('site_logs')
+                .where('projectId', '==', pid)
+                .where('date', '>=', dFrom)
+                .where('date', '<=', dTo)
+                .orderBy('date', 'asc') // Orden cronológico
+                .get()
+                .then(snapshot => {
+                    const container = document.getElementById('diaryContent');
+                    container.innerHTML = "";
+
+                    if(snapshot.empty) {
+                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 rounded border border-dashed border-slate-300 text-slate-500">No site records found for this period.</div>';
+                        return;
+                    }
+
+                    // Agrupar por fecha
+                    const logsByDate = {};
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        if(!logsByDate[data.date]) logsByDate[data.date] = [];
+                        logsByDate[data.date].push(data);
+                    });
+
+                    // Renderizar
+                    Object.keys(logsByDate).forEach(date => {
+                        const logs = logsByDate[date];
+                        
+                        let entriesHtml = "";
+                        logs.forEach(log => {
+                            entriesHtml += `
+                                <div class="flex border-b border-slate-100 last:border-0 pb-2 mb-2 last:mb-0 last:pb-0">
+                                    <div class="w-24 shrink-0 font-bold text-slate-600 text-sm pt-1">
+                                        ${log.qty} <span class="text-xs text-slate-400 font-normal">${log.unit}</span>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="font-bold text-slate-800 text-sm">${log.itemName}</p>
+                                        <p class="text-xs text-slate-500 italic mt-0.5"><i class="fas fa-info-circle mr-1"></i> ${log.notes}</p>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        // Formatear fecha bonita
+                        const dateObj = new Date(date);
+                        const dayName = dateObj.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+                        container.innerHTML += `
+                            <div class="diary-entry rounded-lg overflow-hidden border border-slate-200">
+                                <div class="diary-date-header">
+                                    <span><i class="far fa-calendar-alt mr-2"></i> ${dayName}</span>
+                                    <span class="text-xs font-normal bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase">Site Active</span>
+                                </div>
+                                <div class="p-4 bg-white">
+                                    <div class="grid grid-cols-2 gap-4 mb-4 text-xs text-slate-400 border-b border-slate-100 pb-2">
+                                        <div><strong>Weather:</strong> [Not Recorded]</div>
+                                        <div><strong>Staff on Site:</strong> [See Activity]</div>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <h4 class="text-[10px] font-bold uppercase text-slate-400 mb-2">Work Completed:</h4>
+                                        ${entriesHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                });
+        }
+    </script>
+</body>
+</html>
