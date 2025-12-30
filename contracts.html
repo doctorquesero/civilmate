@@ -12,32 +12,47 @@
     <style>
         body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* ALINEACIÓN DE TABLAS DE RECURSOS */
+        /* STRICT TABLE ALIGNMENT */
         .res-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-        .res-table th { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; text-align: left; border-bottom: 2px solid #e2e8f0; }
-        .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
-        /* Inputs dentro de las tablas */
-        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
+        /* Common widths for TH and TD to ensure alignment */
+        .col-desc { width: 45%; }
+        .col-unit { width: 15%; text-align: center; }
+        .col-qty  { width: 15%; text-align: right; }
+        .col-rate { width: 15%; text-align: right; }
+        .col-total { width: 10%; text-align: right; }
+        .col-del  { width: 5%; text-align: center; }
+
+        .res-table th { 
+            font-size: 10px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            color: #64748b; 
+            padding: 6px 4px; 
+            border-bottom: 2px solid #e2e8f0; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .res-table td { padding: 2px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
+        
+        /* Inputs */
+        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; }
         .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        /* Inputs de la Empresa (Header Derecho) */
-        .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; }
-        .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #f8fafc; }
+        /* Header Editables */
+        .editable-header { background: transparent; border: 1px dashed transparent; width: 100%; outline: none; text-align: right; transition: 0.2s; }
+        .editable-header:hover, .editable-header:focus { background: #fffbeb; border-color: #fcd34d; }
 
-        /* Estilos de Impresión (PDF Clean) */
+        /* Print Logic */
         @media print {
             body * { visibility: hidden; }
             #printSection, #printSection * { visibility: visible; }
-            #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; height: auto; overflow: visible; }
-            
-            /* Ocultar botones y bordes de inputs al imprimir */
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
             .no-print { display: none !important; }
-            input { border: none !important; background: transparent !important; padding: 0 !important; }
-            textarea { border: none !important; resize: none; background: transparent !important; }
-            
-            /* Forzar colores */
+            input { border: none !important; background: transparent !important; }
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -50,7 +65,7 @@
             <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-lg">C</div>
             <div>
                 <h1 class="font-bold text-lg leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-400 opacity-80" id="statusLabel">Estimator V3.0</p>
+                <p class="text-[10px] text-slate-400 opacity-80" id="statusLabel">Estimator V3.1</p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -124,12 +139,12 @@
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-[40%] pl-3">Description</th>
-                                        <th class="w-[15%] text-center">Unit</th>
-                                        <th class="w-[15%] text-right">Yield</th>
-                                        <th class="w-[15%] text-right">Rate</th>
-                                        <th class="w-[10%] text-right">Total</th>
-                                        <th class="w-[5%]"></th>
+                                        <th class="col-desc pl-3">Description</th>
+                                        <th class="col-unit">Unit</th>
+                                        <th class="col-qty">Yield</th>
+                                        <th class="col-rate">Rate</th>
+                                        <th class="col-total">Total</th>
+                                        <th class="col-del"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="listLab"></tbody>
@@ -146,12 +161,12 @@
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-[40%] pl-3">Description</th>
-                                        <th class="w-[15%] text-center">Unit</th>
-                                        <th class="w-[15%] text-right">Yield</th>
-                                        <th class="w-[15%] text-right">Rate</th>
-                                        <th class="w-[10%] text-right">Total</th>
-                                        <th class="w-[5%]"></th>
+                                        <th class="col-desc pl-3">Description</th>
+                                        <th class="col-unit">Unit</th>
+                                        <th class="col-qty">Yield</th>
+                                        <th class="col-rate">Rate</th>
+                                        <th class="col-total">Total</th>
+                                        <th class="col-del"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="listPlant"></tbody>
@@ -168,12 +183,12 @@
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-[40%] pl-3">Description</th>
-                                        <th class="w-[15%] text-center">Unit</th>
-                                        <th class="w-[15%] text-right">Qty</th>
-                                        <th class="w-[15%] text-right">Cost</th>
-                                        <th class="w-[10%] text-right">Total</th>
-                                        <th class="w-[5%]"></th>
+                                        <th class="col-desc pl-3">Description</th>
+                                        <th class="col-unit">Unit</th>
+                                        <th class="col-qty">Qty</th>
+                                        <th class="col-rate">Cost</th>
+                                        <th class="col-total">Total</th>
+                                        <th class="col-del"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="listMat"></tbody>
@@ -226,11 +241,11 @@
                         <h2 class="text-3xl font-bold text-slate-800 uppercase tracking-[0.2em]">Quotation</h2>
                         <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2024-001</span></p>
                     </div>
-                    <div class="w-1/2">
-                        <input type="text" value="My Construction Co." class="company-input font-bold text-xl text-slate-800" placeholder="Your Company Name">
-                        <input type="text" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500" placeholder="Address Line 1">
-                        <input type="text" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500" placeholder="Phone / Email">
-                        <input type="text" value="www.civilmate.nz" class="company-input text-xs text-blue-500" placeholder="Website">
+                    <div class="w-1/2 text-right">
+                        <input type="text" value="My Construction Co." class="editable-header font-bold text-xl text-slate-800">
+                        <input type="text" value="123 Builder Lane, Auckland" class="editable-header text-xs text-slate-500">
+                        <input type="text" value="Ph: 0800 123 456" class="editable-header text-xs text-slate-500">
+                        <input type="text" value="www.civilmate.nz" class="editable-header text-xs text-blue-500">
                     </div>
                 </div>
 
@@ -252,7 +267,7 @@
                     </div>
                 </div>
 
-                <table class="w-full text-left mb-6">
+                <table class="w-full text-left mb-6 text-sm">
                     <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
                         <tr>
                             <th class="p-3 w-5/12">Description</th>
@@ -263,7 +278,7 @@
                             <th class="p-3 w-1/12 no-print"></th>
                         </tr>
                     </thead>
-                    <tbody id="quoteTable" class="text-sm text-slate-700">
+                    <tbody id="quoteTable" class="text-slate-700">
                         <tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added to quote yet.</td></tr>
                     </tbody>
                 </table>
@@ -303,7 +318,7 @@
     </div>
 
     <script>
-        // --- 1. CONFIGURACIÓN ---
+        // --- 1. CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
             authDomain: "civilmate-933db.firebaseapp.com",
@@ -317,7 +332,7 @@
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-        // --- 2. BASE DE DATOS NZ ---
+        // --- 2. DATABASE ---
         const standardDB = {
             "Earthworks": [
                 { name: "Bulk Excavation", unit: "m3", resources: [
@@ -342,28 +357,23 @@
             ]
         };
 
-        // VARIABLES DE ESTADO
+        // VARIABLES
         let currentResources = [];
-        let originalResources = []; // Para restaurar al cambiar modos
+        let originalResources = []; // Snapshot for reversibility
         let originalUnit = "ea";
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
 
-        // --- 3. INICIALIZACIÓN ---
+        // --- 3. INIT ---
         init();
 
         function init() {
-            // Llenar Selects
             const discSelect = document.getElementById('disciplineSelect');
             Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
-            
-            // Cargar Proyecto existente?
-            if(currentProjectId) {
-                loadProjectFromDB(currentProjectId);
-            }
+            if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
-        // --- 4. CARGAR PARTIDAS ---
+        // --- 4. LOAD ITEMS ---
         function loadKits() {
             const d = document.getElementById('disciplineSelect').value;
             const k = document.getElementById('kitSelect');
@@ -378,20 +388,18 @@
             const [d, i] = val.split("|");
             const item = standardDB[d][i];
             
-            // Mostrar Builder
             document.getElementById('builderArea').classList.remove('hidden');
-            
-            // Setear Datos
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
             
-            // GUARDAR ORIGINALES (Para poder volver de Hourly a Unit)
+            // SAVE ORIGINAL STATE FOR REVERSIBILITY
             originalUnit = item.unit;
-            originalResources = JSON.parse(JSON.stringify(item.resources)); // Deep copy
+            // Use JSON parse/stringify to create a deep copy
             currentResources = JSON.parse(JSON.stringify(item.resources));
+            originalResources = JSON.parse(JSON.stringify(item.resources));
             
-            // Resetear UI a Unit Rate
-            setPricingMode('UNIT', false); // false = no recalcular aun
+            // Reset UI
+            setPricingMode('UNIT', false);
             renderAllLists();
             updateCalculations();
         }
@@ -410,7 +418,7 @@
             updateCalculations();
         }
 
-        // --- 5. LÓGICA DE TABLAS (5 COLUMNAS) ---
+        // --- 5. RENDER TABLES (ALIGNED) ---
         function renderAllLists() {
             renderList('Lab', 'listLab');
             renderList('Plant', 'listPlant');
@@ -446,37 +454,40 @@
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
 
-        // --- 6. SWITCH UNITARIO / HORARIO (CORREGIDO) ---
+        // --- 6. SWITCH MODES (FIXED) ---
         function setPricingMode(mode, doRender = true) {
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
             
             if(mode === 'TIME') {
-                // UI
+                // UI Changes
                 btnT.classList.replace('text-slate-400', 'bg-blue-600'); 
                 btnT.classList.add('text-white', 'shadow-md');
                 btnU.classList.replace('bg-white', 'text-slate-400');
                 btnU.classList.remove('text-blue-700', 'shadow-sm');
                 
-                // LOGIC: Forzar Unit a Hora
+                // DATA CHANGES
                 document.getElementById('itemUnit').value = 'hr';
                 
-                // Forzar Cantidades de Labor/Plant a 1 (Lógica Charge-up)
+                // Force Labor/Plant Qty to 1 (Charge-up logic)
                 currentResources.forEach(r => {
                     if(r.t !== 'Mat') r.q = 1;
                 });
 
             } else {
-                // UI
+                // UI Changes
                 btnU.classList.replace('text-slate-400', 'bg-white'); 
                 btnU.classList.add('text-blue-700', 'shadow-sm');
                 btnT.classList.replace('bg-blue-600', 'text-slate-400');
                 btnT.classList.remove('text-white', 'shadow-md');
                 
-                // LOGIC: Restaurar Originales
+                // RESTORE ORIGINAL DATA (Reversibility Logic)
                 document.getElementById('itemUnit').value = originalUnit;
-                // Restauramos las cantidades originales (Deep Copy de nuevo para no romper referencias)
+                
+                // Only restore if we have original data
                 if(originalResources.length > 0) {
+                     // We merge original quantities back into current resources if names match
+                     // Or simply do a full reset to original snapshot for safety in this demo
                      currentResources = JSON.parse(JSON.stringify(originalResources));
                 }
             }
@@ -499,35 +510,38 @@
             return price;
         }
 
-        // --- 7. AGREGAR AL PRESUPUESTO (FIXED) ---
+        // --- 7. ADD TO QUOTE (FIXED) ---
         function addToQuote() {
-            // Validación
-            const qtyVal = document.getElementById('qtyInput').value;
-            const clientName = document.getElementById('clientName').value;
+            // Simplified Validation Logic
+            const qtyInput = document.getElementById('qtyInput');
+            const qtyVal = parseFloat(qtyInput.value);
             
             if(!qtyVal || qtyVal <= 0) {
-                alert("Please enter a valid Quantity.");
-                document.getElementById('qtyInput').focus();
+                alert("Please enter a valid Quantity (greater than 0).");
+                qtyInput.focus();
                 return;
             }
 
-            const qty = parseFloat(qtyVal);
             const rate = updateCalculations();
             
             quoteItems.push({
                 name: document.getElementById('itemName').value,
                 unit: document.getElementById('itemUnit').value,
-                qty: qty,
+                qty: qtyVal,
                 rate: rate,
-                total: qty * rate,
+                total: qtyVal * rate,
                 resources: JSON.parse(JSON.stringify(currentResources))
             });
             
             renderQuote();
-            document.getElementById('qtyInput').value = ""; // Clear
+            qtyInput.value = ""; // Clear input
             
-            // Scroll al documento
-            document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
+            // Smooth Scroll to PDF section
+            if(window.innerWidth > 1024) {
+               // Only scroll if desktop
+            } else {
+               document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
+            }
         }
 
         function renderQuote() {
@@ -562,7 +576,7 @@
 
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
 
-        // --- 8. GUARDAR Y CARGAR ---
+        // --- 8. SAVE & LOAD ---
         function printQuote() {
             const client = document.getElementById('clientName').value;
             if(!client) return alert("Please enter Client Name before printing.");
@@ -589,7 +603,7 @@
                 phone: document.getElementById('clientPhone').value,
                 email: document.getElementById('clientEmail').value,
                 total: totalRev,
-                profit: totalRev * 0.18, // Mockup profit logic
+                profit: totalRev * 0.18, 
                 items: quoteItems,
                 status: "Pending",
                 updatedAt: Date.now()
@@ -611,12 +625,10 @@
             db.collection('projects').doc(id).get().then(doc => {
                 if(doc.exists) {
                     const data = doc.data();
-                    // Llenar campos
                     document.getElementById('clientName').value = data.client || "";
                     document.getElementById('clientAddress').value = data.address || "";
                     document.getElementById('clientPhone').value = data.phone || "";
                     document.getElementById('clientEmail').value = data.email || "";
-                    
                     quoteItems = data.items || [];
                     renderQuote();
                 }
