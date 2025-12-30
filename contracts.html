@@ -12,20 +12,21 @@
     <style>
         body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* ALINEACIÓN DE TABLAS - Clases Utilitarias */
-        .col-desc { width: 45%; }
-        .col-unit { width: 15%; text-align: center; }
-        .col-qty  { width: 15%; text-align: right; }
-        .col-rate { width: 15%; text-align: right; }
-        .col-total { width: 10%; text-align: right; }
-        
-        .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .res-table th { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
+        /* TABLAS DE RECURSOS (Alineación Perfecta) */
+        .res-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+        .res-table th { 
+            font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; 
+            padding: 6px 4px; text-align: right; border-bottom: 2px solid #e2e8f0; 
+        }
+        .res-table th.text-left { text-align: left; }
+        .res-table th.text-center { text-align: center; }
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
         .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
         .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+        
+        .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; }
         
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
@@ -36,6 +37,7 @@
             #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
             .no-print { display: none !important; }
             input { border: none !important; background: transparent !important; padding: 0 !important; }
+            .quote-qty-input { background: transparent !important; border: none !important; text-align: center; }
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
     </style>
@@ -47,7 +49,7 @@
             <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-lg">C</div>
             <div>
                 <h1 class="font-bold text-lg leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-400 opacity-80">Estimator V3.2 (Stable)</p>
+                <p class="text-[10px] text-slate-400 opacity-80">Estimator V3.3</p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -73,7 +75,7 @@
                         </select>
                     </div>
                     <div class="w-1/3">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Standard Item</label>
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Select Item</label>
                         <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer" disabled>
                             <option>-- Select Discipline --</option>
                         </select>
@@ -120,11 +122,11 @@
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="col-desc pl-3">Description</th>
-                                        <th class="col-unit">Unit</th>
-                                        <th class="col-qty">Yield</th>
-                                        <th class="col-rate">Rate</th>
-                                        <th class="col-total">Total</th>
+                                        <th class="w-[40%] text-left pl-3">Description</th>
+                                        <th class="w-[15%] text-center">Unit</th>
+                                        <th class="w-[15%]">Yield</th>
+                                        <th class="w-[15%]">Cost/Unit ($)</th>
+                                        <th class="w-[10%]">Total</th>
                                         <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
@@ -142,11 +144,11 @@
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="col-desc pl-3">Description</th>
-                                        <th class="col-unit">Unit</th>
-                                        <th class="col-qty">Yield</th>
-                                        <th class="col-rate">Rate</th>
-                                        <th class="col-total">Total</th>
+                                        <th class="w-[40%] text-left pl-3">Description</th>
+                                        <th class="w-[15%] text-center">Unit</th>
+                                        <th class="w-[15%]">Yield</th>
+                                        <th class="w-[15%]">Cost/Unit ($)</th>
+                                        <th class="w-[10%]">Total</th>
                                         <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
@@ -164,11 +166,11 @@
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="col-desc pl-3">Description</th>
-                                        <th class="col-unit">Unit</th>
-                                        <th class="col-qty">Qty</th>
-                                        <th class="col-rate">Cost</th>
-                                        <th class="col-total">Total</th>
+                                        <th class="w-[40%] text-left pl-3">Description</th>
+                                        <th class="w-[15%] text-center">Unit</th>
+                                        <th class="w-[15%]">Qty</th>
+                                        <th class="w-[15%]">Cost/Unit ($)</th>
+                                        <th class="w-[10%]">Total</th>
                                         <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
@@ -197,13 +199,17 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                            <div class="px-2">
-                                <label class="text-[8px] font-bold text-slate-400 uppercase block">Total Qty</label>
-                                <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-slate-800" placeholder="1">
+                        <div class="flex items-center gap-2">
+                            <button onclick="saveToLibrary()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded font-bold border border-slate-300 transition text-xs flex items-center gap-1" title="Save this analysis to the library for future use">
+                                <i class="fas fa-save"></i> Save to DB
+                            </button>
+
+                            <div class="bg-slate-100 p-1 rounded-lg border border-slate-200 flex items-center px-2">
+                                <label class="text-[8px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
+                                <input type="number" id="qtyInput" class="w-16 bg-transparent font-bold text-center outline-none text-slate-800" placeholder="1">
                             </div>
-                            <button onclick="handleAddToQuote()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow transition flex items-center gap-2">
-                                <i class="fas fa-check"></i> Add to Quote
+                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow transition flex items-center gap-2">
+                                <i class="fas fa-arrow-right"></i> Add to Quote
                             </button>
                         </div>
                     </div>
@@ -221,7 +227,7 @@
                         <h2 class="text-3xl font-bold text-slate-800 uppercase tracking-[0.2em]">Quotation</h2>
                         <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2024-001</span></p>
                     </div>
-                    <div class="w-1/2">
+                    <div class="w-1/2 text-right">
                         <input type="text" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
                         <input type="text" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
                         <input type="text" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
@@ -311,8 +317,9 @@
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-        // DATABASE
-        const standardDB = {
+        // DATABASE (Simulada)
+        // La "User Custom" se llena dinámicamente con la función saveToLibrary()
+        let standardDB = {
             "Earthworks": [
                 { name: "Bulk Excavation", unit: "m3", resources: [
                     {n:"Excavator 20T", u:"hr", q:0.05, c:140, t:"Plant"}, 
@@ -324,7 +331,7 @@
                 { name: "Footing 20MPa", unit: "m3", resources: [
                     {n:"Concrete 20MPa", u:"m3", q:1.05, c:250, t:"Mat"},
                     {n:"Line Pump", u:"hr", q:0.2, c:180, t:"Plant"},
-                    {n:"Placers (x2)", u:"hr", q:1, c:70, t:"Lab"}
+                    {n:"Placers", u:"hr", q:1, c:70, t:"Lab"}
                 ]}
             ],
             "Drainage": [
@@ -333,33 +340,42 @@
                     {n:"Bedding GAP7", u:"m3", q:0.1, c:60, t:"Mat"},
                     {n:"Drainlayer", u:"hr", q:0.4, c:65, t:"Lab"}
                 ]}
-            ]
+            ],
+            "User Custom": [] 
         };
 
-        // VARIABLES
+        // VARS
         let currentResources = [];
+        let originalResources = []; 
+        let originalUnit = "ea";
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
-        
-        // **SNAPSHOT STATE** (Para resolver el problema de reversibilidad)
-        let unitModeSnapshot = null; // Guardará { resources: [], unit: "" } cuando estemos en modo Unit
+        let unitModeSnapshot = null;
 
         // INIT
         init();
 
         function init() {
-            const discSelect = document.getElementById('disciplineSelect');
-            Object.keys(standardDB).forEach(d => discSelect.innerHTML += `<option value="${d}">${d}</option>`);
+            renderDisciplineSelect();
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
-        // LOADERS
+        function renderDisciplineSelect() {
+            const discSelect = document.getElementById('disciplineSelect');
+            discSelect.innerHTML = '<option value="">-- Select --</option>';
+            Object.keys(standardDB).forEach(d => {
+                if(standardDB[d].length > 0 || d === "User Custom") { // Mostrar custom si añadimos algo
+                    discSelect.innerHTML += `<option value="${d}">${d}</option>`;
+                }
+            });
+        }
+
         function loadKits() {
             const d = document.getElementById('disciplineSelect').value;
             const k = document.getElementById('kitSelect');
             k.innerHTML = '<option>-- Select Item --</option>';
             k.disabled = !d;
-            if(d) standardDB[d].forEach((item, i) => k.innerHTML += `<option value="${d}|${i}">${item.name}</option>`);
+            if(d && standardDB[d]) standardDB[d].forEach((item, i) => k.innerHTML += `<option value="${d}|${i}">${item.name}</option>`);
         }
 
         function loadKitDetails() {
@@ -372,11 +388,10 @@
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
             
-            // Cargar recursos limpios
+            originalUnit = item.unit;
             currentResources = JSON.parse(JSON.stringify(item.resources));
-            unitModeSnapshot = null; // Reset snapshot
+            originalResources = JSON.parse(JSON.stringify(item.resources));
             
-            // Reset UI
             switchPricingMode('UNIT', false);
             renderAllLists();
             updateCalculations();
@@ -384,10 +399,12 @@
 
         function createNewItem() {
             document.getElementById('builderArea').classList.remove('hidden');
-            document.getElementById('itemName').value = "Custom Item";
+            document.getElementById('itemName').value = "New Item";
             document.getElementById('itemUnit').value = "ea";
             
-            currentResources = [{n:"New Item", u:"ea", q:1, c:0, t:"Mat"}];
+            originalUnit = "ea";
+            originalResources = [];
+            currentResources = [{n:"New Resource", u:"ea", q:1, c:0, t:"Mat"}];
             unitModeSnapshot = null;
             
             switchPricingMode('UNIT');
@@ -395,7 +412,7 @@
             updateCalculations();
         }
 
-        // --- RENDER TABLES (ALIGNED) ---
+        // --- RENDER TABLES ---
         function renderAllLists() {
             renderList('Lab', 'listLab');
             renderList('Plant', 'listPlant');
@@ -431,39 +448,37 @@
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
 
-        // --- PRICING MODE LOGIC (FIXED) ---
+        // --- PRICING MODE LOGIC (REVERSIBLE) ---
         function switchPricingMode(targetMode) {
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
             const unitInput = document.getElementById('itemUnit');
 
             if(targetMode === 'TIME') {
-                // UI Toggle
                 btnT.classList.replace('text-slate-400', 'bg-blue-600'); 
                 btnT.classList.add('text-white', 'shadow-md');
                 btnU.classList.replace('bg-white', 'text-slate-400');
                 btnU.classList.remove('text-blue-700', 'shadow-sm');
                 
-                // SAVE SNAPSHOT OF UNIT MODE (This saves your custom edits!)
+                // GUARDAR SNAPSHOT
                 unitModeSnapshot = {
                     resources: JSON.parse(JSON.stringify(currentResources)),
                     unit: unitInput.value
                 };
 
-                // CONVERT TO HOURLY
+                // CONVERTIR A HORA
                 unitInput.value = 'hr';
                 currentResources.forEach(r => {
-                    if(r.t !== 'Mat') r.q = 1; // Force labor/plant yield to 1
+                    if(r.t !== 'Mat') r.q = 1; // Yield = 1 para hora
                 });
 
             } else {
-                // UI Toggle
                 btnU.classList.replace('text-slate-400', 'bg-white'); 
                 btnU.classList.add('text-blue-700', 'shadow-sm');
                 btnT.classList.replace('bg-blue-600', 'text-slate-400');
                 btnT.classList.remove('text-white', 'shadow-md');
 
-                // RESTORE SNAPSHOT (This brings back your custom edits!)
+                // RESTAURAR SNAPSHOT (Si existe)
                 if(unitModeSnapshot) {
                     currentResources = JSON.parse(JSON.stringify(unitModeSnapshot.resources));
                     unitInput.value = unitModeSnapshot.unit;
@@ -486,17 +501,12 @@
             return price;
         }
 
-        // --- ADD TO QUOTE (FIXED) ---
-        function handleAddToQuote() {
+        // --- ADD TO QUOTE & EDITABLE QTY ---
+        function addToQuote() {
             let qtyVal = parseFloat(document.getElementById('qtyInput').value);
             
-            // Fix: If empty or 0, default to 1, or enforce user input based on preference
             if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) {
-                // Option A: Alert user
-                // return alert("Please enter a valid Quantity.");
-                
-                // Option B: Default to 1 (Smoother for user)
-                qtyVal = 1; 
+                qtyVal = 1; // Default to 1 if empty
                 document.getElementById('qtyInput').value = 1;
             }
 
@@ -512,7 +522,8 @@
             });
             
             renderQuote();
-            // Scroll to show user it happened
+            
+            // Auto-scroll on mobile
             if(window.innerWidth < 1024) document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -526,12 +537,18 @@
             }
 
             quoteItems.forEach((item, i) => {
+                // Update total in case rate changed
+                item.total = item.qty * item.rate;
                 sub += item.total;
+                
                 tbody.innerHTML += `
                     <tr class="border-b border-slate-100 group hover:bg-slate-50 transition">
                         <td class="p-3 font-bold text-slate-700">${item.name}</td>
                         <td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td>
-                        <td class="p-3 text-center text-xs font-bold">${item.qty}</td>
+                        <td class="p-3 text-center">
+                            <input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print">
+                            <span class="hidden print-only">${item.qty}</span>
+                        </td>
                         <td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toFixed(2)}</td>
                         <td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                         <td class="p-3 text-right no-print">
@@ -546,9 +563,40 @@
             document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString(undefined, {minimumFractionDigits: 2});
         }
 
+        // EDIT QUOTE QTY FUNCTION
+        function updateQuoteQty(index, newVal) {
+            const val = parseFloat(newVal);
+            if (val > 0) {
+                quoteItems[index].qty = val;
+                renderQuote(); // Re-render to update totals
+            }
+        }
+
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
 
-        // --- SAVE / PRINT ---
+        // --- SAVE TO LIBRARY (Custom Items) ---
+        function saveToLibrary() {
+            const name = document.getElementById('itemName').value;
+            const unit = document.getElementById('itemUnit').value;
+            
+            // Crear objeto del item
+            const newItem = {
+                name: name,
+                unit: unit,
+                resources: JSON.parse(JSON.stringify(currentResources))
+            };
+            
+            // Guardar en la categoría "User Custom"
+            standardDB["User Custom"].push(newItem);
+            
+            // Refrescar selector para que aparezca
+            renderDisciplineSelect();
+            
+            // Feedback visual
+            alert(`✅ Saved "${name}" to your Library! You can now find it under 'User Custom'.`);
+        }
+
+        // --- SAVE & LOAD PROJECT ---
         function printQuote() {
             if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
             window.print();
