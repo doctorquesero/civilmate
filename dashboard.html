@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Dashboard - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>body { background-color: #f8fafc; font-family: sans-serif; }</style>
+</head>
+<body class="p-6 max-w-7xl mx-auto">
+
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-800">Executive Dashboard</h1>
+            <p class="text-slate-500">Financial Overview & Project Status</p>
+        </div>
+        <a href="index.html" class="bg-slate-800 text-white px-5 py-2 rounded-lg font-bold hover:bg-black transition">
+            <i class="fas fa-home mr-2"></i> Main Menu
+        </a>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase">Total Contracts Value</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-revenue">$0.00</h3>
+                </div>
+                <div class="bg-blue-100 p-2 rounded-lg text-blue-600"><i class="fas fa-file-contract text-xl"></i></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase">Gross Profit (Est)</p>
+                    <h3 class="text-2xl font-bold text-green-600 mt-1" id="kpi-profit">$0.00</h3>
+                </div>
+                <div class="bg-green-100 p-2 rounded-lg text-green-600"><i class="fas fa-chart-line text-xl"></i></div>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Avg Margin: <span id="kpi-margin" class="font-bold text-slate-600">0%</span></p>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase">Active Projects</p>
+                    <h3 class="text-2xl font-bold text-slate-800 mt-1" id="kpi-active">0</h3>
+                </div>
+                <div class="bg-orange-100 p-2 rounded-lg text-orange-600"><i class="fas fa-hard-hat text-xl"></i></div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase">Pending Claims</p>
+                    <h3 class="text-2xl font-bold text-purple-600 mt-1">$0.00</h3>
+                </div>
+                <div class="bg-purple-100 p-2 rounded-lg text-purple-600"><i class="fas fa-file-invoice-dollar text-xl"></i></div>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Valuations awaiting approval</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h2 class="font-bold text-lg text-slate-700">Contract Register</h2>
+            <button onclick="window.location.href='contracts.html'" class="text-xs bg-blue-600 text-white px-3 py-2 rounded font-bold hover:bg-blue-700">
+                + New Contract
+            </button>
+        </div>
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                <tr>
+                    <th class="p-4">Project / Client</th>
+                    <th class="p-4 text-center">Date</th>
+                    <th class="p-4 text-center">Status</th>
+                    <th class="p-4 text-right">Contract Value</th>
+                    <th class="p-4 text-right">Est. Profit</th>
+                    <th class="p-4 text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="projectsTable">
+                <tr><td colspan="6" class="p-8 text-center text-slate-400">Loading projects from Australia...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
+            authDomain: "civilmate-933db.firebaseapp.com",
+            projectId: "civilmate-933db",
+            storageBucket: "civilmate-933db.firebasestorage.app",
+            messagingSenderId: "679829297548",
+            appId: "1:679829297548:web:42f9a5217314b787ed9ea9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // LOAD DATA
+        db.collection('projects').orderBy('createdAt', 'desc').get().then(snapshot => {
+            let totalRevenue = 0;
+            let totalProfit = 0;
+            let activeCount = 0;
+            
+            const tbody = document.getElementById('projectsTable');
+            tbody.innerHTML = "";
+
+            if(snapshot.empty) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">No contracts found. Go create one!</td></tr>`;
+                return;
+            }
+
+            snapshot.forEach(doc => {
+                const p = doc.data();
+                const id = doc.id;
+                
+                // Calculos KPI
+                totalRevenue += p.total || 0;
+                totalProfit += p.profit || 0; // Necesitamos guardar esto en contracts.html
+                if(p.status === 'Pending' || p.status === 'Active') activeCount++;
+
+                // Badge Color
+                let statusClass = "bg-gray-100 text-gray-600";
+                if(p.status === 'Pending') statusClass = "bg-orange-100 text-orange-600";
+                if(p.status === 'Active') statusClass = "bg-green-100 text-green-600";
+                if(p.status === 'Completed') statusClass = "bg-blue-100 text-blue-600";
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50 transition">
+                        <td class="p-4 font-bold text-slate-700">
+                            ${p.name || "Untitled Project"}
+                            <div class="text-[10px] text-slate-400 font-normal">ID: ${id.substring(0,6)}...</div>
+                        </td>
+                        <td class="p-4 text-center text-slate-500">${new Date(p.createdAt).toLocaleDateString()}</td>
+                        <td class="p-4 text-center"><span class="text-[10px] px-2 py-1 rounded font-bold uppercase ${statusClass}">${p.status || 'Draft'}</span></td>
+                        <td class="p-4 text-right font-mono font-bold">$${(p.total || 0).toLocaleString()}</td>
+                        <td class="p-4 text-right font-mono text-green-600">$${(p.profit || 0).toLocaleString()}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="loadProject('${id}')" class="text-blue-600 hover:text-blue-800 font-bold text-xs border border-blue-200 px-2 py-1 rounded">
+                                Open
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Update KPI Cards
+            document.getElementById('kpi-revenue').innerText = "$" + totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('kpi-profit').innerText = "$" + totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('kpi-active').innerText = activeCount;
+            
+            const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+            document.getElementById('kpi-margin').innerText = margin.toFixed(1) + "%";
+        });
+
+        function loadProject(id) {
+            // Guardamos el ID en memoria local para que contracts.html sepa qué cargar
+            localStorage.setItem('civilmate_current_project_id', id);
+            window.location.href = 'contracts.html';
+        }
+    </script>
+</body>
+</html>
