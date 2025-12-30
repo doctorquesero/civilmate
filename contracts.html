@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
-        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
         /* ALINEACIÓN DE TABLAS */
         .col-desc { width: 45%; }
@@ -29,28 +29,13 @@
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         
         .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; transition: all 0.2s; }
-        .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
+        .res-input:hover { background-color: #f1f5f9; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        /* CORRECCIÓN: Input de Cantidad en Presupuesto */
-        .quote-qty-input { 
-            background: #f0f9ff; 
-            border: 1px solid #bae6fd; 
-            color: #0369a1; 
-            font-weight: bold; 
-            text-align: center; 
-            border-radius: 4px; 
-            width: 100%; 
-            font-size: 11px; /* Reducido para que quepa */
-            padding: 4px 0;  /* Ajustado */
-        }
-
-        /* Ocultar flechas de los inputs numéricos para ganar espacio */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; 
-            margin: 0; 
-        }
+        .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; font-size: 11px; padding: 4px 0; }
+        
+        /* Ocultar Spinners */
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
         
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
@@ -69,19 +54,32 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <header class="bg-slate-900 text-white p-3 flex justify-between items-center shrink-0 z-20 shadow-md">
+    <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
         <div class="flex items-center gap-3">
-            <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-lg">C</div>
+            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-layer-group"></i></div>
             <div>
-                <h1 class="font-bold text-lg leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-400 opacity-80">Estimator V3.4</p>
+                <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
+                <p class="text-[10px] text-slate-500">Estimator V3.6</p>
             </div>
         </div>
-        <div class="flex gap-3">
-            <button onclick="window.location.href='dashboard.html'" class="px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white border border-slate-700 rounded hover:bg-slate-800 transition">
-                <i class="fas fa-chevron-left mr-1"></i> Dashboard
+        
+        <div class="flex gap-2 items-center">
+            <input type="file" id="importFile" class="hidden" onchange="handleImport(this)">
+            
+            <div class="bg-slate-50 p-1 rounded-lg border border-slate-200 flex gap-1 mr-4">
+                <button onclick="downloadTemplate()" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-white rounded transition flex items-center gap-1" title="Download Standard Format">
+                    <i class="fas fa-file-code"></i> Template
+                </button>
+                <div class="w-px bg-slate-300 my-1"></div>
+                <button onclick="document.getElementById('importFile').click()" class="px-3 py-1 text-[10px] font-bold text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded transition flex items-center gap-1" title="Import JSON Database">
+                    <i class="fas fa-upload"></i> Import DB
+                </button>
+            </div>
+
+            <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border">
+                <i class="fas fa-arrow-left mr-1"></i> Dashboard
             </button>
-            <button onclick="saveProject()" class="px-3 py-1.5 text-xs font-bold bg-green-600 hover:bg-green-500 text-white rounded shadow transition flex items-center gap-2">
+            <button onclick="saveProject()" class="px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2">
                 <i class="fas fa-save"></i> Save Contract
             </button>
         </div>
@@ -89,39 +87,39 @@
 
     <div class="flex flex-1 overflow-hidden">
         
-        <div class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-xl">
+        <div class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
             
-            <div class="p-4 border-b border-slate-100 bg-slate-50/50 sticky top-0 z-20 backdrop-blur-sm">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
                 <div class="flex gap-2">
                     <div class="w-1/3">
                         <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">1. Discipline</label>
-                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer">
+                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
                             <option value="">-- Select --</option>
                         </select>
                     </div>
                     <div class="w-1/3">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Select Item</label>
-                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer" disabled>
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Standard Item</label>
+                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm" disabled>
                             <option>-- Select Discipline --</option>
                         </select>
                     </div>
                     <div class="w-1/3 flex items-end">
-                        <button onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-black transition shadow-sm">
-                            <i class="fas fa-plus mr-1"></i> Create Custom
+                        <button onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2">
+                            <i class="fas fa-plus"></i> Create Custom
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div id="builderArea" class="hidden flex-1 flex flex-col p-5 pb-24">
+            <div id="builderArea" class="hidden flex-1 flex flex-col p-6 pb-24">
                 
                 <div class="flex justify-center mb-6">
-                    <div class="bg-slate-100 p-1 rounded-lg flex w-full max-w-sm shadow-inner">
+                    <div class="bg-slate-100 p-1 rounded-lg flex w-full max-w-sm shadow-inner border border-slate-200">
                         <button id="btnModeUnit" onclick="switchPricingMode('UNIT')" class="flex-1 py-1.5 text-xs font-bold rounded shadow-sm bg-white text-blue-700 transition border border-transparent">
                             <i class="fas fa-ruler-combined mr-1"></i> Unit Rate
                         </button>
                         <button id="btnModeTime" onclick="switchPricingMode('TIME')" class="flex-1 py-1.5 text-xs font-bold rounded text-slate-400 hover:text-slate-600 transition border border-transparent">
-                            <i class="fas fa-clock mr-1"></i> Hourly (Charge-up)
+                            <i class="fas fa-clock mr-1"></i> Hourly Rate
                         </button>
                     </div>
                 </div>
@@ -131,7 +129,7 @@
                         <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Description</label>
                         <input type="text" id="itemName" class="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-200 focus:border-blue-600 outline-none pb-1 transition" placeholder="Item Name">
                     </div>
-                    <div class="w-20 text-center">
+                    <div class="w-24 text-center">
                         <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Unit</label>
                         <input type="text" id="itemUnit" class="w-full text-center text-xl font-bold text-slate-600 border-b-2 border-slate-200 focus:border-blue-600 outline-none pb-1 transition" placeholder="m3">
                     </div>
@@ -141,17 +139,17 @@
                     <div class="border border-orange-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-orange-50 px-3 py-2 flex justify-between items-center border-b border-orange-100">
                             <span class="text-[10px] font-bold text-orange-800 uppercase tracking-wider"><i class="fas fa-user-hard-hat mr-1"></i> Labor Cost</span>
-                            <button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm">+ Add</button>
+                            <button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm transition hover:shadow">+ Add</button>
                         </div>
                         <div class="bg-white">
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-[40%] text-left pl-3">Description</th>
-                                        <th class="w-[15%] text-center">Unit</th>
-                                        <th class="w-[15%]">Yield</th>
-                                        <th class="w-[15%]">Cost/Unit ($)</th>
-                                        <th class="w-[10%]">Total</th>
+                                        <th class="col-desc pl-3 text-left">Description</th>
+                                        <th class="col-unit text-center">Unit</th>
+                                        <th class="col-qty text-right">Yield</th>
+                                        <th class="col-rate text-right">Cost/Unit</th>
+                                        <th class="col-total text-right">Total</th>
                                         <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
@@ -163,17 +161,17 @@
                     <div class="border border-green-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-green-50 px-3 py-2 flex justify-between items-center border-b border-green-100">
                             <span class="text-[10px] font-bold text-green-800 uppercase tracking-wider"><i class="fas fa-truck-monster mr-1"></i> Plant Cost</span>
-                            <button onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm">+ Add</button>
+                            <button onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm transition hover:shadow">+ Add</button>
                         </div>
                         <div class="bg-white">
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-[40%] text-left pl-3">Description</th>
-                                        <th class="w-[15%] text-center">Unit</th>
-                                        <th class="w-[15%]">Yield</th>
-                                        <th class="w-[15%]">Cost/Unit ($)</th>
-                                        <th class="w-[10%]">Total</th>
+                                        <th class="col-desc pl-3 text-left">Description</th>
+                                        <th class="col-unit text-center">Unit</th>
+                                        <th class="col-qty text-right">Yield</th>
+                                        <th class="col-rate text-right">Cost/Unit</th>
+                                        <th class="col-total text-right">Total</th>
                                         <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
@@ -185,17 +183,17 @@
                     <div class="border border-blue-200 rounded-lg overflow-hidden shadow-sm">
                         <div class="bg-blue-50 px-3 py-2 flex justify-between items-center border-b border-blue-100">
                             <span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider"><i class="fas fa-cubes mr-1"></i> Material Cost</span>
-                            <button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm">+ Add</button>
+                            <button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm transition hover:shadow">+ Add</button>
                         </div>
                         <div class="bg-white">
                             <table class="res-table">
                                 <thead>
                                     <tr>
-                                        <th class="w-[40%] text-left pl-3">Description</th>
-                                        <th class="w-[15%] text-center">Unit</th>
-                                        <th class="w-[15%]">Qty</th>
-                                        <th class="w-[15%]">Cost/Unit ($)</th>
-                                        <th class="w-[10%]">Total</th>
+                                        <th class="col-desc pl-3 text-left">Description</th>
+                                        <th class="col-unit text-center">Unit</th>
+                                        <th class="col-qty text-right">Qty</th>
+                                        <th class="col-rate text-right">Cost/Unit</th>
+                                        <th class="col-total text-right">Total</th>
                                         <th class="w-[5%]"></th>
                                     </tr>
                                 </thead>
@@ -205,35 +203,35 @@
                     </div>
                 </div>
 
-                <div class="absolute bottom-0 left-0 w-full bg-white border-t border-slate-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                <div class="absolute bottom-0 left-0 w-full bg-slate-900 text-white p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] z-30">
                     <div class="flex items-center justify-between gap-4">
-                        <div class="flex gap-6 text-xs">
+                        <div class="flex gap-8 text-xs">
                             <div>
-                                <span class="block text-slate-400 font-bold uppercase text-[9px]">Base Cost</span>
-                                <span class="font-mono text-slate-700 text-lg font-bold" id="rawCostDisplay">$0.00</span>
+                                <span class="block text-slate-400 font-bold uppercase text-[9px] mb-1">Base Cost</span>
+                                <span class="font-mono text-slate-200 text-xl font-bold" id="rawCostDisplay">$0.00</span>
                             </div>
                             <div>
-                                <span class="block text-yellow-500 font-bold uppercase text-[9px]">Margin %</span>
+                                <span class="block text-yellow-500 font-bold uppercase text-[9px] mb-1">Margin %</span>
                                 <div class="flex items-center gap-1">
-                                    <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-10 font-bold text-center border-b border-yellow-400 outline-none text-slate-800">
+                                    <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 transition">
                                 </div>
                             </div>
                             <div>
-                                <span class="block text-green-600 font-bold uppercase text-[9px]">Unit Rate</span>
-                                <span class="font-mono text-green-600 text-2xl font-bold leading-none" id="finalRateDisplay">$0.00</span>
+                                <span class="block text-green-400 font-bold uppercase text-[9px] mb-1">Unit Rate</span>
+                                <span class="font-mono text-green-400 text-3xl font-bold leading-none" id="finalRateDisplay">$0.00</span>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
-                            <button onclick="saveToLibrary()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded font-bold border border-slate-300 transition text-xs flex items-center gap-1" title="Save this analysis to the library for future use">
-                                <i class="fas fa-save"></i> Save to DB
+                        <div class="flex items-center gap-3">
+                            <button onclick="saveToLibrary()" class="text-slate-400 hover:text-white px-3 py-2 rounded font-bold border border-slate-700 hover:border-slate-500 transition text-xs" title="Save this analysis to local DB">
+                                <i class="fas fa-save mr-1"></i> Save to DB
                             </button>
 
-                            <div class="bg-slate-100 p-1 rounded-lg border border-slate-200 flex items-center px-2">
-                                <label class="text-[8px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
-                                <input type="number" id="qtyInput" class="w-16 bg-transparent font-bold text-center outline-none text-slate-800" placeholder="1">
+                            <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
+                                <label class="text-[9px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
+                                <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1">
                             </div>
-                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-bold shadow transition flex items-center gap-2">
+                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded font-bold shadow-lg shadow-blue-900/50 transition flex items-center gap-2">
                                 <i class="fas fa-arrow-right"></i> Add to Quote
                             </button>
                         </div>
@@ -245,11 +243,11 @@
 
         <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto" id="printSection">
             
-            <div class="bg-white min-h-[29.7cm] w-full max-w-[21cm] mx-auto my-8 shadow-lg p-10 flex flex-col relative" id="a4Page">
+            <div class="bg-white min-h-[29.7cm] w-full max-w-[21cm] mx-auto my-8 shadow-2xl p-12 flex flex-col relative" id="a4Page">
                 
                 <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
                     <div>
-                        <h2 class="text-3xl font-bold text-slate-800 uppercase tracking-[0.2em]">Quotation</h2>
+                        <h2 class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
                         <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2024-001</span></p>
                     </div>
                     <div class="w-1/2 text-right">
@@ -260,10 +258,10 @@
                     </div>
                 </div>
 
-                <div class="bg-yellow-50 border border-yellow-100 rounded p-4 mb-8 grid grid-cols-2 gap-8 no-print-bg">
+                <div class="bg-yellow-50/50 border border-yellow-100 rounded-lg p-5 mb-8 grid grid-cols-2 gap-8 no-print-bg">
                     <div>
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Prepared For (Client)</p>
-                        <input type="text" id="clientName" class="w-full font-bold text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400 mb-1" placeholder="Enter Client Name">
+                        <input type="text" id="clientName" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400 mb-1" placeholder="Enter Client Name">
                         <input type="text" id="clientAddress" class="w-full text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none mb-1 placeholder-slate-400" placeholder="Enter Address">
                         <div class="flex gap-2">
                              <input type="text" id="clientEmail" class="w-1/2 text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400" placeholder="Email">
@@ -278,10 +276,10 @@
                     </div>
                 </div>
 
-                <table class="w-full text-left mb-6 text-sm">
+                <table class="w-full text-left mb-6 text-sm border-collapse">
                     <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
                         <tr>
-                            <th class="p-3 w-5/12">Description</th>
+                            <th class="p-3 w-5/12 text-left">Description</th>
                             <th class="p-3 text-center w-1/12">Unit</th>
                             <th class="p-3 text-center w-1/12">Qty</th>
                             <th class="p-3 text-right w-2/12">Rate</th>
@@ -290,7 +288,7 @@
                         </tr>
                     </thead>
                     <tbody id="quoteTable" class="text-slate-700">
-                        <tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added.</td></tr>
+                        <tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>
                     </tbody>
                 </table>
 
@@ -304,17 +302,21 @@
                             <span>GST (15%)</span>
                             <span id="gstDisplay" class="font-mono">$0.00</span>
                         </div>
-                        <div class="flex justify-between text-xl font-bold text-slate-800 pt-1">
+                        <div class="flex justify-between text-2xl font-bold text-slate-800 pt-2">
                             <span>TOTAL (NZD)</span>
                             <span id="totalDisplay" class="font-mono">$0.00</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="border-t-2 border-slate-100 pt-4 text-[9px] text-slate-400">
-                    <p class="font-bold uppercase mb-1">Terms & Conditions</p>
-                    <p>1. This quotation is based on the NZS 3910 conditions of contract.</p>
-                    <p>2. Acceptance of this quote indicates acceptance of our standard terms of trade.</p>
+                <div class="border-t-2 border-slate-100 pt-6 text-[10px] text-slate-400">
+                    <p class="font-bold uppercase mb-2 text-slate-500">Terms & Conditions</p>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>This quotation is based on the NZS 3910 conditions of contract.</li>
+                        <li>Acceptance of this quote indicates acceptance of our standard terms of trade.</li>
+                        <li>Prices are valid for 30 days from the date of this quotation.</li>
+                        <li>Excludes unforeseen ground conditions unless explicitly stated.</li>
+                    </ul>
                 </div>
             </div>
             
@@ -342,7 +344,7 @@
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-        // DATABASE (Simulada)
+        // DATABASE (With CDS Standard)
         let standardDB = {
             "Earthworks": [
                 { name: "Bulk Excavation", unit: "m3", resources: [
@@ -372,7 +374,6 @@
         let currentResources = [];
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
-        
         let unitModeSnapshot = null;
 
         // INIT
@@ -448,7 +449,7 @@
                 
                 const total = (res.c * res.q).toFixed(2);
                 list.innerHTML += `
-                    <tr class="group hover:bg-slate-50 transition">
+                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
                         <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
                         <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
                         <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
@@ -468,7 +469,7 @@
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
 
-        // --- PRICING MODE LOGIC (REVERSIBLE) ---
+        // --- PRICING MODE LOGIC ---
         function switchPricingMode(targetMode) {
             const btnU = document.getElementById('btnModeUnit');
             const btnT = document.getElementById('btnModeTime');
@@ -480,16 +481,16 @@
                 btnU.classList.replace('bg-white', 'text-slate-400');
                 btnU.classList.remove('text-blue-700', 'shadow-sm');
                 
-                // GUARDAR SNAPSHOT
+                // SAVE SNAPSHOT
                 unitModeSnapshot = {
                     resources: JSON.parse(JSON.stringify(currentResources)),
                     unit: unitInput.value
                 };
 
-                // CONVERTIR A HORA
+                // CONVERT TO HOURLY
                 unitInput.value = 'hr';
                 currentResources.forEach(r => {
-                    if(r.t !== 'Mat') r.q = 1; // Yield = 1 para hora
+                    if(r.t !== 'Mat') r.q = 1; 
                 });
 
             } else {
@@ -498,7 +499,7 @@
                 btnT.classList.replace('bg-blue-600', 'text-slate-400');
                 btnT.classList.remove('text-white', 'shadow-md');
 
-                // RESTAURAR SNAPSHOT (Si existe)
+                // RESTORE SNAPSHOT
                 if(unitModeSnapshot) {
                     currentResources = JSON.parse(JSON.stringify(unitModeSnapshot.resources));
                     unitInput.value = unitModeSnapshot.unit;
@@ -521,12 +522,12 @@
             return price;
         }
 
-        // --- ADD TO QUOTE & EDITABLE QTY ---
+        // --- ADD TO QUOTE ---
         function addToQuote() {
             let qtyVal = parseFloat(document.getElementById('qtyInput').value);
             
             if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) {
-                qtyVal = 1; // Default to 1 if empty
+                qtyVal = 1;
                 document.getElementById('qtyInput').value = 1;
             }
 
@@ -543,7 +544,6 @@
             
             renderQuote();
             
-            // Auto-scroll on mobile
             if(window.innerWidth < 1024) document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -553,7 +553,7 @@
             let sub = 0;
             
             if(quoteItems.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs">No items added.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
             }
 
             quoteItems.forEach((item, i) => {
@@ -583,40 +583,72 @@
             document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString(undefined, {minimumFractionDigits: 2});
         }
 
-        // EDIT QUOTE QTY FUNCTION
         function updateQuoteQty(index, newVal) {
             const val = parseFloat(newVal);
             if (val > 0) {
                 quoteItems[index].qty = val;
-                renderQuote(); // Re-render to update totals
+                renderQuote(); 
             }
         }
 
         window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
 
-        // --- SAVE TO LIBRARY (Custom Items) ---
+        // --- DATA MANAGEMENT ---
         function saveToLibrary() {
             const name = document.getElementById('itemName').value;
             const unit = document.getElementById('itemUnit').value;
             
-            // Crear objeto del item
             const newItem = {
                 name: name,
                 unit: unit,
                 resources: JSON.parse(JSON.stringify(currentResources))
             };
             
-            // Guardar en la categoría "User Custom"
             standardDB["User Custom"].push(newItem);
-            
-            // Refrescar selector para que aparezca
             renderDisciplineSelect();
-            
-            // Feedback visual
-            alert(`✅ Saved "${name}" to your Library! You can now find it under 'User Custom'.`);
+            alert(`✅ Saved "${name}" to 'User Custom' category!`);
         }
 
-        // --- SAVE & LOAD PROJECT ---
+        // --- EXPORT/IMPORT ---
+        function downloadTemplate() {
+            const sample = {
+                "User Custom": [
+                    { 
+                        name: "Sample Item", 
+                        unit: "m3", 
+                        resources: [{n:"Material A", u:"m3", q:1, c:50, t:"Mat"}]
+                    }
+                ]
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sample, null, 2));
+            const dlNode = document.createElement('a');
+            dlNode.setAttribute("href", dataStr);
+            dlNode.setAttribute("download", "CivilMate_Template.json");
+            document.body.appendChild(dlNode);
+            dlNode.click();
+            dlNode.remove();
+        }
+
+        function handleImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    // Simple merge logic
+                    standardDB = { ...standardDB, ...imported };
+                    renderDisciplineSelect();
+                    alert("✅ Database Imported Successfully!");
+                } catch(err) {
+                    alert("❌ Error: Invalid JSON format. Please use the Template.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- SAVE PROJECT ---
         function printQuote() {
             if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
             window.print();
