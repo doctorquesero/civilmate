@@ -12,8 +12,14 @@
     <style>
         body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* TABLAS DE RECURSOS (Alineación Perfecta) */
-        .res-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+        /* ALINEACIÓN DE TABLAS */
+        .col-desc { width: 45%; }
+        .col-unit { width: 15%; text-align: center; }
+        .col-qty  { width: 15%; text-align: right; }
+        .col-rate { width: 15%; text-align: right; }
+        .col-total { width: 10%; text-align: right; }
+        
+        .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .res-table th { 
             font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; 
             padding: 6px 4px; text-align: right; border-bottom: 2px solid #e2e8f0; 
@@ -26,7 +32,26 @@
         .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; }
+        /* CORRECCIÓN: Input de Cantidad en Presupuesto */
+        .quote-qty-input { 
+            background: #f0f9ff; 
+            border: 1px solid #bae6fd; 
+            color: #0369a1; 
+            font-weight: bold; 
+            text-align: center; 
+            border-radius: 4px; 
+            width: 100%; 
+            font-size: 11px; /* Reducido para que quepa */
+            padding: 4px 0;  /* Ajustado */
+        }
+
+        /* Ocultar flechas de los inputs numéricos para ganar espacio */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] { -moz-appearance: textfield; }
         
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
@@ -49,7 +74,7 @@
             <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-lg">C</div>
             <div>
                 <h1 class="font-bold text-lg leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-400 opacity-80">Estimator V3.3</p>
+                <p class="text-[10px] text-slate-400 opacity-80">Estimator V3.4</p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -318,7 +343,6 @@
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
         // DATABASE (Simulada)
-        // La "User Custom" se llena dinámicamente con la función saveToLibrary()
         let standardDB = {
             "Earthworks": [
                 { name: "Bulk Excavation", unit: "m3", resources: [
@@ -346,10 +370,9 @@
 
         // VARS
         let currentResources = [];
-        let originalResources = []; 
-        let originalUnit = "ea";
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+        
         let unitModeSnapshot = null;
 
         // INIT
@@ -364,7 +387,7 @@
             const discSelect = document.getElementById('disciplineSelect');
             discSelect.innerHTML = '<option value="">-- Select --</option>';
             Object.keys(standardDB).forEach(d => {
-                if(standardDB[d].length > 0 || d === "User Custom") { // Mostrar custom si añadimos algo
+                if(standardDB[d].length > 0 || d === "User Custom") {
                     discSelect.innerHTML += `<option value="${d}">${d}</option>`;
                 }
             });
@@ -388,9 +411,8 @@
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
             
-            originalUnit = item.unit;
             currentResources = JSON.parse(JSON.stringify(item.resources));
-            originalResources = JSON.parse(JSON.stringify(item.resources));
+            unitModeSnapshot = null;
             
             switchPricingMode('UNIT', false);
             renderAllLists();
@@ -402,8 +424,6 @@
             document.getElementById('itemName').value = "New Item";
             document.getElementById('itemUnit').value = "ea";
             
-            originalUnit = "ea";
-            originalResources = [];
             currentResources = [{n:"New Resource", u:"ea", q:1, c:0, t:"Mat"}];
             unitModeSnapshot = null;
             
