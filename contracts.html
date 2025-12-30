@@ -32,7 +32,19 @@
         .res-input:hover { background-color: #f8fafc; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
         
-        .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; font-size: 11px; padding: 4px 0; }
+        /* CORRECCIÓN: Input de Cantidad Ajustado */
+        .quote-qty-input { 
+            background: #f0f9ff; 
+            border: 1px solid #bae6fd; 
+            color: #0369a1; 
+            font-weight: bold; 
+            text-align: center; 
+            border-radius: 4px; 
+            width: 100%; 
+            font-size: 11px; 
+            padding: 2px 0; /* Reducido para evitar corte */
+            height: 24px;   /* Altura fija para estabilidad */
+        }
         
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
@@ -58,7 +70,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-layer-group"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V4.1 (Pro Data)</p>
+                <p class="text-[10px] text-slate-500">Estimator V4.2 (Pro Data + UI Fix)</p>
             </div>
         </div>
         
@@ -608,9 +620,9 @@
                 `;
             });
 
-            document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         function updateQuoteQty(index, newVal) {
