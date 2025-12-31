@@ -101,10 +101,10 @@
                 </div>
             </div>
 
-            <div class="bg-slate-100 p-4 rounded-lg border border-slate-200">
+            <div class="bg-slate-100 p-4 rounded-lg border border-slate-200 min-h-[100px]">
                 <h3 class="font-bold text-slate-500 text-sm mb-2">Latest Field Activity</h3>
                 <div id="activityFeed" class="text-xs space-y-2 text-slate-400">
-                    Loading logs...
+                    <p><i class="fas fa-spinner fa-spin"></i> Syncing...</p>
                 </div>
             </div>
         </div>
@@ -112,7 +112,6 @@
     </div>
 
     <script>
-        // CONFIG
         const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -128,29 +127,38 @@
                 document.getElementById('projName').innerText = p.name;
                 document.getElementById('clientName').innerText = p.client || 'Client N/A';
 
-                // Financials (Simplified for MVP)
                 const original = p.total || 0;
-                const variations = 0; // Future integration
+                const variations = 0; 
                 const revised = original + variations;
                 
                 document.getElementById('kpiOriginal').innerText = fmtMoney(original);
                 document.getElementById('kpiVariations').innerText = fmtMoney(variations);
                 document.getElementById('kpiRevised').innerText = fmtMoney(revised);
                 
-                // Load Logs Preview
                 loadRecentLogs();
             }
         });
 
         function loadRecentLogs() {
-            db.collection('site_logs').where('projectId', '==', pid).orderBy('timestamp', 'desc').limit(3).get().then(snap => {
+            // FIX: Usamos JS Sort para evitar el error de índice de Firebase
+            db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
                 const div = document.getElementById('activityFeed');
                 div.innerHTML = "";
+                
                 if(snap.empty) { div.innerHTML = "No recent activity."; return; }
                 
-                snap.forEach(d => {
-                    const log = d.data();
-                    div.innerHTML += `<div class="border-b border-slate-200 pb-1">${log.date}: <b>${log.qty} ${log.unit}</b> on ${log.itemName}</div>`;
+                let logs = [];
+                snap.forEach(doc => logs.push(doc.data()));
+                
+                // Ordenar por fecha (más reciente primero)
+                logs.sort((a, b) => b.timestamp - a.timestamp);
+                
+                // Mostrar solo los 3 primeros
+                logs.slice(0, 3).forEach(log => {
+                    div.innerHTML += `<div class="border-b border-slate-200 pb-1 mb-1 last:border-0">
+                        <span class="font-bold text-slate-600">${log.date}:</span> ${log.itemName} 
+                        <span class="bg-slate-200 px-1 rounded text-[10px]">${log.qty} ${log.unit}</span>
+                    </div>`;
                 });
             });
         }
