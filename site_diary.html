@@ -8,18 +8,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
     <style>
         body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
-        
-        /* ESTILO TIPO CUADERNO DE OBRA */
         .diary-entry { page-break-inside: avoid; border-left: 4px solid #3b82f6; margin-bottom: 20px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .diary-date-header { background-color: #f8fafc; padding: 10px 15px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #1e293b; display: flex; justify-content: space-between; }
-        
-        /* Input invisible para el reporte (Clima/Notas) */
         .report-input { border: none; border-bottom: 1px dashed #cbd5e1; width: 100%; color: #475569; font-size: 12px; background: transparent; outline: none; }
         .report-input:focus { border-bottom: 1px solid #3b82f6; }
-
         @media print {
             body * { visibility: hidden; }
             #reportContainer, #reportContainer * { visibility: visible; }
@@ -27,64 +21,56 @@
             .no-print { display: none !important; }
             body { background-color: white; }
             .diary-entry { border: 1px solid #e2e8f0; box-shadow: none; break-inside: avoid; }
-            
-            /* Quitar bordes de inputs al imprimir para que parezca texto */
             .report-input { border: none; }
-            input[type="date"] { border: none; background: transparent; }
         }
     </style>
 </head>
 <body class="p-6 max-w-[1200px] mx-auto min-h-screen flex flex-col">
 
-    <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-end no-print">
-        <div class="w-full md:w-auto">
-            <h1 class="text-2xl font-bold text-slate-800"><i class="fas fa-book-open text-blue-600 mr-2"></i>Site Diary Generator</h1>
-            <p class="text-xs text-slate-500">Select project and date range to generate report.</p>
+    <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center no-print">
+        <div class="flex items-center gap-3">
+            <button onclick="window.location.href='project_hub.html'" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800">Site Diary Generator</h1>
+                <p class="text-xs text-slate-500" id="navProjectName">Loading Project...</p>
+            </div>
         </div>
         
-        <div class="flex flex-wrap gap-3 w-full md:w-auto items-end">
-            <div>
-                <label class="text-[10px] font-bold uppercase text-slate-400">Project</label>
-                <select id="projectSelect" class="w-full md:w-48 p-2 text-sm border rounded font-bold outline-none focus:ring-2 ring-blue-100">
-                    <option value="">-- Select --</option>
-                </select>
-            </div>
-            <div>
-                <label class="text-[10px] font-bold uppercase text-slate-400">From</label>
-                <input type="date" id="dateFrom" class="w-32 p-2 text-sm border rounded outline-none focus:ring-2 ring-blue-100">
-            </div>
-            <div>
-                <label class="text-[10px] font-bold uppercase text-slate-400">To</label>
-                <input type="date" id="dateTo" class="w-32 p-2 text-sm border rounded outline-none focus:ring-2 ring-blue-100">
-            </div>
-            <button onclick="generateReport()" id="btnGen" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow disabled:opacity-50 transition">
-                Generate
+        <div class="flex gap-2 items-center">
+            <span class="text-xs font-bold text-slate-400 uppercase">Range:</span>
+            <input type="date" id="dateFrom" class="p-2 text-sm border rounded">
+            <span class="text-slate-400">-</span>
+            <input type="date" id="dateTo" class="p-2 text-sm border rounded">
+            
+            <button onclick="generateReport()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow ml-2">
+                Generate View
             </button>
-            <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black shadow transition flex items-center gap-2">
+            <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black shadow">
                 <i class="fas fa-print"></i> PDF
             </button>
-            <a href="dashboard.html" class="text-slate-400 hover:text-slate-600 px-2 py-2"><i class="fas fa-times text-xl"></i></a>
         </div>
     </header>
 
-    <div id="reportContainer" class="bg-white min-h-[29.7cm] p-12 shadow-2xl mx-auto w-full max-w-[21cm] hidden relative">
+    <div id="reportContainer" class="bg-white min-h-[29.7cm] p-12 shadow-2xl mx-auto w-full max-w-[21cm]">
         
         <div class="border-b-2 border-slate-800 pb-4 mb-8">
             <div class="flex justify-between items-start">
                 <div>
                     <h1 class="text-3xl font-bold uppercase text-slate-800 tracking-widest">Site Diary Record</h1>
-                    <p class="text-slate-500 font-bold mt-1 text-lg" id="reportProjectName">Project Name</p>
+                    <p class="text-slate-500 font-bold mt-1 text-lg" id="reportProjectName">...</p>
                 </div>
                 <div class="text-right">
                     <p class="text-xs text-slate-400 uppercase font-bold">Report Period</p>
-                    <p class="text-sm font-bold" id="reportPeriod">All Dates</p>
+                    <p class="text-sm font-bold" id="reportPeriod">Select Dates</p>
                     <p class="text-xs text-slate-400 mt-1">Generated: <span id="genDate"></span></p>
                 </div>
             </div>
         </div>
 
-        <div id="diaryContent" class="space-y-6">
-            <p class="text-center text-slate-400 italic py-10">Select project and dates above to generate records.</p>
+        <div id="diaryContent" class="space-y-6 min-h-[200px]">
+            <p class="text-center text-slate-400 italic py-10">Select dates above and click Generate.</p>
         </div>
 
         <div class="mt-16 pt-8 border-t-2 border-slate-100 page-break-inside-avoid">
@@ -95,7 +81,7 @@
                     <p class="text-xs text-slate-500">Signature & Date</p>
                 </div>
                 <div>
-                    <p class="text-xs uppercase font-bold text-slate-400 mb-8">Engineer / Client Rep (Acknowledged)</p>
+                    <p class="text-xs uppercase font-bold text-slate-400 mb-8">Engineer / Client Rep</p>
                     <div class="border-b border-slate-800 mb-1"></div>
                     <p class="text-xs text-slate-500">Signature & Date</p>
                 </div>
@@ -104,65 +90,47 @@
                 CivilMate Construction Management System • Daily Site Record
             </p>
         </div>
-
     </div>
 
     <script>
-        // CONFIG
         const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Check if coming from Dashboard
-        const preSelectedId = localStorage.getItem('civilmate_current_project_id');
+        // NO MÁS DROPDOWN. LEER ID DIRECTO.
+        const pid = localStorage.getItem('civilmate_current_project_id');
 
-        // INIT
+        if(!pid) { alert("Error: No project selected."); window.location.href='dashboard.html'; }
+
         init();
 
         function init() {
-            // Fechas por defecto
+            // Set Dates
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
             document.getElementById('dateTo').valueAsDate = today;
             document.getElementById('dateFrom').valueAsDate = firstDay;
+            document.getElementById('genDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-            // Cargar Proyectos al Select
-            db.collection('projects').get().then(snapshot => {
-                const select = document.getElementById('projectSelect');
-                snapshot.forEach(doc => {
-                    const p = doc.data();
-                    const opt = document.createElement('option');
-                    opt.value = doc.id;
-                    opt.text = p.name;
-                    select.appendChild(opt);
-                });
-
-                // Auto-seleccionar si venimos del dashboard
-                if(preSelectedId) {
-                    select.value = preSelectedId;
-                    generateReport();
+            // Load Project Name Only
+            db.collection('projects').doc(pid).get().then(doc => {
+                if(doc.exists) {
+                    const name = doc.data().name;
+                    document.getElementById('navProjectName').innerText = name;
+                    document.getElementById('reportProjectName').innerText = name;
+                    generateReport(); // Auto generate on load
                 }
             });
         }
 
         function generateReport() {
-            const pid = document.getElementById('projectSelect').value;
             const dFrom = document.getElementById('dateFrom').value;
             const dTo = document.getElementById('dateTo').value;
-            const select = document.getElementById('projectSelect');
             
-            if(!pid) return; // Silent return
-            
-            const projectName = select.options[select.selectedIndex].text;
-
-            // UI Updates
-            document.getElementById('reportContainer').classList.remove('hidden');
-            document.getElementById('reportProjectName').innerText = projectName;
             document.getElementById('reportPeriod').innerText = `${formatDate(dFrom)} to ${formatDate(dTo)}`;
-            document.getElementById('genDate').innerText = new Date().toLocaleDateString('en-NZ');
-            document.getElementById('diaryContent').innerHTML = '<p class="text-center py-4 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i> Fetching site records...</p>';
+            const container = document.getElementById('diaryContent');
+            container.innerHTML = '<p class="text-center py-4 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading records...</p>';
 
-            // Query Firestore
             db.collection('site_logs')
                 .where('projectId', '==', pid)
                 .where('date', '>=', dFrom)
@@ -170,15 +138,12 @@
                 .orderBy('date', 'asc') 
                 .get()
                 .then(snapshot => {
-                    const container = document.getElementById('diaryContent');
                     container.innerHTML = "";
-
                     if(snapshot.empty) {
-                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 rounded border border-dashed border-slate-300 text-slate-500 italic">No site activity recorded for this period.</div>';
+                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 rounded border border-dashed border-slate-300 text-slate-500 italic">No records found for this period.</div>';
                         return;
                     }
 
-                    // Agrupar logs por fecha
                     const logsByDate = {};
                     snapshot.forEach(doc => {
                         const data = doc.data();
@@ -186,61 +151,42 @@
                         logsByDate[data.date].push(data);
                     });
 
-                    // Renderizar cada día
                     Object.keys(logsByDate).forEach(date => {
                         const logs = logsByDate[date];
                         let entriesHtml = "";
-                        
-                        logs.forEach(log => {
-                            // Show photo icon if photo exists
-                            const photoBadge = log.photo ? '<span class="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1 rounded border border-blue-200"><i class="fas fa-camera"></i> PHOTO</span>' : '';
+                        const weatherInfo = logs[0].weather || "";
 
+                        logs.forEach(log => {
+                            const photoBadge = log.photo ? '<span class="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1 rounded border border-blue-200"><i class="fas fa-camera"></i> PHOTO</span>' : '';
                             entriesHtml += `
                                 <div class="flex border-b border-slate-100 last:border-0 pb-2 mb-2 last:mb-0 last:pb-0 items-start">
                                     <div class="w-24 shrink-0 font-bold text-slate-700 text-sm pt-0.5 text-right pr-4">
                                         ${log.qty} <span class="text-[10px] text-slate-400 font-normal uppercase">${log.unit}</span>
                                     </div>
                                     <div class="flex-1 border-l border-slate-200 pl-4">
-                                        <div class="flex items-center">
-                                            <p class="font-bold text-slate-800 text-sm">${log.itemName}</p>
-                                            ${photoBadge}
-                                        </div>
-                                        <p class="text-xs text-slate-500 italic mt-0.5 bg-slate-50 p-1 rounded inline-block">
-                                            Ref: ${log.notes || 'N/A'}
-                                        </p>
-                                        ${log.photo ? `<img src="${log.photo}" class="mt-2 h-16 rounded border shadow-sm">` : ''}
+                                        <div class="flex items-center"><p class="font-bold text-slate-800 text-sm">${log.itemName}</p>${photoBadge}</div>
+                                        <p class="text-xs text-slate-500 italic mt-0.5 bg-slate-50 p-1 rounded inline-block">Ref: ${log.notes || 'N/A'}</p>
+                                        ${log.photo ? `<img src="${log.photo}" class="mt-2 h-16 rounded border shadow-sm block">` : ''}
                                     </div>
                                 </div>
                             `;
                         });
 
-                        // Fecha bonita
-                        const dateObj = new Date(date);
-                        const dayName = dateObj.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-                        // Get weather from first log (if available)
-                        const weatherInfo = logs[0].weather || "Not Recorded";
+                        const dayName = new Date(date).toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
                         container.innerHTML += `
                             <div class="diary-entry rounded-lg overflow-hidden border border-slate-200 break-inside-avoid">
                                 <div class="diary-date-header">
                                     <span><i class="far fa-calendar-alt mr-2 text-blue-500"></i> ${dayName}</span>
-                                    <span class="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase tracking-wide">Site Open</span>
+                                    <span class="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase">Site Open</span>
                                 </div>
                                 <div class="p-5 bg-white">
                                     <div class="grid grid-cols-2 gap-8 mb-4 text-xs border-b border-slate-100 pb-3">
-                                        <div>
-                                            <label class="block text-slate-400 uppercase font-bold mb-1">Weather Conditions</label>
-                                            <input type="text" class="report-input" value="${weatherInfo}">
-                                        </div>
-                                        <div>
-                                            <label class="block text-slate-400 uppercase font-bold mb-1">Total Staff / Resources</label>
-                                            <input type="text" class="report-input" placeholder="e.g. 4 Staff, 1 Digger (Click to edit)">
-                                        </div>
+                                        <div><label class="block text-slate-400 uppercase font-bold mb-1">Weather</label><input type="text" class="report-input" value="${weatherInfo}"></div>
+                                        <div><label class="block text-slate-400 uppercase font-bold mb-1">Resources</label><input type="text" class="report-input" placeholder="e.g. 4 Staff"></div>
                                     </div>
-                                    
                                     <div class="space-y-2">
-                                        <h4 class="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-2">Work Completed / Progress</h4>
+                                        <h4 class="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-2">Progress Log</h4>
                                         ${entriesHtml}
                                     </div>
                                 </div>
@@ -251,8 +197,7 @@
         }
 
         function formatDate(dateString) {
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return new Date(dateString).toLocaleDateString('en-NZ', options);
+            return new Date(dateString).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
         }
     </script>
 </body>
