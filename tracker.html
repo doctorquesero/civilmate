@@ -14,11 +14,9 @@
         .field-input:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; }
         select.field-input { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; }
         
-        /* Camera Button */
         .camera-btn { border: 2px dashed #475569; display: flex; align-items: center; justify-content: center; padding: 15px; border-radius: 10px; cursor: pointer; transition: 0.2s; color: #94a3b8; }
         .camera-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
 
-        /* Toast Notification Animation */
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #10b981; color: #fff; text-align: center; border-radius: 50px; padding: 16px; position: fixed; z-index: 99; left: 50%; bottom: 30px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
         #toast.error { background-color: #ef4444; }
@@ -99,16 +97,17 @@
                 <label for="photoInput" class="camera-btn flex-1 text-center" id="cameraBtn">
                     <div id="cameraLabel">
                         <i class="fas fa-camera text-2xl mb-1"></i><br>
-                        <span class="text-xs font-bold">Snap / Upload</span>
+                        <span class="text-xs font-bold">Photo</span>
                     </div>
                     <img id="photoPreview" class="hidden w-full h-20 object-cover rounded-lg">
                 </label>
-                <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhoto(this)">
+                <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhotoCompression(this)">
                 
                 <div class="w-2/3">
                     <textarea id="logNotes" rows="3" class="field-input text-sm h-full" placeholder="Notes: QA checked, Docket #123..."></textarea>
                 </div>
             </div>
+            <p id="compressingMsg" class="hidden text-xs text-blue-400 text-center animate-pulse">Compressing image...</p>
         </div>
 
         <button id="btnSave" onclick="saveLog()" class="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">
@@ -135,7 +134,6 @@
         document.getElementById('logDate').valueAsDate = new Date();
         loadProjects();
 
-        // UI HELPERS
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
             t.innerHTML = isError ? `<i class="fas fa-times-circle mr-2"></i> ${msg}` : `<i class="fas fa-check-circle mr-2"></i> ${msg}`;
@@ -143,7 +141,6 @@
             setTimeout(() => { t.className = t.className.replace('show', ''); }, 3000);
         }
 
-        // LOADERS
         function loadProjects() {
             db.collection('projects').where('status', '==', 'Active').get().then(snapshot => {
                 const select = document.getElementById('projectSelect');
@@ -217,22 +214,48 @@
             }
         }
 
-        function handlePhoto(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentPhotoData = e.target.result;
+        // --- NEW: IMAGE COMPRESSION LOGIC ---
+        function handlePhotoCompression(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            document.getElementById('compressingMsg').classList.remove('hidden');
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            
+            reader.onload = function (event) {
+                const img = new Image();
+                img.src = event.target.result;
+                
+                img.onload = function () {
+                    // Resize Logic
+                    const canvas = document.createElement("canvas");
+                    const ctx = canvas.getContext("2d");
+                    const maxWidth = 800; // Resize to 800px width max
+                    const scaleSize = maxWidth / img.width;
+                    
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scaleSize;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // Compress to JPEG 0.7 quality
+                    const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                    
+                    // Store & Preview
+                    currentPhotoData = compressedDataUrl;
+                    
                     document.getElementById('cameraLabel').classList.add('hidden');
-                    const img = document.getElementById('photoPreview');
-                    img.src = currentPhotoData;
-                    img.classList.remove('hidden');
-                };
-                reader.readAsDataURL(input.files[0]);
+                    const preview = document.getElementById('photoPreview');
+                    preview.src = currentPhotoData;
+                    preview.classList.remove('hidden');
+                    document.getElementById('compressingMsg').classList.add('hidden');
+                }
             }
         }
 
         function saveLog() {
-            // UI LOCK
             const btn = document.getElementById('btnSave');
             const originalText = btn.innerHTML;
             btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
@@ -276,7 +299,7 @@
                 qty: parseFloat(qty),
                 weather: `${weather} (${weatherData})`,
                 notes: notes,
-                photo: currentPhotoData,
+                photo: currentPhotoData, // Now this is compressed!
                 date: date,
                 timestamp: Date.now()
             };
@@ -286,12 +309,12 @@
                 resetBtn();
                 showToast("Record Saved Successfully!");
                 
-                // Clear Fields
                 document.getElementById('logQty').value = "";
                 document.getElementById('logNotes').value = "";
                 currentPhotoData = null;
                 document.getElementById('photoInput').value = "";
                 document.getElementById('photoPreview').classList.add('hidden');
+                document.getElementById('photoPreview').src = "";
                 document.getElementById('cameraLabel').classList.remove('hidden');
                 
                 if(isNewVariation) { toggleNewItem(); document.getElementById('newVarName').value = ""; }
@@ -300,7 +323,8 @@
             })
             .catch((error) => {
                 resetBtn();
-                showToast("Error Saving: " + error.message, true);
+                // If it still fails, it's a very large image, but compression should fix 99%
+                showToast("Error: " + error.message, true);
             });
 
             function resetBtn() {
