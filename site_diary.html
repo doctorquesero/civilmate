@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Site Diary Report - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -11,6 +12,7 @@
         body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; color: #334155; }
         .diary-entry { page-break-inside: avoid; border-left: 4px solid #3b82f6; margin-bottom: 20px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .report-input { border: none; border-bottom: 1px dashed #cbd5e1; width: 100%; color: #475569; font-size: 12px; background: transparent; outline: none; }
+        .report-input:focus { border-bottom: 1px solid #3b82f6; }
         @media print {
             body * { visibility: hidden; }
             #reportContainer, #reportContainer * { visibility: visible; }
@@ -26,23 +28,32 @@
 
     <header class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center no-print">
         <div class="flex items-center gap-3">
-            <button onclick="window.location.href='project_hub.html'" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition"><i class="fas fa-arrow-left"></i> Back</button>
+            <button onclick="window.location.href='project_hub.html'" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg transition">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
             <div>
                 <h1 class="text-xl font-bold text-slate-800">Site Diary</h1>
                 <p class="text-xs text-slate-500" id="navProjectName">Loading...</p>
             </div>
         </div>
+        
         <div class="flex gap-2 items-center">
             <span class="text-xs font-bold text-slate-400">FILTER:</span>
             <input type="date" id="dateFrom" class="p-2 text-sm border rounded">
             <span class="text-slate-400">-</span>
             <input type="date" id="dateTo" class="p-2 text-sm border rounded">
-            <button onclick="generateReport()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow ml-2">Show Records</button>
-            <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black shadow"><i class="fas fa-print"></i> PDF</button>
+            
+            <button onclick="generateReport()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow ml-2">
+                Show Records
+            </button>
+            <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 rounded text-sm font-bold hover:bg-black shadow">
+                <i class="fas fa-print"></i> PDF
+            </button>
         </div>
     </header>
 
     <div id="reportContainer" class="bg-white min-h-[29.7cm] p-12 shadow-2xl mx-auto w-full max-w-[21cm]">
+        
         <div class="border-b-2 border-slate-800 pb-4 mb-8">
             <div class="flex justify-between items-start">
                 <div>
@@ -51,22 +62,32 @@
                 </div>
                 <div class="text-right">
                     <p class="text-xs text-slate-400 uppercase font-bold">Report Period</p>
-                    <p class="text-sm font-bold" id="reportPeriod">All Dates</p>
+                    <p class="text-sm font-bold" id="reportPeriod">Select Dates</p>
                     <p class="text-xs text-slate-400 mt-1">Generated: <span id="genDate"></span></p>
                 </div>
             </div>
         </div>
 
         <div id="diaryContent" class="space-y-6 min-h-[200px]">
-            <p class="text-center text-slate-400 italic py-10">Click 'Show Records' to view log.</p>
+            <p class="text-center text-slate-400 italic py-10">Select dates above and click 'Show Records'.</p>
         </div>
 
         <div class="mt-16 pt-8 border-t-2 border-slate-100 page-break-inside-avoid">
             <div class="grid grid-cols-2 gap-16 mb-8">
-                <div><p class="text-xs uppercase font-bold text-slate-400 mb-8">Site Manager</p><div class="border-b border-slate-800 mb-1"></div></div>
-                <div><p class="text-xs uppercase font-bold text-slate-400 mb-8">Engineer</p><div class="border-b border-slate-800 mb-1"></div></div>
+                <div>
+                    <p class="text-xs uppercase font-bold text-slate-400 mb-8">Site Manager / Foreman</p>
+                    <div class="border-b border-slate-800 mb-1"></div>
+                    <p class="text-xs text-slate-500">Signature & Date</p>
+                </div>
+                <div>
+                    <p class="text-xs uppercase font-bold text-slate-400 mb-8">Engineer / Client Rep</p>
+                    <div class="border-b border-slate-800 mb-1"></div>
+                    <p class="text-xs text-slate-500">Signature & Date</p>
+                </div>
             </div>
-            <p class="text-[9px] text-slate-300 text-center uppercase tracking-wide">CivilMate Construction Management System</p>
+            <p class="text-[9px] text-slate-300 text-center uppercase tracking-wide">
+                CivilMate Construction Management System • Daily Site Record
+            </p>
         </div>
     </div>
 
@@ -75,24 +96,28 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // Leer ID del proyecto
         const pid = localStorage.getItem('civilmate_current_project_id');
+
         if(!pid) { alert("Error: No project selected."); window.location.href='dashboard.html'; }
 
         init();
 
         function init() {
+            // Fechas por defecto
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
             document.getElementById('dateTo').valueAsDate = today;
             document.getElementById('dateFrom').valueAsDate = firstDay;
             document.getElementById('genDate').innerText = new Date().toLocaleDateString('en-NZ');
 
+            // Cargar Nombre del Proyecto
             db.collection('projects').doc(pid).get().then(doc => {
                 if(doc.exists) {
                     const name = doc.data().name;
                     document.getElementById('navProjectName').innerText = name;
                     document.getElementById('reportProjectName').innerText = name;
-                    generateReport(); 
+                    generateReport(); // Intentar cargar al inicio
                 }
             });
         }
@@ -100,79 +125,101 @@
         function generateReport() {
             const dFrom = document.getElementById('dateFrom').value;
             const dTo = document.getElementById('dateTo').value;
-            document.getElementById('reportPeriod').innerText = `${dFrom} to ${dTo}`;
             
+            document.getElementById('reportPeriod').innerText = `${formatDate(dFrom)} to ${formatDate(dTo)}`;
             const container = document.getElementById('diaryContent');
             container.innerHTML = '<p class="text-center py-4 text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i> Fetching records...</p>';
 
-            // FIX: Query SOLO por ProjectId para evitar error de Índice, filtrar fecha en JS
+            // --- CORRECCIÓN AQUÍ: Quitamos .orderBy('date') en la consulta ---
+            // Esto evita el error de "Index Required". Ordenamos en Javascript después.
             db.collection('site_logs')
                 .where('projectId', '==', pid)
-                .orderBy('date', 'desc') // Ordenamos por fecha descendente
                 .get()
                 .then(snapshot => {
                     container.innerHTML = "";
+                    
                     if(snapshot.empty) {
-                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 border-dashed border border-slate-300 text-slate-500">No records found.</div>';
+                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 rounded border border-dashed border-slate-300 text-slate-500 italic">No records found for this project.</div>';
                         return;
                     }
 
-                    const logsByDate = {};
-                    let count = 0;
-
+                    // 1. Convertir a Array y Filtrar por Fecha en JS
+                    let logsArray = [];
                     snapshot.forEach(doc => {
                         const data = doc.data();
-                        // JS Filtering (Soluciona el bloqueo)
                         if (data.date >= dFrom && data.date <= dTo) {
-                            if(!logsByDate[data.date]) logsByDate[data.date] = [];
-                            logsByDate[data.date].push(data);
-                            count++;
+                            logsArray.push(data);
                         }
                     });
 
-                    if (count === 0) {
-                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 border-dashed border border-slate-300 text-slate-500">No records in this date range.</div>';
+                    if (logsArray.length === 0) {
+                        container.innerHTML = '<div class="text-center p-10 bg-slate-50 rounded border border-dashed border-slate-300 text-slate-500 italic">No records in this date range.</div>';
                         return;
                     }
 
-                    // Renderizar
-                    Object.keys(logsByDate).sort().forEach(date => { // Sort ascendente para el reporte
+                    // 2. Ordenar por Fecha (Ascendente) en JS
+                    logsArray.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    // 3. Agrupar por Fecha
+                    const logsByDate = {};
+                    logsArray.forEach(data => {
+                        if(!logsByDate[data.date]) logsByDate[data.date] = [];
+                        logsByDate[data.date].push(data);
+                    });
+
+                    // 4. Renderizar
+                    Object.keys(logsByDate).forEach(date => {
                         const logs = logsByDate[date];
                         let entriesHtml = "";
+                        // Usamos el clima del primer registro del día
                         const weatherInfo = logs[0].weather || "";
 
                         logs.forEach(log => {
                             const photoBadge = log.photo ? '<span class="ml-2 text-[9px] bg-blue-100 text-blue-600 px-1 rounded border border-blue-200"><i class="fas fa-camera"></i> PHOTO</span>' : '';
                             entriesHtml += `
                                 <div class="flex border-b border-slate-100 last:border-0 pb-2 mb-2 last:mb-0 last:pb-0 items-start">
-                                    <div class="w-24 shrink-0 font-bold text-slate-700 text-sm pt-0.5 text-right pr-4">${log.qty} <span class="text-[10px] text-slate-400 font-normal uppercase">${log.unit}</span></div>
+                                    <div class="w-24 shrink-0 font-bold text-slate-700 text-sm pt-0.5 text-right pr-4">
+                                        ${log.qty} <span class="text-[10px] text-slate-400 font-normal uppercase">${log.unit}</span>
+                                    </div>
                                     <div class="flex-1 border-l border-slate-200 pl-4">
                                         <div class="flex items-center"><p class="font-bold text-slate-800 text-sm">${log.itemName}</p>${photoBadge}</div>
                                         <p class="text-xs text-slate-500 italic mt-0.5 bg-slate-50 p-1 rounded inline-block">Ref: ${log.notes || 'N/A'}</p>
                                         ${log.photo ? `<img src="${log.photo}" class="mt-2 h-20 rounded border shadow-sm block">` : ''}
                                     </div>
-                                </div>`;
+                                </div>
+                            `;
                         });
 
                         const dayName = new Date(date).toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
                         container.innerHTML += `
                             <div class="diary-entry rounded-lg overflow-hidden border border-slate-200 break-inside-avoid">
-                                <div class="diary-date-header"><span><i class="far fa-calendar-alt mr-2 text-blue-500"></i> ${dayName}</span></div>
+                                <div class="diary-date-header">
+                                    <span><i class="far fa-calendar-alt mr-2 text-blue-500"></i> ${dayName}</span>
+                                    <span class="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded uppercase">Site Open</span>
+                                </div>
                                 <div class="p-5 bg-white">
                                     <div class="grid grid-cols-2 gap-8 mb-4 text-xs border-b border-slate-100 pb-3">
                                         <div><label class="block text-slate-400 uppercase font-bold mb-1">Weather</label><input type="text" class="report-input" value="${weatherInfo}"></div>
                                         <div><label class="block text-slate-400 uppercase font-bold mb-1">Resources</label><input type="text" class="report-input" placeholder="e.g. 4 Staff"></div>
                                     </div>
-                                    <div class="space-y-2">${entriesHtml}</div>
+                                    <div class="space-y-2">
+                                        <h4 class="text-[9px] font-bold uppercase text-slate-400 tracking-wider mb-2">Progress Log</h4>
+                                        ${entriesHtml}
+                                    </div>
                                 </div>
-                            </div>`;
+                            </div>
+                        `;
                     });
                 })
                 .catch(err => {
                     console.error(err);
-                    container.innerHTML = `<div class="text-red-500 text-center">Error loading logs: ${err.message}</div>`;
+                    container.innerHTML = `<div class="text-red-500 text-center p-4">Error loading data: ${err.message}</div>`;
                 });
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' });
         }
     </script>
 </body>
