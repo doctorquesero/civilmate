@@ -2,60 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Health & Safety - CivilMate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H&S Menu - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #1a1a1a; font-family: 'Inter', sans-serif; }
-        .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #262626; position: relative; }
-    </style>
 </head>
-<body class="text-white">
-
-    <div class="mobile-container flex flex-col p-6">
-        <header class="mb-8 pt-4 flex items-center relative">
-            <a href="index.html" class="absolute left-0 p-2 text-gray-400 hover:text-white transition">
-                <i class="fas fa-arrow-left text-xl"></i>
-            </a>
-            <div class="w-full text-center">
-                <h1 class="text-2xl font-bold tracking-wide text-red-500">Health & Safety</h1>
-                <p class="text-gray-400 text-xs mt-1">Select Module</p>
-            </div>
-        </header>
-
-        <div class="flex-1 flex flex-col justify-center space-y-4">
-
-            <a href="induction.html" class="w-full bg-[#3b82f6] hover:brightness-110 active:scale-95 transition transform rounded-full py-5 px-8 flex items-center shadow-lg cursor-pointer no-underline">
-                <div class="bg-white/20 p-2 rounded-full mr-4">
-                    <i class="fas fa-user-hard-hat text-2xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-lg leading-tight uppercase text-white">Site<br>Induction</span>
-                </div>
-            </a>
-
-            <a href="safety.html" class="w-full bg-[#ef4444] hover:brightness-110 active:scale-95 transition transform rounded-full py-5 px-8 flex items-center shadow-lg cursor-pointer no-underline">
-                <div class="bg-white/20 p-2 rounded-full mr-4">
-                    <i class="fas fa-notes-medical text-2xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-lg leading-tight uppercase text-white">Safety<br>Report</span>
-                </div>
-            </a>
-
-            <a href="hazard.html" class="w-full bg-[#f97316] hover:brightness-110 active:scale-95 transition transform rounded-full py-5 px-8 flex items-center shadow-lg cursor-pointer no-underline">
-                <div class="bg-white/20 p-2 rounded-full mr-4">
-                    <i class="fas fa-exclamation-triangle text-2xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-lg leading-tight uppercase text-white">Hazard<br>Alert</span>
-                </div>
-            </a>
-
+<body class="bg-slate-900 text-white min-h-screen p-6 flex flex-col items-center">
+    
+    <header class="w-full max-w-md flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold">Health & Safety</h1>
+            <p class="text-sm text-slate-400">Site Compliance</p>
         </div>
-        <footer class="mt-8 text-center text-gray-500 text-xs">CivilMate H&S Module</footer>
+        <a href="index.html" class="bg-slate-700 px-3 py-2 rounded text-sm hover:bg-slate-600">Back</a>
+    </header>
+
+    <div class="w-full max-w-md space-y-4">
+        
+        <div onclick="window.location.href='safety.html'" class="bg-red-600 rounded-xl p-6 flex items-center gap-4 cursor-pointer hover:bg-red-500 transition shadow-lg shadow-red-900/20">
+            <i class="fas fa-exclamation-triangle text-3xl"></i>
+            <div>
+                <h3 class="font-bold text-lg">Report Incident</h3>
+                <p class="text-xs text-red-200">Near Miss / Accident Log</p>
+            </div>
+        </div>
+
+        <div onclick="alert('Toolbox Talk Module coming soon!')" class="bg-slate-800 rounded-xl p-6 flex items-center gap-4 cursor-pointer hover:bg-slate-700 transition border border-slate-700">
+            <i class="fas fa-users text-3xl text-blue-400"></i>
+            <div>
+                <h3 class="font-bold text-lg">Toolbox Talk</h3>
+                <p class="text-xs text-slate-400">Daily Briefing Record</p>
+            </div>
+        </div>
+
+        <div onclick="alert('Induction Module coming soon!')" class="bg-slate-800 rounded-xl p-6 flex items-center gap-4 cursor-pointer hover:bg-slate-700 transition border border-slate-700">
+            <i class="fas fa-hard-hat text-3xl text-yellow-400"></i>
+            <div>
+                <h3 class="font-bold text-lg">Site Induction</h3>
+                <p class="text-xs text-slate-400">New Visitor / Staff</p>
+            </div>
+        </div>
     </div>
+
+    <p class="mt-8 text-xs text-slate-500">CivilMate H&S Module V1.0</p>
 </body>
 </html>
