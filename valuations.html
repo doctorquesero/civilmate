@@ -9,107 +9,117 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
-        .input-claim { background: #fffbeb; border: 1px solid #fcd34d; font-weight: bold; text-align: center; width: 70px; border-radius: 4px; padding: 4px; }
-        
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
         @media print {
             body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
-            
-            /* EVIDENCE PAGE BREAK */
-            #evidenceSection { display: block !important; visibility: visible; page-break-before: always; position: relative; width: 100%; margin-top: 50px; }
-            #evidenceSection * { visibility: visible; }
-
+            #invoice, #invoice * { visibility: visible; }
+            #invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; }
             .no-print { display: none !important; }
-            .input-claim { border: none; background: transparent; text-align: right; }
+            input { border: none; background: transparent; }
         }
     </style>
 </head>
-<body class="p-6 max-w-[1400px] mx-auto min-h-screen flex flex-col">
+<body class="p-6 max-w-[1200px] mx-auto min-h-screen pb-20">
 
-    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200 no-print">
-        <div class="flex items-center gap-4">
-            <div class="bg-purple-600 text-white w-10 h-10 rounded flex items-center justify-center font-bold text-xl"><i class="fas fa-file-invoice-dollar"></i></div>
-            <div>
-                <h1 class="text-2xl font-bold text-slate-800">Valuations</h1>
-                <p class="text-sm text-slate-500" id="projectTitle">Loading Project...</p>
-            </div>
-        </div>
-        <div class="flex gap-3">
-            <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded border">Dashboard</button>
-            <button onclick="window.print()" class="px-4 py-2 text-sm font-bold bg-slate-800 text-white hover:bg-black rounded shadow flex items-center gap-2">
-                <i class="fas fa-print"></i> Print Claim
-            </button>
-        </div>
-    </header>
-
-    <div id="printArea" class="bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden flex-1 flex flex-col mb-10">
-        
-        <div class="p-8 border-b border-slate-200 grid grid-cols-2 gap-10">
-            <div>
-                <h2 class="text-3xl font-bold text-slate-800 uppercase tracking-widest mb-1">Payment Claim</h2>
-                <p class="text-xs text-slate-400 font-bold uppercase">CCA 2002 Compliant</p>
-                <div class="mt-6 space-y-1 text-sm">
-                    <p><span class="font-bold text-slate-500 w-24 inline-block">Claim No:</span> <input type="number" value="1" class="font-bold w-12 border-b border-slate-300 outline-none"></p>
-                    <p><span class="font-bold text-slate-500 w-24 inline-block">Date:</span> <span id="claimDate">...</span></p>
-                    <p><span class="font-bold text-slate-500 w-24 inline-block">Project:</span> <span id="contractRef">...</span></p>
-                </div>
-            </div>
-            
-            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                <h3 class="text-xs font-bold text-slate-500 uppercase mb-3 border-b pb-1">Claim Summary</h3>
-                <div class="flex justify-between text-sm mb-1"><span>Gross Value (To Date)</span><span id="sumGross" class="font-bold">$0.00</span></div>
-                <div class="flex justify-between text-sm mb-1 text-red-500"><span>Less: Retention (10%)</span><span id="sumRet">-$0.00</span></div>
-                <div class="flex justify-between text-sm mb-1 text-slate-400"><span>Less: Prior Payments</span><span id="sumPrev">-$0.00</span></div>
-                <div class="border-t border-slate-300 my-2"></div>
-                <div class="flex justify-between text-lg font-bold text-slate-800"><span>Net Claim (Ex GST)</span><span id="sumNet">$0.00</span></div>
-                <div class="flex justify-between text-xs text-slate-500 mt-1"><span>GST (15%)</span><span id="sumGST">$0.00</span></div>
-                <div class="flex justify-between text-xl font-bold text-green-700 mt-2"><span>TOTAL PAYABLE</span><span id="sumTotal">$0.00</span></div>
-            </div>
-        </div>
-
-        <div class="p-0 overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[9px] border-b border-slate-200">
-                    <tr>
-                        <th class="p-3 w-1/3">Description</th>
-                        <th class="p-3 text-center">Unit</th>
-                        <th class="p-3 text-right">Qty</th>
-                        <th class="p-3 text-right">Rate</th>
-                        <th class="p-3 text-center bg-yellow-50 text-yellow-700 w-32">Total % Done</th>
-                        <th class="p-3 text-right w-32">Value</th>
-                    </tr>
-                </thead>
-                <tbody id="claimTableBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
-            </table>
-        </div>
-        
-        <div class="p-8 border-t border-slate-200 mt-auto text-[10px] text-slate-400">
-            <p class="font-bold uppercase mb-1">Declaration:</p>
-            <p>I certify that the work claimed herein has been completed in accordance with the contract. Supporting evidence (Daily Logs) is attached in Appendix A.</p>
-        </div>
+    <div class="flex justify-between items-center mb-6 no-print">
+        <button onclick="window.location.href='project_hub.html'" class="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 font-bold transition">
+            <i class="fas fa-arrow-left"></i> Back to Hub
+        </button>
+        <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black shadow-lg transition flex items-center gap-2">
+            <i class="fas fa-print"></i> Print / PDF
+        </button>
     </div>
 
-    <div id="evidenceSection" class="bg-white rounded-xl shadow-xl border border-slate-200 p-8 mt-8">
-        <div class="border-b border-slate-800 pb-4 mb-6">
-            <h2 class="text-2xl font-bold text-slate-800 uppercase tracking-widest">Appendix A: Traceability Record</h2>
-            <p class="text-sm text-slate-500">Site Daily Logs & Evidence</p>
+    <div id="invoice" class="bg-white p-10 rounded-xl shadow-xl border border-slate-200 min-h-[1000px] relative">
+        
+        <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
+            <div>
+                <h1 class="text-4xl font-bold text-slate-800 tracking-tight uppercase">Payment Claim</h1>
+                <p class="text-xs text-slate-500 font-bold mt-1">CCA 2002 COMPLIANT</p>
+            </div>
+            <div class="text-right">
+                <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Claim No:</span> <span class="font-bold text-xl">1</span></div>
+                <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Date:</span> <span class="font-bold" id="claimDate">...</span></div>
+                <div><span class="font-bold text-slate-400 text-xs uppercase mr-2">Project:</span> <span class="font-bold text-blue-600" id="projName">Loading...</span></div>
+            </div>
         </div>
 
-        <table class="w-full text-left text-xs">
-            <thead class="bg-slate-100 text-slate-600 font-bold uppercase">
+        <div class="flex justify-end mb-8">
+            <div class="w-1/3 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 border-b pb-1">Claim Summary</h3>
+                
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-slate-600">Gross Value (To Date)</span>
+                    <span class="font-bold text-slate-800" id="sumGross">$0.00</span>
+                </div>
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-red-400">Less: Retention (10%)</span>
+                    <span class="font-bold text-red-400" id="sumRet">-$0.00</span>
+                </div>
+                
+                <div class="border-t border-slate-300 my-2"></div>
+                
+                <div class="flex justify-between text-lg mb-1">
+                    <span class="font-bold text-slate-800">Net Claim (Ex GST)</span>
+                    <span class="font-bold text-slate-900" id="sumNet">$0.00</span>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span>GST (15%)</span>
+                    <span id="sumGst">$0.00</span>
+                </div>
+                <div class="flex justify-between text-xl font-bold text-green-600 mt-2 pt-2 border-t border-slate-200">
+                    <span>TOTAL PAYABLE</span>
+                    <span id="sumTotal">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <table class="w-full text-left mb-12">
+            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
                 <tr>
-                    <th class="p-2 w-24">Date</th>
-                    <th class="p-2 w-1/3">Activity</th>
-                    <th class="p-2 text-right w-24">Qty</th>
-                    <th class="p-2">Reference / Notes</th>
+                    <th class="py-3 pl-2">Description</th>
+                    <th class="py-3 text-center">Unit</th>
+                    <th class="py-3 text-center">Contr. Qty</th>
+                    <th class="py-3 text-right">Rate</th>
+                    <th class="py-3 text-center w-32 bg-yellow-50 border-x border-yellow-100 text-yellow-700">Total % Done</th>
+                    <th class="py-3 text-right pr-2">Claim Value</th>
                 </tr>
             </thead>
-            <tbody id="evidenceTableBody" class="divide-y divide-slate-100">
-                <tr><td colspan="4" class="p-4 text-center italic text-slate-400">Loading logs...</td></tr>
+            <tbody id="linesTable" class="divide-y divide-slate-100 text-sm">
+                <tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Loading Schedule of Rates...</td></tr>
             </tbody>
         </table>
+
+        <div class="mt-8 pt-8 border-t-2 border-slate-800">
+            <h3 class="text-lg font-bold text-slate-700 uppercase mb-1">Appendix A: Traceability Record</h3>
+            <p class="text-xs text-slate-400 mb-4">Site Daily Logs & Evidence supporting this claim</p>
+
+            <table class="w-full text-left text-xs text-slate-600">
+                <thead class="bg-slate-100 font-bold uppercase">
+                    <tr>
+                        <th class="p-2 w-24">Date</th>
+                        <th class="p-2">Activity / Item</th>
+                        <th class="p-2 text-right">Qty</th>
+                        <th class="p-2">Reference / Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTable" class="divide-y divide-slate-100">
+                    <tr><td colspan="4" class="p-4 text-center italic text-slate-400">Fetching logs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-12 text-[10px] text-slate-400 text-center border-t border-slate-100 pt-4">
+            <p>I certify that the work claimed herein has been completed in accordance with the contract.</p>
+            <p class="mt-1 font-bold">Generated by CivilMate Construction Management System</p>
+        </div>
+
+    </div>
+
+    <div class="fixed bottom-6 right-6 no-print">
+        <button onclick="window.print()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
+            <i class="fas fa-check-circle"></i> Approve & Generate PDF
+        </button>
     </div>
 
     <script>
@@ -117,101 +127,110 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let currentProject = null;
-        let contractItems = [];
-        const projectId = localStorage.getItem('civilmate_current_project_id');
+        const pid = localStorage.getItem('civilmate_current_project_id');
+        if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
 
-        document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
+        let scheduleData = [];
 
-        if(!projectId) {
-            alert("No Active Project selected.");
-            window.location.href = 'dashboard.html';
-        } else {
-            loadProjectData();
-        }
+        // INICIAR
+        init();
 
-        function loadProjectData() {
-            db.collection('projects').doc(projectId).get().then(doc => {
+        function init() {
+            document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
+            
+            // 1. CARGAR PROYECTO Y TABLA
+            db.collection('projects').doc(pid).get().then(doc => {
                 if(doc.exists) {
-                    currentProject = doc.data();
-                    document.getElementById('projectTitle').innerText = currentProject.name;
-                    document.getElementById('contractRef').innerText = currentProject.name;
-                    contractItems = currentProject.items || [];
+                    const p = doc.data();
+                    document.getElementById('projName').innerText = p.name;
                     
-                    renderClaimTable();
-                    loadEvidence();
+                    // Renderizar tabla basada en el contrato (NO MANUAL)
+                    const tbody = document.getElementById('linesTable');
+                    tbody.innerHTML = "";
+                    
+                    if(p.schedule && p.schedule.length > 0) {
+                        scheduleData = p.schedule;
+                        scheduleData.forEach((item, index) => {
+                            tbody.innerHTML += `
+                                <tr class="hover:bg-slate-50">
+                                    <td class="py-3 pl-2 font-bold text-slate-700">${item.desc}</td>
+                                    <td class="py-3 text-center text-slate-500">${item.unit}</td>
+                                    <td class="py-3 text-center">${item.qty}</td>
+                                    <td class="py-3 text-right font-mono">$${item.rate}</td>
+                                    <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
+                                        <input type="number" min="0" max="100" value="0" 
+                                            onchange="calcRow(this, ${item.qty}, ${item.rate})"
+                                            class="w-16 text-center font-bold text-slate-800 border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent"> %
+                                    </td>
+                                    <td class="py-3 text-right pr-2 font-bold font-mono text-slate-800 row-total">$0.00</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400">No Schedule of Rates found in contract.</td></tr>`;
+                    }
                 }
             });
+
+            // 2. CARGAR LOGS (SIN INDEX ERROR)
+            loadLogs();
         }
 
-        function loadEvidence() {
-            db.collection('site_logs')
-              .where('projectId', '==', projectId)
-              .orderBy('date', 'desc')
-              .get()
-              .then(snapshot => {
-                  const tbody = document.getElementById('evidenceTableBody');
-                  tbody.innerHTML = "";
-                  if(snapshot.empty) {
-                      tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center italic text-slate-400">No logs found.</td></tr>`;
-                      return;
-                  }
-                  snapshot.forEach(doc => {
-                      const log = doc.data();
-                      tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50">
+        function loadLogs() {
+            const tbody = document.getElementById('logsTable');
+            
+            // FIX: No usamos orderBy en la query
+            db.collection('site_logs').where('projectId', '==', pid).limit(50).get().then(snap => {
+                tbody.innerHTML = "";
+                if(snap.empty) { tbody.innerHTML = "<tr><td colspan='4' class='p-4 text-center text-slate-400'>No daily logs found.</td></tr>"; return; }
+
+                let logs = [];
+                snap.forEach(d => logs.push(d.data()));
+                
+                // Ordenar en JS
+                logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                logs.forEach(log => {
+                    tbody.innerHTML += `
+                        <tr class="border-b border-slate-50 last:border-0">
                             <td class="p-2 font-bold text-slate-700">${log.date}</td>
-                            <td class="p-2 text-slate-600">${log.itemName}</td>
-                            <td class="p-2 text-right font-mono font-bold">${log.qty} ${log.unit}</td>
-                            <td class="p-2 text-slate-500 italic">${log.notes}</td>
+                            <td class="p-2">${log.itemName}</td>
+                            <td class="p-2 text-right font-mono">${log.qty} ${log.unit}</td>
+                            <td class="p-2 italic text-slate-400">${log.notes || '-'}</td>
                         </tr>
-                      `;
-                  });
-              });
-        }
-
-        function renderClaimTable() {
-            const tbody = document.getElementById('claimTableBody');
-            tbody.innerHTML = "";
-            contractItems.forEach((item, index) => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="p-3 font-bold text-xs">${item.name}</td>
-                        <td class="p-3 text-center text-xs text-slate-500">${item.unit}</td>
-                        <td class="p-3 text-right font-mono text-xs">${item.qty}</td>
-                        <td class="p-3 text-right font-mono text-xs text-slate-500">$${item.rate.toFixed(2)}</td>
-                        <td class="p-3 text-center bg-yellow-50/30 border-x border-slate-100">
-                            <input type="number" id="pct-${index}" value="0" min="0" max="100" onchange="updateRow(${index}, ${item.total})" class="input-claim text-sm"> %
-                        </td>
-                        <td class="p-3 text-right font-bold text-slate-800 font-mono" id="val-${index}">$0.00</td>
-                    </tr>
-                `;
+                    `;
+                });
             });
-            updateTotals();
         }
 
-        window.updateRow = (index, total) => {
-            const pct = parseFloat(document.getElementById(`pct-${index}`).value) || 0;
-            document.getElementById(`val-${index}`).innerText = fmtMoney(total * (pct / 100));
-            updateTotals();
+        // CALCULO EN TIEMPO REAL
+        function calcRow(input, qty, rate) {
+            const percent = parseFloat(input.value) || 0;
+            const rowTotal = (qty * rate) * (percent / 100);
+            
+            // Actualizar celda de valor
+            const row = input.closest('tr');
+            row.querySelector('.row-total').innerText = fmtMoney(rowTotal);
+            
+            recalcTotal();
         }
 
-        function updateTotals() {
-            let gross = 0;
-            contractItems.forEach((item, index) => {
-                const pct = parseFloat(document.getElementById(`pct-${index}`).value) || 0;
-                gross += (item.total * (pct / 100));
+        function recalcTotal() {
+            let totalGross = 0;
+            document.querySelectorAll('.row-total').forEach(cell => {
+                const val = parseFloat(cell.innerText.replace('$','').replace(',','')) || 0;
+                totalGross += val;
             });
 
-            const ret = gross * 0.10;
-            const net = gross - ret;
+            const retention = totalGross * 0.10; // 10% Retención
+            const net = totalGross - retention;
             const gst = net * 0.15;
             const total = net + gst;
 
-            document.getElementById('sumGross').innerText = fmtMoney(gross);
-            document.getElementById('sumRet').innerText = "-" + fmtMoney(ret);
+            document.getElementById('sumGross').innerText = fmtMoney(totalGross);
+            document.getElementById('sumRet').innerText = "-" + fmtMoney(retention);
             document.getElementById('sumNet').innerText = fmtMoney(net);
-            document.getElementById('sumGST').innerText = fmtMoney(gst);
+            document.getElementById('sumGst').innerText = fmtMoney(gst);
             document.getElementById('sumTotal').innerText = fmtMoney(total);
         }
 
