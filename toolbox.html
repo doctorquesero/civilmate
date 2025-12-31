@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolbox Talk - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>body { background-color: #1a1a1a; color: white; font-family: 'Segoe UI', sans-serif; }</style>
+</head>
+<body class="p-6 max-w-lg mx-auto">
+
+    <header class="mb-6 flex justify-between items-center border-b border-gray-700 pb-4">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-400"><i class="fas fa-users mr-2"></i>Toolbox Talk</h1>
+            <p class="text-xs text-gray-400">Daily Site Briefing Record</p>
+        </div>
+        <a href="hs_menu.html" class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></a>
+    </header>
+
+    <div class="space-y-4">
+        
+        <div>
+            <label class="text-xs text-gray-400 uppercase font-bold">Project / Site</label>
+            <select id="projectSelect" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg mt-1 outline-none focus:border-blue-500">
+                <option value="">-- Select Site --</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 uppercase font-bold">Topics Discussed</label>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <label class="bg-gray-800 p-3 rounded border border-gray-700 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="topic-check" value="PPE Check"> <span class="text-sm">PPE Check</span>
+                </label>
+                <label class="bg-gray-800 p-3 rounded border border-gray-700 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="topic-check" value="Hazard ID"> <span class="text-sm">Hazard ID</span>
+                </label>
+                <label class="bg-gray-800 p-3 rounded border border-gray-700 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="topic-check" value="Traffic Mgmt"> <span class="text-sm">Traffic Mgmt</span>
+                </label>
+                <label class="bg-gray-800 p-3 rounded border border-gray-700 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="topic-check" value="Excavation"> <span class="text-sm">Excavation</span>
+                </label>
+            </div>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 uppercase font-bold">Other / Notes</label>
+            <textarea id="notes" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg mt-1 text-sm h-20" placeholder="Specific hazards for today..."></textarea>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 uppercase font-bold">Attendees (Crew)</label>
+            <textarea id="attendees" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg mt-1 text-sm h-20" placeholder="List names of everyone present..."></textarea>
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 uppercase font-bold">Meeting Conducted By</label>
+            <input type="text" id="conductor" class="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg mt-1 text-sm" placeholder="Your Name">
+        </div>
+
+        <button onclick="saveToolbox()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg mt-4 flex justify-center items-center gap-2">
+            <i class="fas fa-save"></i> Save Record
+        </button>
+
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Cargar Proyectos
+        db.collection('projects').where('status', '==', 'Active').get().then(snap => {
+            const sel = document.getElementById('projectSelect');
+            snap.forEach(doc => {
+                sel.innerHTML += `<option value="${doc.data().name}">${doc.data().name}</option>`;
+            });
+        });
+
+        function saveToolbox() {
+            const project = document.getElementById('projectSelect').value;
+            const notes = document.getElementById('notes').value;
+            const attendees = document.getElementById('attendees').value;
+            const conductor = document.getElementById('conductor').value;
+            
+            // Get Checkboxes
+            const topics = [];
+            document.querySelectorAll('.topic-check:checked').forEach(cb => topics.push(cb.value));
+
+            if(!project || !conductor || !attendees) return alert("Please fill required fields (Project, Attendees, Conductor).");
+
+            db.collection('toolbox_talks').add({
+                project: project,
+                topics: topics,
+                notes: notes,
+                attendees: attendees,
+                conductor: conductor,
+                timestamp: Date.now(),
+                dateReadable: new Date().toLocaleString()
+            }).then(() => {
+                alert("✅ Toolbox Talk Saved!");
+                window.location.href = 'hs_menu.html';
+            });
+        }
+    </script>
+</body>
+</html>
