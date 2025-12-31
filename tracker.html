@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Site Tracker - CivilMate</title>
+    <title>Site Tracker Pro - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -11,8 +11,11 @@
     <style>
         body { background-color: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; }
         .field-input { background: #1e293b; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; width: 100%; outline: none; font-size: 16px; }
-        .field-input:focus { border-color: #3b82f6; }
+        .field-input:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; }
         select.field-input { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; }
+        
+        /* Highlight for Variations */
+        .vo-option { color: #fbbf24; font-weight: bold; }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto min-h-screen flex flex-col">
@@ -20,72 +23,101 @@
     <header class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-2xl font-bold text-white"><i class="fas fa-hard-hat text-yellow-400 mr-2"></i>Site Tracker</h1>
-            <p class="text-xs text-slate-400">Field Activity Log</p>
+            <p class="text-xs text-slate-400">Supervisor Daily Log</p>
         </div>
         <a href="index.html" class="bg-slate-700 px-3 py-2 rounded text-sm font-bold text-slate-300">Exit</a>
     </header>
 
-    <div class="mb-6">
+    <div class="mb-4">
         <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Active Project</label>
-        <select id="projectSelect" onchange="loadProjectItems()" class="field-input font-bold text-lg">
+        <select id="projectSelect" onchange="loadProjectData()" class="field-input font-bold text-lg border-l-4 border-l-blue-500">
             <option value="">-- Select Site --</option>
         </select>
     </div>
 
-    <div id="logForm" class="hidden flex-1 flex flex-col gap-4">
+    <div id="logForm" class="hidden flex-1 flex flex-col gap-5">
         
-        <div>
-            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Date</label>
-            <input type="date" id="logDate" class="field-input">
+        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+            <div class="flex justify-between items-center mb-2">
+                <label class="text-[10px] uppercase font-bold text-blue-400"><i class="fas fa-cloud-sun-rain mr-1"></i> Weather Conditions (Mandatory)</label>
+                <input type="date" id="logDate" class="bg-transparent text-white text-xs border-b border-slate-600 outline-none text-right">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <select id="weatherType" class="field-input text-sm" onchange="checkRain()">
+                    <option value="">-- Select --</option>
+                    <option value="Sunny">Sunny ☀️</option>
+                    <option value="Cloudy">Cloudy ☁️</option>
+                    <option value="Windy">Windy 💨</option>
+                    <option value="Rain">Rain / Wet 🌧️</option>
+                    <option value="Storm">Storm / Site Closed ⛈️</option>
+                </select>
+                <input type="text" id="weatherTemp" class="field-input text-sm" placeholder="Temp (°C) / Rain (mm)">
+            </div>
+            <p id="rainAlert" class="hidden text-xs text-yellow-400 mt-2 italic"><i class="fas fa-exclamation-triangle"></i> Rain selected: Please photograph rain gauge & record mm.</p>
         </div>
 
         <div>
-            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Activity / Contract Item</label>
-            <select id="itemSelect" class="field-input text-sm">
+            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">What are you working on?</label>
+            <select id="itemSelect" class="field-input text-sm mb-2" onchange="updateUnit()">
                 <option value="">-- Select Activity --</option>
-            </select>
+                </select>
+            
+            <button onclick="toggleNewItem()" class="text-xs text-yellow-500 hover:text-yellow-400 underline w-full text-right">
+                + Report Unforeseen / Extra Work (Instruction)
+            </button>
+
+            <div id="newVarBox" class="hidden mt-2 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
+                <label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">Describe New Variation Work</label>
+                <input type="text" id="newVarName" class="field-input text-sm mb-2" placeholder="e.g. Remove Soft Spot at entrance">
+                <p class="text-[10px] text-slate-400 italic">*This will notify the PM to raise a VO.</p>
+            </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Qty Completed</label>
-                <input type="number" id="logQty" class="field-input text-center text-xl font-bold" placeholder="0">
+                <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Qty Completed Today</label>
+                <input type="number" id="logQty" class="field-input text-center text-xl font-bold border-green-900 focus:border-green-500" placeholder="0">
             </div>
             <div>
                 <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Unit</label>
-                <input type="text" id="logUnit" class="field-input text-center text-slate-400" disabled value="...">
+                <input type="text" id="logUnit" class="field-input text-center text-slate-400 bg-slate-800" disabled value="...">
             </div>
         </div>
 
         <div>
-            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Evidence / Reference</label>
-            <textarea id="logNotes" rows="3" class="field-input text-sm" placeholder="e.g. Photo #124, QA Check passed..."></textarea>
+            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Traceability (QA / Photos / Dockets)</label>
+            <textarea id="logNotes" rows="2" class="field-input text-sm" placeholder="e.g. Photo #124, Rain Gauge reading, Docket #559..."></textarea>
         </div>
 
-        <button onclick="saveLog()" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2">
-            <i class="fas fa-check-circle"></i> Save Log
+        <button onclick="saveLog()" class="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">
+            <i class="fas fa-save"></i> Save Daily Record
         </button>
 
-        <div class="mt-8">
-            <h3 class="text-xs font-bold text-slate-500 uppercase border-b border-slate-700 pb-2 mb-2">Recent Activity</h3>
-            <div id="recentLogs" class="space-y-2 text-sm text-slate-300"></div>
+        <div class="mt-6 border-t border-slate-700 pt-4">
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Today's Logs</h3>
+            <div id="recentLogs" class="space-y-3"></div>
         </div>
 
     </div>
 
     <script>
+        // CONFIG
         const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // STATE
         let activeProject = null;
-        let projectItems = [];
+        let contractItems = [];
+        let isNewVariation = false;
 
+        // INIT
         document.getElementById('logDate').valueAsDate = new Date();
         loadProjects();
 
+        // --- 1. LOAD PROJECTS ---
         function loadProjects() {
-            // Load Active projects only
             db.collection('projects').where('status', '==', 'Active').get().then(snapshot => {
                 const select = document.getElementById('projectSelect');
                 snapshot.forEach(doc => {
@@ -95,84 +127,180 @@
             });
         }
 
-        function loadProjectItems() {
+        // --- 2. LOAD ITEMS & CLASSIFY (Contract vs Variation) ---
+        function loadProjectData() {
             const pid = document.getElementById('projectSelect').value;
             if(!pid) return;
 
             db.collection('projects').doc(pid).get().then(doc => {
                 activeProject = doc.data();
-                projectItems = activeProject.items || [];
+                contractItems = activeProject.items || [];
                 
                 const itemSelect = document.getElementById('itemSelect');
                 itemSelect.innerHTML = '<option value="">-- Select Activity --</option>';
                 
-                projectItems.forEach((item, idx) => {
-                    itemSelect.innerHTML += `<option value="${idx}">${item.name}</option>`;
+                // GROUP 1: CONTRACT WORKS (Original)
+                let contractGroup = document.createElement('optgroup');
+                contractGroup.label = "CONTRACT SCHEDULE";
+                
+                // GROUP 2: VARIATIONS (Si existieran en la DB)
+                // *Nota: En el futuro, aquí filtraríamos items con flag isVariation=true
+                
+                contractItems.forEach((item, idx) => {
+                    let opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.innerHTML = `${item.name} (${item.unit})`;
+                    contractGroup.appendChild(opt);
                 });
 
+                itemSelect.appendChild(contractGroup);
+                
+                // Mostrar UI
                 document.getElementById('logForm').classList.remove('hidden');
                 loadLocalLogs(pid);
             });
         }
 
-        document.getElementById('itemSelect').addEventListener('change', (e) => {
-            const idx = e.target.value;
-            if(idx !== "") {
-                document.getElementById('logUnit').value = projectItems[idx].unit;
+        function checkRain() {
+            const w = document.getElementById('weatherType').value;
+            const alertBox = document.getElementById('rainAlert');
+            const tempInput = document.getElementById('weatherTemp');
+            
+            if(w === 'Rain' || w === 'Storm') {
+                alertBox.classList.remove('hidden');
+                tempInput.placeholder = "Rain Gauge (mm)";
+                tempInput.focus();
+            } else {
+                alertBox.classList.add('hidden');
+                tempInput.placeholder = "Temperature (°C)";
             }
-        });
+        }
 
+        function updateUnit() {
+            const idx = document.getElementById('itemSelect').value;
+            if(idx !== "") {
+                document.getElementById('logUnit').value = contractItems[idx].unit;
+                isNewVariation = false;
+                document.getElementById('newVarBox').classList.add('hidden');
+            }
+        }
+
+        function toggleNewItem() {
+            isNewVariation = !isNewVariation;
+            const box = document.getElementById('newVarBox');
+            const select = document.getElementById('itemSelect');
+            
+            if(isNewVariation) {
+                box.classList.remove('hidden');
+                select.value = ""; // Deselect
+                select.disabled = true;
+                document.getElementById('logUnit').value = "hr"; // Default to Dayworks
+                document.getElementById('newVarName').focus();
+            } else {
+                box.classList.add('hidden');
+                select.disabled = false;
+            }
+        }
+
+        // --- 3. SAVE LOGIC WITH VALIDATION ---
         function saveLog() {
             const pid = document.getElementById('projectSelect').value;
-            const itemIdx = document.getElementById('itemSelect').value;
+            const date = document.getElementById('logDate').value;
+            
+            // Validation: Weather
+            const weather = document.getElementById('weatherType').value;
+            const weatherData = document.getElementById('weatherTemp').value;
+            
+            if(!weather) return alert("⚠️ Weather is MANDATORY. Please select conditions.");
+            if((weather === 'Rain' || weather === 'Storm') && !weatherData) {
+                return alert("⚠️ You selected Rain. You MUST enter the rain gauge reading (mm).");
+            }
+
+            // Validation: Activity
+            let itemName, itemUnit, itemIdx;
+            
+            if(isNewVariation) {
+                itemName = document.getElementById('newVarName').value;
+                if(!itemName) return alert("Please describe the Unforeseen Work.");
+                itemName = "[VO Request] " + itemName; // Flag for office
+                itemUnit = "hr"; // Default dayworks
+                itemIdx = -1; // Flag for custom
+            } else {
+                itemIdx = document.getElementById('itemSelect').value;
+                if(itemIdx === "") return alert("Select an Activity.");
+                itemName = contractItems[itemIdx].name;
+                itemUnit = contractItems[itemIdx].unit;
+            }
+
             const qty = document.getElementById('logQty').value;
             const notes = document.getElementById('logNotes').value;
-            const date = document.getElementById('logDate').value;
 
-            if(!pid || itemIdx === "" || !qty || !notes) return alert("All fields are required.");
+            if(!qty || !notes) return alert("Qty and Evidence are required for Traceability.");
 
             const logEntry = {
                 projectId: pid,
                 projectName: activeProject.name,
-                itemIdx: parseInt(itemIdx),
-                itemName: projectItems[itemIdx].name,
-                unit: projectItems[itemIdx].unit,
+                itemIdx: parseInt(itemIdx), // -1 if VO
+                itemName: itemName,
+                unit: itemUnit,
                 qty: parseFloat(qty),
+                weather: `${weather} (${weatherData})`,
                 notes: notes,
                 date: date,
                 timestamp: Date.now()
             };
 
             db.collection('site_logs').add(logEntry).then(() => {
-                alert("✅ Record Saved!");
-                document.getElementById('logQty').value = "";
-                document.getElementById('logNotes').value = "";
-                loadLocalLogs(pid);
+                // UI Feedback
+                const btn = document.querySelector('button[onclick="saveLog()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<i class="fas fa-check"></i> SAVED!`;
+                btn.classList.replace('bg-blue-600', 'bg-green-600');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.replace('bg-green-600', 'bg-blue-600');
+                    // Reset Form (Keep Project & Weather)
+                    document.getElementById('logQty').value = "";
+                    document.getElementById('logNotes').value = "";
+                    if(isNewVariation) {
+                        toggleNewItem(); // Reset toggle
+                        document.getElementById('newVarName').value = "";
+                    }
+                    loadLocalLogs(pid);
+                }, 1500);
             });
         }
 
         function loadLocalLogs(pid) {
             const container = document.getElementById('recentLogs');
-            container.innerHTML = "<i>Loading...</i>";
+            container.innerHTML = "<p class='text-slate-500 text-xs italic'>Syncing...</p>";
             
+            // Get logs for TODAY only for this feed
+            const todayStr = document.getElementById('logDate').value;
+
             db.collection('site_logs')
               .where('projectId', '==', pid)
+              .where('date', '==', todayStr)
               .orderBy('timestamp', 'desc')
-              .limit(5)
               .onSnapshot(snapshot => {
                   container.innerHTML = "";
-                  if(snapshot.empty) container.innerHTML = "No logs yet.";
+                  if(snapshot.empty) container.innerHTML = "<p class='text-slate-600 text-xs'>No logs for this date yet.</p>";
                   
                   snapshot.forEach(doc => {
                       const log = doc.data();
+                      const isVo = log.itemName.startsWith('[VO');
+                      const borderClass = isVo ? 'border-yellow-600' : 'border-slate-700';
+                      const textClass = isVo ? 'text-yellow-400' : 'text-white';
+
                       container.innerHTML += `
-                        <div class="bg-slate-800 p-3 rounded border border-slate-700">
-                            <div class="flex justify-between font-bold text-xs text-slate-400 mb-1">
-                                <span>${log.date}</span>
-                                <span class="text-white">${log.qty} ${log.unit}</span>
+                        <div class="bg-slate-800 p-3 rounded border-l-4 ${borderClass} shadow-sm">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-bold text-sm ${textClass}">${log.itemName}</span>
+                                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-white font-mono">${log.qty} ${log.unit}</span>
                             </div>
-                            <div class="font-bold text-white mb-1">${log.itemName}</div>
-                            <div class="text-xs text-blue-400 italic">${log.notes}</div>
+                            <div class="text-xs text-slate-400 mb-1"><i class="fas fa-cloud text-slate-500"></i> ${log.weather}</div>
+                            <div class="text-xs text-slate-300 italic border-t border-slate-700 pt-1 mt-1">Ref: ${log.notes}</div>
                         </div>
                       `;
                   });
