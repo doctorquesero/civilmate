@@ -157,6 +157,7 @@
             const tbody = document.getElementById('projectsTable');
             tbody.innerHTML = "";
             
+            // Filter logic
             const filtered = allProjects.filter(p => {
                 if (currentTab === 'Pending') return p.status === 'Pending';
                 if (currentTab === 'Active') return p.status === 'Active' || p.status === 'Completed';
@@ -177,38 +178,27 @@
                 let statusBadge = "";
                 let actionBtns = "";
                 
-                // BOTONES DINÁMICOS
+                // --- BOTONES DINÁMICOS SEGÚN ESTADO (CORREGIDO PARA HUB) ---
                 let mainBtnText = "Open Budget";
                 let mainBtnIcon = "fa-folder-open";
                 let mainBtnClass = "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100";
                 
-                let extraBtns = ""; // Contenedor para botones extra
-
+                // Si está ACTIVO, el botón se convierte en "Manage Project" y va al HUB
                 if (p.status === 'Active' || p.status === 'Completed') {
-                    mainBtnText = "View Contract";
-                    mainBtnIcon = "fa-lock";
-                    mainBtnClass = "bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200";
-                    
-                    // BOTONES DE GESTIÓN (VALUACIÓN + DIARIO)
-                    extraBtns = `
-                        <div class="flex gap-1 mt-1">
-                            <button onclick="openValuation('${p.id}')" class="flex-1 bg-green-50 text-green-700 hover:bg-green-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-green-200 transition" title="Create Payment Claim">
-                                <i class="fas fa-dollar-sign"></i> Claim
-                            </button>
-                            <button onclick="openDiary('${p.id}')" class="flex-1 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-amber-200 transition" title="View Site Diary">
-                                <i class="fas fa-book"></i> Diary
-                            </button>
-                        </div>
-                    `;
+                    mainBtnText = "Manage Project";
+                    mainBtnIcon = "fa-cogs";
+                    mainBtnClass = "bg-slate-800 text-white hover:bg-slate-900 border-slate-900 shadow-md";
                 }
 
+                // La función llamada es ahora openProjectHub
                 const btnMain = `
-                    <button onclick="editProject('${p.id}')" class="${mainBtnClass} px-3 py-1.5 rounded-md text-xs font-bold border transition flex items-center justify-center gap-2 w-full mb-1">
+                    <button onclick="openProjectHub('${p.id}', '${p.status}')" class="${mainBtnClass} px-3 py-2 rounded-md text-xs font-bold border transition flex items-center justify-center gap-2 w-full mb-1">
                         <i class="fas ${mainBtnIcon}"></i> ${mainBtnText}
                     </button>`;
 
+                // Lógica de Estado
                 if(currentTab === 'Pending') {
-                    statusBadge = `<span class="bg-orange-100 text-orange-600 px-2 py-1 rounded text-[10px] font-bold uppercase">Pending</span>`;
+                    statusBadge = `<span class="bg-orange-100 text-orange-600 px-2 py-1 rounded text-[10px] font-bold uppercase">Pending Quote</span>`;
                     actionBtns = `
                         <div class="flex flex-col gap-1">
                             ${btnMain}
@@ -219,26 +209,26 @@
                         </div>
                     `;
                 } else if (currentTab === 'Active') {
-                    statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase">Active</span>`;
+                    statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase">Active Contract</span>`;
                     actionBtns = `
                         <div class="flex flex-col gap-1">
                             ${btnMain}
-                            ${extraBtns}
-                            <button onclick="updateStatus('${p.id}', 'Completed')" class="text-xs text-slate-400 hover:text-slate-600 underline mt-1">Archive</button>
+                            <div class="text-[10px] text-center text-green-600 mt-1 font-bold"><i class="fas fa-check-circle"></i> Active</div>
+                            <button onclick="updateStatus('${p.id}', 'Completed')" class="text-xs text-slate-400 hover:text-slate-600 underline mt-1">Archive / Close</button>
                         </div>
                     `;
                 } else {
                     statusBadge = `<span class="bg-gray-100 text-gray-500 px-2 py-1 rounded text-[10px] font-bold uppercase">Archived</span>`;
                     actionBtns = `
-                        <button onclick="updateStatus('${p.id}', 'Pending')" class="text-xs text-blue-500 hover:underline">Restore</button>
+                        <button onclick="updateStatus('${p.id}', 'Pending')" class="text-xs text-blue-500 hover:underline">Restore to Pending</button>
                     `;
                 }
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition group">
                         <td class="p-4">
-                            <div class="font-bold text-slate-700 text-sm">${p.name || 'Untitled'}</div>
-                            <div class="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">${new Date(p.createdAt || Date.now()).toLocaleDateString()}</div>
+                            <div class="font-bold text-slate-700 text-sm">${p.name || 'Untitled Project'}</div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">Created: ${new Date(p.createdAt || Date.now()).toLocaleDateString()}</div>
                         </td>
                         <td class="p-4 text-center text-xs text-slate-500">${getTimeAgo(p.createdAt || Date.now())} ago</td>
                         <td class="p-4 text-right font-mono font-bold text-slate-700 text-sm">${fmtMoney(total)}</td>
@@ -264,7 +254,9 @@
         }
 
         function updateStatus(id, newStatus) {
-            let msg = newStatus === 'Active' ? "Mark as WON?" : "Change status?";
+            let msg = newStatus === 'Active' ? "Mark as WON? This will move it to Active Contracts." : 
+                      newStatus === 'Rejected' ? "Mark as LOST? This will archive the quote." : "Change status?";
+            
             if(confirm(msg)) {
                 db.collection('projects').doc(id).update({ status: newStatus });
             }
@@ -276,20 +268,19 @@
             window.location.href = 'contracts.html';
         }
 
-        function editProject(id) {
+        // NUEVA FUNCIÓN PARA EL HUB (LA CLAVE)
+        function openProjectHub(id, status) {
             localStorage.setItem('civilmate_current_project_id', id);
-            window.location.href = 'contracts.html';
+            
+            if (status === 'Active' || status === 'Completed') {
+                window.location.href = 'project_hub.html'; // REDIRIGE AL HUB
+            } else {
+                window.location.href = 'contracts.html'; // REDIRIGE AL ESTIMATOR
+            }
         }
 
-        function openValuation(id) {
-            localStorage.setItem('civilmate_current_project_id', id);
-            window.location.href = 'valuations.html';
-        }
-
-        function openDiary(id) {
-            localStorage.setItem('civilmate_current_project_id', id);
-            window.location.href = 'site_diary.html';
-        }
+        // Funciones auxiliares para compatibilidad antigua (si quedan botones viejos)
+        function editProject(id) { openProjectHub(id, 'Pending'); }
 
         function fmtMoney(n) { 
             return "$" + (n || 0).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); 
@@ -298,6 +289,7 @@
         function getTimeAgo(ts) {
             const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
             if(days === 0) return "Today";
+            if(days === 1) return "Yesterday";
             return days + " days";
         }
 
