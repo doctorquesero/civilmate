@@ -14,12 +14,19 @@
         .field-input:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; }
         select.field-input { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; }
         
-        /* Botón de Cámara */
+        /* Camera Button */
         .camera-btn { border: 2px dashed #475569; display: flex; align-items: center; justify-content: center; padding: 15px; border-radius: 10px; cursor: pointer; transition: 0.2s; color: #94a3b8; }
         .camera-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+
+        /* Toast Notification Animation */
+        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #10b981; color: #fff; text-align: center; border-radius: 50px; padding: 16px; position: fixed; z-index: 99; left: 50%; bottom: 30px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
+        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        #toast.error { background-color: #ef4444; }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto min-h-screen flex flex-col">
+
+    <div id="toast"><i class="fas fa-check-circle mr-2"></i> Record Saved!</div>
 
     <header class="flex justify-between items-center mb-6">
         <div>
@@ -89,7 +96,7 @@
             <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Evidence (Photo & Notes)</label>
             
             <div class="flex gap-4 mb-3">
-                <label for="photoInput" class="camera-btn flex-1 text-center">
+                <label for="photoInput" class="camera-btn flex-1 text-center" id="cameraBtn">
                     <div id="cameraLabel">
                         <i class="fas fa-camera text-2xl mb-1"></i><br>
                         <span class="text-xs font-bold">Snap / Upload</span>
@@ -104,7 +111,7 @@
             </div>
         </div>
 
-        <button onclick="saveLog()" class="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">
+        <button id="btnSave" onclick="saveLog()" class="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">
             <i class="fas fa-save"></i> Save Daily Record
         </button>
 
@@ -123,11 +130,20 @@
         let activeProject = null;
         let contractItems = [];
         let isNewVariation = false;
-        let currentPhotoData = null; // Stores Base64 string
+        let currentPhotoData = null;
 
         document.getElementById('logDate').valueAsDate = new Date();
         loadProjects();
 
+        // UI HELPERS
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.innerHTML = isError ? `<i class="fas fa-times-circle mr-2"></i> ${msg}` : `<i class="fas fa-check-circle mr-2"></i> ${msg}`;
+            t.className = isError ? 'error show' : 'show';
+            setTimeout(() => { t.className = t.className.replace('show', ''); }, 3000);
+        }
+
+        // LOADERS
         function loadProjects() {
             db.collection('projects').where('status', '==', 'Active').get().then(snapshot => {
                 const select = document.getElementById('projectSelect');
@@ -167,16 +183,12 @@
 
         function checkRain() {
             const w = document.getElementById('weatherType').value;
-            const alertBox = document.getElementById('rainAlert');
-            const tempInput = document.getElementById('weatherTemp');
-            
             if(w === 'Rain' || w === 'Storm') {
-                alertBox.classList.remove('hidden');
-                tempInput.placeholder = "Rain Gauge (mm)";
-                tempInput.focus();
+                document.getElementById('rainAlert').classList.remove('hidden');
+                document.getElementById('weatherTemp').placeholder = "Rain Gauge (mm)";
             } else {
-                alertBox.classList.add('hidden');
-                tempInput.placeholder = "Temperature (°C)";
+                document.getElementById('rainAlert').classList.add('hidden');
+                document.getElementById('weatherTemp').placeholder = "Temperature (°C)";
             }
         }
 
@@ -193,7 +205,6 @@
             isNewVariation = !isNewVariation;
             const box = document.getElementById('newVarBox');
             const select = document.getElementById('itemSelect');
-            
             if(isNewVariation) {
                 box.classList.remove('hidden');
                 select.value = ""; 
@@ -206,14 +217,11 @@
             }
         }
 
-        // --- NEW: PHOTO HANDLER ---
         function handlePhoto(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    currentPhotoData = e.target.result; // Base64 String
-                    
-                    // Update UI
+                    currentPhotoData = e.target.result;
                     document.getElementById('cameraLabel').classList.add('hidden');
                     const img = document.getElementById('photoPreview');
                     img.src = currentPhotoData;
@@ -224,27 +232,32 @@
         }
 
         function saveLog() {
+            // UI LOCK
+            const btn = document.getElementById('btnSave');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+
             const pid = document.getElementById('projectSelect').value;
             const date = document.getElementById('logDate').value;
             const weather = document.getElementById('weatherType').value;
             const weatherData = document.getElementById('weatherTemp').value;
             
-            if(!weather) return alert("⚠️ Weather is MANDATORY.");
-            if((weather === 'Rain' || weather === 'Storm') && !weatherData) {
-                return alert("⚠️ Enter rain gauge reading (mm).");
-            }
+            if(!weather) { resetBtn(); return showToast("Select Weather!", true); }
+            if((weather === 'Rain' || weather === 'Storm') && !weatherData) { resetBtn(); return showToast("Enter Rain mm!", true); }
 
             let itemName, itemUnit, itemIdx;
             
             if(isNewVariation) {
                 itemName = document.getElementById('newVarName').value;
-                if(!itemName) return alert("Describe the Extra Work.");
+                if(!itemName) { resetBtn(); return showToast("Describe Extra Work", true); }
                 itemName = "[VO Request] " + itemName; 
                 itemUnit = "hr"; 
                 itemIdx = -1; 
             } else {
                 itemIdx = document.getElementById('itemSelect').value;
-                if(itemIdx === "") return alert("Select an Activity.");
+                if(itemIdx === "") { resetBtn(); return showToast("Select Activity", true); }
                 itemName = contractItems[itemIdx].name;
                 itemUnit = contractItems[itemIdx].unit;
             }
@@ -252,7 +265,7 @@
             const qty = document.getElementById('logQty').value;
             const notes = document.getElementById('logNotes').value;
 
-            if(!qty || !notes) return alert("Qty and Notes are required.");
+            if(!qty || !notes) { resetBtn(); return showToast("Qty & Notes Required", true); }
 
             const logEntry = {
                 projectId: pid,
@@ -263,31 +276,38 @@
                 qty: parseFloat(qty),
                 weather: `${weather} (${weatherData})`,
                 notes: notes,
-                photo: currentPhotoData, // Save Photo String
+                photo: currentPhotoData,
                 date: date,
                 timestamp: Date.now()
             };
 
-            db.collection('site_logs').add(logEntry).then(() => {
-                // Reset Form
+            db.collection('site_logs').add(logEntry)
+            .then(() => {
+                resetBtn();
+                showToast("Record Saved Successfully!");
+                
+                // Clear Fields
                 document.getElementById('logQty').value = "";
                 document.getElementById('logNotes').value = "";
-                
-                // Reset Photo UI
                 currentPhotoData = null;
                 document.getElementById('photoInput').value = "";
                 document.getElementById('photoPreview').classList.add('hidden');
-                document.getElementById('photoPreview').src = "";
                 document.getElementById('cameraLabel').classList.remove('hidden');
-
-                if(isNewVariation) {
-                    toggleNewItem();
-                    document.getElementById('newVarName').value = "";
-                }
                 
-                alert("✅ Saved Successfully!");
+                if(isNewVariation) { toggleNewItem(); document.getElementById('newVarName').value = ""; }
+                
                 loadLocalLogs(pid);
+            })
+            .catch((error) => {
+                resetBtn();
+                showToast("Error Saving: " + error.message, true);
             });
+
+            function resetBtn() {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
         }
 
         function loadLocalLogs(pid) {
@@ -306,8 +326,6 @@
                       const log = doc.data();
                       const isVo = log.itemName.startsWith('[VO');
                       const borderClass = isVo ? 'border-yellow-600' : 'border-slate-700';
-                      
-                      // Show photo icon if exists
                       const photoIcon = log.photo ? '<i class="fas fa-camera text-blue-400 ml-2"></i>' : '';
 
                       container.innerHTML += `
