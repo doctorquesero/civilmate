@@ -14,8 +14,9 @@
         .field-input:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; }
         select.field-input { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; }
         
-        /* Highlight for Variations */
-        .vo-option { color: #fbbf24; font-weight: bold; }
+        /* Botón de Cámara */
+        .camera-btn { border: 2px dashed #475569; display: flex; align-items: center; justify-content: center; padding: 15px; border-radius: 10px; cursor: pointer; transition: 0.2s; color: #94a3b8; }
+        .camera-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto min-h-screen flex flex-col">
@@ -39,7 +40,7 @@
         
         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
             <div class="flex justify-between items-center mb-2">
-                <label class="text-[10px] uppercase font-bold text-blue-400"><i class="fas fa-cloud-sun-rain mr-1"></i> Weather Conditions (Mandatory)</label>
+                <label class="text-[10px] uppercase font-bold text-blue-400"><i class="fas fa-cloud-sun-rain mr-1"></i> Weather Conditions</label>
                 <input type="date" id="logDate" class="bg-transparent text-white text-xs border-b border-slate-600 outline-none text-right">
             </div>
             
@@ -54,23 +55,22 @@
                 </select>
                 <input type="text" id="weatherTemp" class="field-input text-sm" placeholder="Temp (°C) / Rain (mm)">
             </div>
-            <p id="rainAlert" class="hidden text-xs text-yellow-400 mt-2 italic"><i class="fas fa-exclamation-triangle"></i> Rain selected: Please photograph rain gauge & record mm.</p>
+            <p id="rainAlert" class="hidden text-xs text-yellow-400 mt-2 italic"><i class="fas fa-exclamation-triangle"></i> Rain selected: Please photograph rain gauge.</p>
         </div>
 
         <div>
             <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">What are you working on?</label>
             <select id="itemSelect" class="field-input text-sm mb-2" onchange="updateUnit()">
                 <option value="">-- Select Activity --</option>
-                </select>
+            </select>
             
             <button onclick="toggleNewItem()" class="text-xs text-yellow-500 hover:text-yellow-400 underline w-full text-right">
-                + Report Unforeseen / Extra Work (Instruction)
+                + Report Unforeseen / Extra Work
             </button>
 
             <div id="newVarBox" class="hidden mt-2 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
                 <label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">Describe New Variation Work</label>
                 <input type="text" id="newVarName" class="field-input text-sm mb-2" placeholder="e.g. Remove Soft Spot at entrance">
-                <p class="text-[10px] text-slate-400 italic">*This will notify the PM to raise a VO.</p>
             </div>
         </div>
 
@@ -86,8 +86,22 @@
         </div>
 
         <div>
-            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Traceability (QA / Photos / Dockets)</label>
-            <textarea id="logNotes" rows="2" class="field-input text-sm" placeholder="e.g. Photo #124, Rain Gauge reading, Docket #559..."></textarea>
+            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Evidence (Photo & Notes)</label>
+            
+            <div class="flex gap-4 mb-3">
+                <label for="photoInput" class="camera-btn flex-1 text-center">
+                    <div id="cameraLabel">
+                        <i class="fas fa-camera text-2xl mb-1"></i><br>
+                        <span class="text-xs font-bold">Snap / Upload</span>
+                    </div>
+                    <img id="photoPreview" class="hidden w-full h-20 object-cover rounded-lg">
+                </label>
+                <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhoto(this)">
+                
+                <div class="w-2/3">
+                    <textarea id="logNotes" rows="3" class="field-input text-sm h-full" placeholder="Notes: QA checked, Docket #123..."></textarea>
+                </div>
+            </div>
         </div>
 
         <button onclick="saveLog()" class="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">
@@ -102,21 +116,18 @@
     </div>
 
     <script>
-        // CONFIG
         const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // STATE
         let activeProject = null;
         let contractItems = [];
         let isNewVariation = false;
+        let currentPhotoData = null; // Stores Base64 string
 
-        // INIT
         document.getElementById('logDate').valueAsDate = new Date();
         loadProjects();
 
-        // --- 1. LOAD PROJECTS ---
         function loadProjects() {
             db.collection('projects').where('status', '==', 'Active').get().then(snapshot => {
                 const select = document.getElementById('projectSelect');
@@ -127,7 +138,6 @@
             });
         }
 
-        // --- 2. LOAD ITEMS & CLASSIFY (Contract vs Variation) ---
         function loadProjectData() {
             const pid = document.getElementById('projectSelect').value;
             if(!pid) return;
@@ -139,12 +149,8 @@
                 const itemSelect = document.getElementById('itemSelect');
                 itemSelect.innerHTML = '<option value="">-- Select Activity --</option>';
                 
-                // GROUP 1: CONTRACT WORKS (Original)
                 let contractGroup = document.createElement('optgroup');
                 contractGroup.label = "CONTRACT SCHEDULE";
-                
-                // GROUP 2: VARIATIONS (Si existieran en la DB)
-                // *Nota: En el futuro, aquí filtraríamos items con flag isVariation=true
                 
                 contractItems.forEach((item, idx) => {
                     let opt = document.createElement('option');
@@ -154,8 +160,6 @@
                 });
 
                 itemSelect.appendChild(contractGroup);
-                
-                // Mostrar UI
                 document.getElementById('logForm').classList.remove('hidden');
                 loadLocalLogs(pid);
             });
@@ -192,9 +196,9 @@
             
             if(isNewVariation) {
                 box.classList.remove('hidden');
-                select.value = ""; // Deselect
+                select.value = ""; 
                 select.disabled = true;
-                document.getElementById('logUnit').value = "hr"; // Default to Dayworks
+                document.getElementById('logUnit').value = "hr"; 
                 document.getElementById('newVarName').focus();
             } else {
                 box.classList.add('hidden');
@@ -202,29 +206,42 @@
             }
         }
 
-        // --- 3. SAVE LOGIC WITH VALIDATION ---
+        // --- NEW: PHOTO HANDLER ---
+        function handlePhoto(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentPhotoData = e.target.result; // Base64 String
+                    
+                    // Update UI
+                    document.getElementById('cameraLabel').classList.add('hidden');
+                    const img = document.getElementById('photoPreview');
+                    img.src = currentPhotoData;
+                    img.classList.remove('hidden');
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function saveLog() {
             const pid = document.getElementById('projectSelect').value;
             const date = document.getElementById('logDate').value;
-            
-            // Validation: Weather
             const weather = document.getElementById('weatherType').value;
             const weatherData = document.getElementById('weatherTemp').value;
             
-            if(!weather) return alert("⚠️ Weather is MANDATORY. Please select conditions.");
+            if(!weather) return alert("⚠️ Weather is MANDATORY.");
             if((weather === 'Rain' || weather === 'Storm') && !weatherData) {
-                return alert("⚠️ You selected Rain. You MUST enter the rain gauge reading (mm).");
+                return alert("⚠️ Enter rain gauge reading (mm).");
             }
 
-            // Validation: Activity
             let itemName, itemUnit, itemIdx;
             
             if(isNewVariation) {
                 itemName = document.getElementById('newVarName').value;
-                if(!itemName) return alert("Please describe the Unforeseen Work.");
-                itemName = "[VO Request] " + itemName; // Flag for office
-                itemUnit = "hr"; // Default dayworks
-                itemIdx = -1; // Flag for custom
+                if(!itemName) return alert("Describe the Extra Work.");
+                itemName = "[VO Request] " + itemName; 
+                itemUnit = "hr"; 
+                itemIdx = -1; 
             } else {
                 itemIdx = document.getElementById('itemSelect').value;
                 if(itemIdx === "") return alert("Select an Activity.");
@@ -235,48 +252,46 @@
             const qty = document.getElementById('logQty').value;
             const notes = document.getElementById('logNotes').value;
 
-            if(!qty || !notes) return alert("Qty and Evidence are required for Traceability.");
+            if(!qty || !notes) return alert("Qty and Notes are required.");
 
             const logEntry = {
                 projectId: pid,
                 projectName: activeProject.name,
-                itemIdx: parseInt(itemIdx), // -1 if VO
+                itemIdx: parseInt(itemIdx),
                 itemName: itemName,
                 unit: itemUnit,
                 qty: parseFloat(qty),
                 weather: `${weather} (${weatherData})`,
                 notes: notes,
+                photo: currentPhotoData, // Save Photo String
                 date: date,
                 timestamp: Date.now()
             };
 
             db.collection('site_logs').add(logEntry).then(() => {
-                // UI Feedback
-                const btn = document.querySelector('button[onclick="saveLog()"]');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = `<i class="fas fa-check"></i> SAVED!`;
-                btn.classList.replace('bg-blue-600', 'bg-green-600');
+                // Reset Form
+                document.getElementById('logQty').value = "";
+                document.getElementById('logNotes').value = "";
                 
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.classList.replace('bg-green-600', 'bg-blue-600');
-                    // Reset Form (Keep Project & Weather)
-                    document.getElementById('logQty').value = "";
-                    document.getElementById('logNotes').value = "";
-                    if(isNewVariation) {
-                        toggleNewItem(); // Reset toggle
-                        document.getElementById('newVarName').value = "";
-                    }
-                    loadLocalLogs(pid);
-                }, 1500);
+                // Reset Photo UI
+                currentPhotoData = null;
+                document.getElementById('photoInput').value = "";
+                document.getElementById('photoPreview').classList.add('hidden');
+                document.getElementById('photoPreview').src = "";
+                document.getElementById('cameraLabel').classList.remove('hidden');
+
+                if(isNewVariation) {
+                    toggleNewItem();
+                    document.getElementById('newVarName').value = "";
+                }
+                
+                alert("✅ Saved Successfully!");
+                loadLocalLogs(pid);
             });
         }
 
         function loadLocalLogs(pid) {
             const container = document.getElementById('recentLogs');
-            container.innerHTML = "<p class='text-slate-500 text-xs italic'>Syncing...</p>";
-            
-            // Get logs for TODAY only for this feed
             const todayStr = document.getElementById('logDate').value;
 
             db.collection('site_logs')
@@ -285,18 +300,20 @@
               .orderBy('timestamp', 'desc')
               .onSnapshot(snapshot => {
                   container.innerHTML = "";
-                  if(snapshot.empty) container.innerHTML = "<p class='text-slate-600 text-xs'>No logs for this date yet.</p>";
+                  if(snapshot.empty) container.innerHTML = "<p class='text-slate-600 text-xs'>No logs for this date.</p>";
                   
                   snapshot.forEach(doc => {
                       const log = doc.data();
                       const isVo = log.itemName.startsWith('[VO');
                       const borderClass = isVo ? 'border-yellow-600' : 'border-slate-700';
-                      const textClass = isVo ? 'text-yellow-400' : 'text-white';
+                      
+                      // Show photo icon if exists
+                      const photoIcon = log.photo ? '<i class="fas fa-camera text-blue-400 ml-2"></i>' : '';
 
                       container.innerHTML += `
                         <div class="bg-slate-800 p-3 rounded border-l-4 ${borderClass} shadow-sm">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="font-bold text-sm ${textClass}">${log.itemName}</span>
+                                <span class="font-bold text-sm text-white">${log.itemName} ${photoIcon}</span>
                                 <span class="text-xs bg-slate-700 px-2 py-1 rounded text-white font-mono">${log.qty} ${log.unit}</span>
                             </div>
                             <div class="text-xs text-slate-400 mb-1"><i class="fas fa-cloud text-slate-500"></i> ${log.weather}</div>
