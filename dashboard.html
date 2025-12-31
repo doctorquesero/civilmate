@@ -178,20 +178,27 @@
                 let statusBadge = "";
                 let actionBtns = "";
                 
-                // LÓGICA DE BOTÓN DINÁMICO (CORRECCIÓN AQUI)
+                // --- BOTONES DINÁMICOS SEGÚN ESTADO ---
                 let mainBtnText = "Open Budget";
                 let mainBtnIcon = "fa-folder-open";
-                let mainBtnStyle = "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border-blue-200";
-                
-                // Si está ACTIVO, cambiamos el botón a "View Contract" con Candado
+                let mainBtnClass = "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border-blue-200";
+                let claimBtn = ""; // Botón de Cobro (Por defecto vacío)
+
+                // SI ESTÁ ACTIVO (GANADO)
                 if (p.status === 'Active' || p.status === 'Completed') {
                     mainBtnText = "View Contract";
-                    mainBtnIcon = "fa-lock";
-                    mainBtnStyle = "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-300";
+                    mainBtnIcon = "fa-lock"; // Candado
+                    mainBtnClass = "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-300";
+                    
+                    // AGREGAR BOTÓN DE VALUACIÓN
+                    claimBtn = `
+                        <button onclick="openValuation('${p.id}')" class="mt-1 bg-green-50 text-green-700 hover:bg-green-600 hover:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-green-200 transition flex items-center justify-center gap-2 w-full">
+                            <i class="fas fa-file-invoice-dollar"></i> Payment Claim
+                        </button>`;
                 }
 
                 const btnMain = `
-                    <button onclick="editProject('${p.id}')" class="${mainBtnStyle} px-3 py-1.5 rounded-md text-xs font-bold border transition flex items-center justify-center gap-2 w-full mb-1">
+                    <button onclick="editProject('${p.id}')" class="${mainBtnClass} px-3 py-1.5 rounded-md text-xs font-bold border transition flex items-center justify-center gap-2 w-full mb-1">
                         <i class="fas ${mainBtnIcon}"></i> ${mainBtnText}
                     </button>`;
 
@@ -212,7 +219,7 @@
                     actionBtns = `
                         <div class="flex flex-col gap-1">
                             ${btnMain}
-                            <button onclick="updateStatus('${p.id}', 'Completed')" class="text-xs text-slate-400 hover:text-slate-600 underline">Archive / Close</button>
+                            ${claimBtn} <button onclick="updateStatus('${p.id}', 'Completed')" class="text-xs text-slate-400 hover:text-slate-600 underline mt-1">Archive / Close</button>
                         </div>
                     `;
                 } else {
@@ -270,6 +277,12 @@
         function editProject(id) {
             localStorage.setItem('civilmate_current_project_id', id);
             window.location.href = 'contracts.html';
+        }
+
+        // --- OPEN VALUATION (NUEVA FUNCIÓN) ---
+        function openValuation(id) {
+            localStorage.setItem('civilmate_current_project_id', id);
+            window.location.href = 'valuations.html';
         }
 
         function fmtMoney(n) { 
