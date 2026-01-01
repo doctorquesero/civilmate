@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }</style>
 </head>
-<body class="p-6 max-w-[1200px] mx-auto min-h-screen">
+<body class="p-6 max-w-[1200px] mx-auto min-h-screen relative">
 
     <header class="mb-8 flex justify-between items-center">
         <div>
@@ -44,11 +44,16 @@
     </div>
 
     <div class="bg-purple-50 p-6 rounded-xl border border-purple-100 shadow-inner">
-        <h3 class="font-bold text-purple-800 mb-4 flex items-center gap-2">
-            <i class="fas fa-plus-circle"></i> Raise New Variation Price Request
-        </h3>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-purple-800 flex items-center gap-2">
+                <i class="fas fa-plus-circle"></i> Raise New Variation Price Request
+            </h3>
+            <button onclick="openEstimator()" class="text-xs bg-white text-purple-700 border border-purple-200 px-3 py-1.5 rounded hover:bg-purple-100 font-bold shadow-sm">
+                <i class="fas fa-calculator mr-1"></i> Build Rate (Estimator)
+            </button>
+        </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-4">
             <div class="md:col-span-2">
                 <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Description</label>
                 <input type="text" id="voDesc" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="e.g. Extra Drainage Line">
@@ -59,11 +64,15 @@
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Qty</label>
-                <input type="number" id="voQty" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0">
+                <input type="number" id="voQty" oninput="calcTotal()" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0">
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Rate ($)</label>
-                <input type="number" id="voRate" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0.00">
+                <input type="number" id="voRate" oninput="calcTotal()" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0.00">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total ($)</label>
+                <input type="text" id="voTotalDisplay" class="w-full p-2 rounded border border-transparent bg-purple-100 font-bold text-purple-800 text-right" readonly value="$0.00">
             </div>
         </div>
 
@@ -109,6 +118,49 @@
         </div>
     </div>
 
+    <div id="estimatorModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-800 p-4 flex justify-between items-center text-white">
+                <h3 class="font-bold"><i class="fas fa-calculator mr-2"></i>Rate Builder (Net Cost + Margin)</h3>
+                <button onclick="closeEstimator()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6">
+                <p class="text-xs text-slate-500 mb-4">NZS 3910 Section 9.3: Valuation by Net Cost</p>
+                
+                <table class="w-full text-sm mb-4">
+                    <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500">
+                        <tr>
+                            <th class="p-2 text-left">Resource</th>
+                            <th class="p-2 w-20 text-right">Cost</th>
+                            <th class="p-2 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="estList">
+                        </tbody>
+                </table>
+                
+                <button onclick="addEstItem()" class="text-xs text-blue-600 font-bold hover:underline mb-6">+ Add Resource (Labor/Plant/Mat)</button>
+
+                <div class="bg-slate-50 p-4 rounded border border-slate-200 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Subtotal (Net Cost)</span>
+                        <span id="estSub" class="font-mono">$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-sm items-center">
+                        <span class="text-slate-600">Margin / Profit (%)</span>
+                        <input type="number" id="estMargin" value="15" onchange="calcEst()" class="w-12 text-right border rounded text-xs font-bold p-1">
+                    </div>
+                    <div class="flex justify-between text-lg font-bold text-purple-700 pt-2 border-t border-slate-200">
+                        <span>Final Unit Rate</span>
+                        <span id="estTotal">$0.00</span>
+                    </div>
+                </div>
+
+                <button onclick="applyRate()" class="w-full mt-4 bg-purple-600 text-white py-3 rounded font-bold hover:bg-purple-700">Apply Rate to VO</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
@@ -120,11 +172,12 @@
         let currentSchedule = [];
         let projectTotal = 0;
 
+        // ESTIMATOR DATA
+        let estItems = [{ name: "Labor (hr)", cost: 45 }, { name: "Materials", cost: 0 }];
+
         init();
 
-        function init() {
-            loadProject();
-        }
+        function init() { loadProject(); }
 
         function loadProject() {
             db.collection('projects').doc(pid).onSnapshot(doc => {
@@ -132,7 +185,6 @@
                     const p = doc.data();
                     currentSchedule = p.schedule || p.items || [];
                     projectTotal = p.total || 0;
-                    
                     document.getElementById('revisedTotal').innerText = fmtMoney(projectTotal);
                     renderTable(currentSchedule);
                 }
@@ -142,57 +194,99 @@
         function renderTable(items) {
             const tbody = document.getElementById('voTable');
             tbody.innerHTML = "";
-            
-            // Filtramos solo los ítems que sean Variaciones (Empiezan con VO#)
             const variations = items.filter(i => (i.desc || i.name || "").startsWith("VO#"));
-
-            if(variations.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No Variations raised yet.</td></tr>`;
-                return;
-            }
+            if(variations.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No Variations raised yet.</td></tr>`; return; }
 
             variations.forEach((vo, index) => {
                 const val = vo.qty * vo.rate;
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0">
                         <td class="p-4 font-bold text-slate-700">VO #${index + 1}</td>
-                        <td class="p-4 font-medium">
-                            ${vo.desc || vo.name}
+                        <td class="p-4 font-medium">${vo.desc || vo.name}
                             ${vo.timeImpact ? `<span class="block text-[10px] text-orange-500 font-bold">+ ${vo.timeImpact} Days EOT</span>` : ''}
                         </td>
                         <td class="p-4 text-center"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase border border-green-200">Approved</span></td>
                         <td class="p-4 text-right font-mono">${fmtMoney(val)}</td>
-                        <td class="p-4 text-center text-xs text-slate-400">Integrated to Contract</td>
+                        <td class="p-4 text-center text-xs text-slate-400">Integrated</td>
                     </tr>
                 `;
             });
         }
 
+        function calcTotal() {
+            const q = parseFloat(document.getElementById('voQty').value) || 0;
+            const r = parseFloat(document.getElementById('voRate').value) || 0;
+            document.getElementById('voTotalDisplay').value = fmtMoney(q * r);
+        }
+
+        // --- MINI ESTIMATOR FUNCTIONS ---
+        function openEstimator() { 
+            document.getElementById('estimatorModal').classList.remove('hidden'); 
+            renderEst();
+        }
+        function closeEstimator() { document.getElementById('estimatorModal').classList.add('hidden'); }
+        
+        function addEstItem() { estItems.push({ name: "", cost: 0 }); renderEst(); }
+        
+        function renderEst() {
+            const list = document.getElementById('estList');
+            list.innerHTML = "";
+            estItems.forEach((item, i) => {
+                list.innerHTML += `
+                    <tr>
+                        <td class="p-1"><input type="text" value="${item.name}" onchange="updEst(${i}, 'name', this.value)" class="w-full border rounded px-2 py-1 text-xs" placeholder="Desc"></td>
+                        <td class="p-1"><input type="number" value="${item.cost}" onchange="updEst(${i}, 'cost', this.value)" class="w-full border rounded px-2 py-1 text-xs text-right"></td>
+                        <td class="p-1 text-center"><button onclick="delEst(${i})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>
+                    </tr>
+                `;
+            });
+            calcEst();
+        }
+
+        function updEst(i, field, val) { 
+            estItems[i][field] = field === 'cost' ? parseFloat(val) || 0 : val; 
+            calcEst(); 
+        }
+        function delEst(i) { estItems.splice(i, 1); renderEst(); }
+
+        function calcEst() {
+            let sub = 0;
+            estItems.forEach(i => sub += i.cost);
+            const margin = parseFloat(document.getElementById('estMargin').value) || 0;
+            const total = sub * (1 + (margin/100));
+            
+            document.getElementById('estSub').innerText = fmtMoney(sub);
+            document.getElementById('estTotal').innerText = fmtMoney(total);
+            return total; // Retorna el valor numérico
+        }
+
+        function applyRate() {
+            const rate = calcEst(); // Recalcula para asegurar
+            // Quitar el símbolo de $ y la coma para el input
+            const rateNum = parseFloat(document.getElementById('estTotal').innerText.replace('$','').replace(',',''));
+            
+            document.getElementById('voRate').value = rateNum.toFixed(2);
+            calcTotal(); // Actualizar el total principal
+            closeEstimator();
+        }
+
+        // --- MAIN CREATE FUNCTION ---
         function createVO() {
             const desc = document.getElementById('voDesc').value;
             const unit = document.getElementById('voUnit').value;
             const qty = parseFloat(document.getElementById('voQty').value);
             const rate = parseFloat(document.getElementById('voRate').value);
-            
-            // Compliance Checks
             const hasConsentCheck = document.getElementById('checkConsent').checked;
             const hasSafetyCheck = document.getElementById('checkSafety').checked;
             const timeImpact = document.getElementById('voTime').value || "0";
 
-            if(!desc || !qty || !rate) return alert("Please fill all financial fields (Desc, Qty, Rate).");
-            
-            // BLINDAJE DE SEGURIDAD
-            if(!hasSafetyCheck) return alert("🛑 STOP WORK AUTHORITY:\n\nYou cannot issue a VO without confirming H&S/SSSP implications.\n\nPlease check the safety review box.");
-            
-            // BLINDAJE DE PERMISOS (LBP PROTECTION)
-            if(!hasConsentCheck) return alert("⚠️ LBP LICENSE WARNING:\n\nYou cannot proceed unless you confirm the Building Consent status.\n\n- If this is a Major Variation, wait for the Amendment.\n- If Minor, document it.\n\nCheck the box to confirm you are compliant.");
+            if(!desc || !qty || !rate) return alert("Please fill all financial fields.");
+            if(!hasSafetyCheck) return alert("🛑 STOP WORK AUTHORITY: Check H&S box.");
+            if(!hasConsentCheck) return alert("⚠️ LBP LICENSE WARNING: Check Building Consent box.");
 
-            // NOMENCLATURA AUTOMÁTICA
-            // Buscamos cuántas VOs hay ya
             const voCount = currentSchedule.filter(i => (i.desc || i.name || "").startsWith("VO#")).length + 1;
             const voTitle = `VO#${voCount}: ${desc}`;
 
-            // CREAMOS EL OBJETO DE LA VARIACIÓN
             const newVO = {
                 desc: voTitle,
                 name: voTitle,
@@ -200,7 +294,7 @@
                 qty: qty,
                 rate: rate,
                 total: qty * rate,
-                timeImpact: timeImpact, // Guardamos el impacto en tiempo
+                timeImpact: timeImpact,
                 approved: true
             };
 
@@ -213,12 +307,12 @@
                 total: newTotal,
                 updatedAt: Date.now()
             }).then(() => {
-                alert("✅ VO #" + voCount + " ISSUED SUCCESSFULLY.\n\n- Contract Sum Updated\n- Tracker Updated\n- H&S/Compliance Check Logged");
-                // Limpiar campos
+                alert("✅ VO #" + voCount + " ISSUED SUCCESSFULLY.");
+                // Reset UI
                 document.getElementById('voDesc').value = "";
                 document.getElementById('voQty').value = "";
                 document.getElementById('voRate').value = "";
-                document.getElementById('voTime').value = "";
+                document.getElementById('voTotalDisplay').value = "$0.00";
                 document.getElementById('checkConsent').checked = false;
                 document.getElementById('checkSafety').checked = false;
             }).catch(e => alert("Error: " + e.message));
