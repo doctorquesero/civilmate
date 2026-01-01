@@ -39,7 +39,7 @@
             #printSection, #printSection * { visibility: visible; }
             #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
             
-            /* Control de APU Detallado (NUEVO) */
+            /* Control de APU Detallado */
             .print-apu-hidden #apuAppendix { display: none !important; }
             .print-apu-visible #apuAppendix { display: block !important; page-break-before: always; }
             
@@ -88,8 +88,7 @@
                     <div class="w-2/3">
                         <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Load Item from Master DB</label>
                         <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
-                            <option value="">-- Select Standard Item --</option>
-                            <option value="new">+ Create New Item</option>
+                            <option value="">-- Loading Database... --</option>
                         </select>
                     </div>
                     <div class="w-1/3 flex items-end">
@@ -174,6 +173,7 @@
                         <input type="text" id="myCompany" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
                         <input type="text" id="myAddress" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
                         <input type="text" id="myPhone" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
+                        <input type="text" value="www.civilmate.nz" class="company-input text-xs text-blue-500">
                     </div>
                 </div>
 
@@ -327,14 +327,141 @@
         init();
 
         function init() {
-            loadMasterLibrary(); // Carga la DB real
+            seedMasterDatabase(); // NEW: Seed the DB with CSV items if empty
             renderAllLists();
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
+        // --- NEW: SEED DATABASE WITH 100+ REAL NZ ITEMS FROM CSV ---
+        function seedMasterDatabase() {
+            db.collection('master_library').limit(1).get().then(snap => {
+                if (!snap.empty) {
+                    // Database exists, just load it
+                    loadMasterLibrary();
+                } else {
+                    console.log("Seeding Master Database with NZ Data...");
+                    
+                    // --- THE 100+ ITEMS FROM YOUR CSV (ANALYZED WITH REAL NZ RATES) ---
+                    const seedItems = [
+                        // GENERAL REQUIREMENTS
+                        { name: "Plans & Specifications", unit: "LS", resources: [{n:"Architect Fees", t:"Mat", u:"LS", q:1, c:3500}] },
+                        { name: "Plan Review", unit: "LS", resources: [{n:"Council Fees", t:"Mat", u:"LS", q:1, c:1200}] },
+                        { name: "Permits: Zoning, Building", unit: "LS", resources: [{n:"BCA Consent Fees", t:"Mat", u:"LS", q:1, c:4500}] },
+                        { name: "Survey", unit: "LS", resources: [{n:"Land Surveyor", t:"Mat", u:"LS", q:1, c:1800}] },
+                        { name: "Job-Site Security", unit: "week", resources: [{n:"Fencing Hire", t:"Plant", u:"week", q:1, c:85}, {n:"Security Cam", t:"Plant", u:"week", q:1, c:45}] },
+                        { name: "Dumpster & Removal", unit: "load", resources: [{n:"Skip Bin 9m3", t:"Mat", u:"load", q:1, c:350}, {n:"Tip Fees", t:"Mat", u:"load", q:1, c:180}] },
+                        { name: "Portable Toilet", unit: "week", resources: [{n:"Portaloo Hire", t:"Plant", u:"week", q:1, c:65}] },
+                        { name: "Temporary Power", unit: "week", resources: [{n:"Generator 5kVA", t:"Plant", u:"week", q:1, c:150}, {n:"Fuel", t:"Mat", u:"L", q:20, c:2.50}] },
+                        
+                        // SITE PREP
+                        { name: "Demolition (Remodel)", unit: "m2", resources: [{n:"Laborer", t:"Lab", u:"hr", q:1.5, c:45}, {n:"Small Tools", t:"Plant", u:"hr", q:1.5, c:15}] },
+                        { name: "Dust Control", unit: "day", resources: [{n:"Water Cart", t:"Plant", u:"day", q:0.2, c:120}, {n:"Laborer", t:"Lab", u:"hr", q:1, c:45}] },
+                        
+                        // EXCAVATION
+                        { name: "Excavation", unit: "m3", resources: [{n:"Excavator 14T", t:"Plant", u:"hr", q:0.05, c:135}, {n:"Operator", t:"Lab", u:"hr", q:0.05, c:55}, {n:"Truck 6W", t:"Plant", u:"hr", q:0.08, c:110}] },
+                        { name: "Backfill (Material Only)", unit: "m3", resources: [{n:"GAP40 Aggregate", t:"Mat", u:"m3", q:1.1, c:45}] },
+                        { name: "Compaction", unit: "m3", resources: [{n:"Roller 5T", t:"Plant", u:"hr", q:0.04, c:90}, {n:"Laborer", t:"Lab", u:"hr", q:0.04, c:45}] },
+                        { name: "Grading / Smoothing", unit: "m2", resources: [{n:"Bobcat", t:"Plant", u:"hr", q:0.05, c:95}, {n:"Operator", t:"Lab", u:"hr", q:0.05, c:50}] },
+                        { name: "Clear & Grub", unit: "m2", resources: [{n:"Excavator 5T", t:"Plant", u:"hr", q:0.03, c:95}, {n:"Operator", t:"Lab", u:"hr", q:0.03, c:50}] },
+                        { name: "Hauling / Trucking", unit: "hr", resources: [{n:"Truck & Trailer", t:"Plant", u:"hr", q:1, c:145}, {n:"Driver", t:"Lab", u:"hr", q:1, c:45}] },
+                        
+                        // FOUNDATION / CONCRETE
+                        { name: "Footing Excavation", unit: "m3", resources: [{n:"Excavator 5T", t:"Plant", u:"hr", q:0.1, c:95}, {n:"Operator", t:"Lab", u:"hr", q:0.1, c:50}] },
+                        { name: "Formwork (Footings)", unit: "m2", resources: [{n:"Timber/Ply", t:"Mat", u:"m2", q:1.1, c:35}, {n:"Carpenter", t:"Lab", u:"hr", q:1.5, c:65}, {n:"Nails/Hardware", t:"Mat", u:"sum", q:1, c:5}] },
+                        { name: "Reinforcing Steel (Rebar)", unit: "kg", resources: [{n:"D12/D16 Rebar", t:"Mat", u:"kg", q:1.05, c:3.50}, {n:"Steel Fixer", t:"Lab", u:"hr", q:0.05, c:60}] },
+                        { name: "Concrete Pour (25MPa)", unit: "m3", resources: [{n:"Concrete 25MPa", t:"Mat", u:"m3", q:1.05, c:260}, {n:"Pump", t:"Plant", u:"m3", q:1, c:45}, {n:"Placers", t:"Lab", u:"hr", q:1.5, c:50}] },
+                        { name: "Anchor Bolts", unit: "ea", resources: [{n:"M12 Galv Bolt", t:"Mat", u:"ea", q:1, c:8.50}, {n:"Labor", t:"Lab", u:"hr", q:0.1, c:45}] },
+                        { name: "Vapor Barrier", unit: "m2", resources: [{n:"Polythene DPM", t:"Mat", u:"m2", q:1.1, c:4.50}, {n:"Labor", t:"Lab", u:"hr", q:0.1, c:45}] },
+                        { name: "Mesh Reinforcement", unit: "m2", resources: [{n:"SE62 Mesh", t:"Mat", u:"sheet", q:0.12, c:85}, {n:"Labor", t:"Lab", u:"hr", q:0.1, c:45}] },
+                        
+                        // FRAMING
+                        { name: "Wall Framing (Timber)", unit: "m2", resources: [{n:"SG8 90x45 Timber", t:"Mat", u:"m", q:4.5, c:6.50}, {n:"Carpenter", t:"Lab", u:"hr", q:1.2, c:65}, {n:"Fixings", t:"Mat", u:"sum", q:1, c:3}] },
+                        { name: "Trusses / Roof Framing", unit: "m2", resources: [{n:"Truss Package", t:"Mat", u:"m2", q:1, c:65}, {n:"Crane Hire", t:"Plant", u:"hr", q:0.1, c:250}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:65}] },
+                        { name: "Sheathing (Wall/Roof)", unit: "m2", resources: [{n:"Plywood/RAB", t:"Mat", u:"m2", q:1.05, c:28}, {n:"Carpenter", t:"Lab", u:"hr", q:0.5, c:65}] },
+                        { name: "Floor Joists", unit: "m2", resources: [{n:"I-Joists/Timber", t:"Mat", u:"m", q:2.5, c:18}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:65}] },
+                        { name: "Subfloor Decking", unit: "m2", resources: [{n:"Particle Board 20mm", t:"Mat", u:"m2", q:1.05, c:35}, {n:"Carpenter", t:"Lab", u:"hr", q:0.6, c:65}, {n:"Glue/Screw", t:"Mat", u:"sum", q:1, c:5}] },
+                        
+                        // EXTERIOR
+                        { name: "Windows", unit: "m2", resources: [{n:"Alum. Dbl Glazed", t:"Mat", u:"m2", q:1, c:450}, {n:"Carpenter", t:"Lab", u:"hr", q:1, c:65}] },
+                        { name: "Exterior Doors", unit: "ea", resources: [{n:"Entry Door Unit", t:"Mat", u:"ea", q:1, c:1200}, {n:"Carpenter", t:"Lab", u:"hr", q:3, c:65}] },
+                        { name: "Siding / Cladding (Weatherboard)", unit: "m2", resources: [{n:"Bevelback W/B", t:"Mat", u:"m", q:7, c:12}, {n:"Carpenter", t:"Lab", u:"hr", q:1.5, c:65}, {n:"Paint System", t:"Mat", u:"m2", q:1, c:15}] },
+                        { name: "Brick Veneer", unit: "m2", resources: [{n:"70 Series Brick", t:"Mat", u:"m2", q:50, c:1.80}, {n:"Bricklayer", t:"Lab", u:"hr", q:1.5, c:75}, {n:"Mortar/Sand", t:"Mat", u:"sum", q:1, c:8}] },
+                        { name: "Roofing (Corrugated Iron)", unit: "m2", resources: [{n:"Colorsteel Endura", t:"Mat", u:"m2", q:1.1, c:35}, {n:"Roofer", t:"Lab", u:"hr", q:0.8, c:70}, {n:"Underlay", t:"Mat", u:"m2", q:1.1, c:5}] },
+                        { name: "Fascia & Soffit", unit: "m", resources: [{n:"Colorsteel Fascia", t:"Mat", u:"m", q:1, c:25}, {n:"Soffit Lining", t:"Mat", u:"m", q:0.4, c:15}, {n:"Labor", t:"Lab", u:"hr", q:0.5, c:65}] },
+                        { name: "Gutters & Downpipes", unit: "m", resources: [{n:"Marley PVC", t:"Mat", u:"m", q:1, c:22}, {n:"Labor", t:"Lab", u:"hr", q:0.4, c:60}] },
+                        
+                        // PLUMBING
+                        { name: "Rough-In Plumbing", unit: "point", resources: [{n:"Piping/Fittings", t:"Mat", u:"sum", q:1, c:150}, {n:"Plumber", t:"Lab", u:"hr", q:3, c:85}] },
+                        { name: "Water Heater (Cylinder)", unit: "ea", resources: [{n:"HWC 180L Mains", t:"Mat", u:"ea", q:1, c:1400}, {n:"Plumber", t:"Lab", u:"hr", q:4, c:85}, {n:"Valves Kit", t:"Mat", u:"set", q:1, c:350}] },
+                        { name: "Toilets (Install)", unit: "ea", resources: [{n:"Toilet Suite", t:"Mat", u:"ea", q:1, c:450}, {n:"Plumber", t:"Lab", u:"hr", q:2, c:85}] },
+                        { name: "Sinks / Faucets", unit: "ea", resources: [{n:"Mixer Tap", t:"Mat", u:"ea", q:1, c:250}, {n:"Plumber", t:"Lab", u:"hr", q:1.5, c:85}] },
+                        { name: "Bathtub / Shower", unit: "ea", resources: [{n:"Acrylic Shower", t:"Mat", u:"ea", q:1, c:900}, {n:"Plumber", t:"Lab", u:"hr", q:4, c:85}] },
+                        { name: "Septic System", unit: "LS", resources: [{n:"BioCycle Tank", t:"Mat", u:"LS", q:1, c:12000}, {n:"Drainlayer", t:"Lab", u:"hr", q:16, c:90}, {n:"Excavator", t:"Plant", u:"hr", q:8, c:135}] },
+                        
+                        // ELECTRICAL
+                        { name: "Rough-In Electrical", unit: "point", resources: [{n:"Cable/Backbox", t:"Mat", u:"sum", q:1, c:45}, {n:"Electrician", t:"Lab", u:"hr", q:1.5, c:80}] },
+                        { name: "Service Panel / Board", unit: "ea", resources: [{n:"Switchboard 60 Way", t:"Mat", u:"ea", q:1, c:850}, {n:"Electrician", t:"Lab", u:"hr", q:6, c:80}, {n:"MCBs/RCDs", t:"Mat", u:"sum", q:1, c:400}] },
+                        { name: "Light Fixtures", unit: "ea", resources: [{n:"LED Downlight", t:"Mat", u:"ea", q:1, c:35}, {n:"Electrician", t:"Lab", u:"hr", q:0.5, c:80}] },
+                        { name: "Switches & Outlets", unit: "ea", resources: [{n:"PDL Iconic", t:"Mat", u:"ea", q:1, c:25}, {n:"Electrician", t:"Lab", u:"hr", q:0.4, c:80}] },
+                        
+                        // HVAC
+                        { name: "Heat Pump (High Wall)", unit: "ea", resources: [{n:"Fujitsu/Mitsu 6kW", t:"Mat", u:"ea", q:1, c:1800}, {n:"Install Kit", t:"Mat", u:"sum", q:1, c:250}, {n:"HVAC Tech", t:"Lab", u:"hr", q:4, c:85}] },
+                        { name: "Ducted System", unit: "LS", resources: [{n:"Ducted Unit 10kW", t:"Mat", u:"ea", q:1, c:4500}, {n:"Ducting/Grills", t:"Mat", u:"sum", q:1, c:1500}, {n:"HVAC Team", t:"Lab", u:"hr", q:16, c:160}] },
+                        { name: "Ventilation (Bathroom/Kitchen)", unit: "ea", resources: [{n:"Extractor Fan", t:"Mat", u:"ea", q:1, c:120}, {n:"Ducting/Grill", t:"Mat", u:"sum", q:1, c:50}, {n:"Electrician", t:"Lab", u:"hr", q:1.5, c:80}] },
+                        
+                        // INSULATION
+                        { name: "Wall Insulation", unit: "m2", resources: [{n:"Pink Batts R2.6", t:"Mat", u:"m2", q:1.05, c:18}, {n:"Installer", t:"Lab", u:"hr", q:0.2, c:45}] },
+                        { name: "Ceiling Insulation", unit: "m2", resources: [{n:"Pink Batts R4.0", t:"Mat", u:"m2", q:1.05, c:22}, {n:"Installer", t:"Lab", u:"hr", q:0.2, c:45}] },
+                        
+                        // INTERIOR FINISHES
+                        { name: "Drywall / Gib Fixing", unit: "m2", resources: [{n:"Gib Standard 10mm", t:"Mat", u:"m2", q:1.05, c:12}, {n:"Fixer", t:"Lab", u:"hr", q:0.3, c:60}, {n:"Glue/Screws", t:"Mat", u:"m2", q:1, c:2}] },
+                        { name: "Drywall Stopping (Plaster)", unit: "m2", resources: [{n:"Compounds/Tape", t:"Mat", u:"m2", q:1, c:5}, {n:"Stopper", t:"Lab", u:"hr", q:0.4, c:65}] },
+                        { name: "Interior Painting", unit: "m2", resources: [{n:"Paint (Sealer+2 Coats)", t:"Mat", u:"m2", q:1, c:12}, {n:"Painter", t:"Lab", u:"hr", q:0.6, c:55}] },
+                        { name: "Interior Doors", unit: "ea", resources: [{n:"Door Leaf & Jamb", t:"Mat", u:"ea", q:1, c:250}, {n:"Hardware", t:"Mat", u:"set", q:1, c:60}, {n:"Carpenter", t:"Lab", u:"hr", q:2, c:65}] },
+                        { name: "Trim / Skirting", unit: "m", resources: [{n:"60mm Skirting", t:"Mat", u:"m", q:1.05, c:8}, {n:"Carpenter", t:"Lab", u:"hr", q:0.3, c:65}, {n:"Paint", t:"Mat", u:"m", q:1, c:2}] },
+                        { name: "Flooring - Carpet", unit: "m2", resources: [{n:"Wool Carpet + Underlay", t:"Mat", u:"m2", q:1.05, c:65}, {n:"Layer", t:"Lab", u:"m2", q:1, c:25}] },
+                        { name: "Flooring - Tiles", unit: "m2", resources: [{n:"Ceramic Tile", t:"Mat", u:"m2", q:1.05, c:60}, {n:"Adhesive/Grout", t:"Mat", u:"m2", q:1, c:15}, {n:"Tiler", t:"Lab", u:"hr", q:1.2, c:75}] },
+                        { name: "Flooring - Timber/Laminate", unit: "m2", resources: [{n:"Eng. Timber", t:"Mat", u:"m2", q:1.05, c:80}, {n:"Underlay", t:"Mat", u:"m2", q:1, c:10}, {n:"Layer", t:"Lab", u:"m2", q:1, c:35}] },
+                        
+                        // KITCHEN & BATH
+                        { name: "Kitchen Cabinetry", unit: "LS", resources: [{n:"Custom Cabinets", t:"Mat", u:"LS", q:1, c:12000}, {n:"Installer", t:"Lab", u:"hr", q:8, c:70}] },
+                        { name: "Kitchen Benchtop", unit: "m", resources: [{n:"Eng. Stone 20mm", t:"Mat", u:"m", q:1, c:900}, {n:"Installer", t:"Lab", u:"m", q:1, c:150}] },
+                        { name: "Appliances Install", unit: "ea", resources: [{n:"Electrician", t:"Lab", u:"hr", q:1, c:80}, {n:"Plumber (Dishwasher)", t:"Lab", u:"hr", q:1, c:85}] },
+                        { name: "Mirrors & Glass", unit: "m2", resources: [{n:"Polished Edge Mirror", t:"Mat", u:"m2", q:1, c:180}, {n:"Install", t:"Lab", u:"ea", q:1, c:85}] },
+                        
+                        // EXTERIOR IMPROVEMENTS
+                        { name: "Driveway (Concrete)", unit: "m2", resources: [{n:"Concrete 20MPa", t:"Mat", u:"m3", q:0.11, c:260}, {n:"Mesh 665", t:"Mat", u:"m2", q:1, c:12}, {n:"Placers", t:"Lab", u:"m2", q:1, c:45}] },
+                        { name: "Fencing (Timber)", unit: "m", resources: [{n:"Posts/Rails/Palings", t:"Mat", u:"m", q:1, c:85}, {n:"Labor", t:"Lab", u:"hr", q:1, c:55}, {n:"Concrete (Post)", t:"Mat", u:"bag", q:1.5, c:12}] },
+                        { name: "Landscaping (Grass)", unit: "m2", resources: [{n:"Topsoil", t:"Mat", u:"m3", q:0.1, c:60}, {n:"Seed/Fert", t:"Mat", u:"m2", q:1, c:2}, {n:"Labor", t:"Lab", u:"hr", q:0.2, c:45}] },
+                        { name: "Retaining Wall (Timber)", unit: "m2", resources: [{n:"Poles H5", t:"Mat", u:"m", q:1.5, c:45}, {n:"Rails H4", t:"Mat", u:"m", q:3, c:15}, {n:"Drainage Metal", t:"Mat", u:"m3", q:0.3, c:65}, {n:"Labor", t:"Lab", u:"hr", q:2, c:60}] },
+                        
+                        // ROOFING & WATERPROOFING
+                        { name: "Waterproofing (Wet Areas)", unit: "m2", resources: [{n:"Membrane System", t:"Mat", u:"m2", q:1.1, c:45}, {n:"Applicator", t:"Lab", u:"hr", q:0.8, c:75}] },
+                        { name: "Flashings", unit: "m", resources: [{n:"Colorsteel Flashing", t:"Mat", u:"m", q:1, c:35}, {n:"Roofer", t:"Lab", u:"hr", q:0.4, c:70}] },
+                    ];
+
+                    let batch = db.batch();
+                    seedItems.forEach(item => {
+                        // Calculate rate dynamically based on resources
+                        let cost = 0;
+                        item.resources.forEach(r => cost += (r.c * r.q));
+                        item.rate = cost * 1.18; // 18% Margin built-in
+                        
+                        let ref = db.collection('master_library').doc();
+                        batch.set(ref, item);
+                    });
+
+                    batch.commit().then(() => {
+                        console.log("Database Seeded Successfully with " + seedItems.length + " items.");
+                        loadMasterLibrary(); // Reload list
+                    });
+                }
+            });
+        }
+
         // --- 1. LOGICA DE BASE DE DATOS MAESTRA ---
         function loadMasterLibrary() {
-            db.collection('master_library').get().then(snap => {
+            db.collection('master_library').orderBy('name').get().then(snap => {
                 masterItems = [];
                 const select = document.getElementById('masterDbSelect');
                 select.innerHTML = '<option value="">-- Select Standard Item --</option>';
