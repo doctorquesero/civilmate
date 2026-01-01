@@ -48,8 +48,8 @@
             <h3 class="font-bold text-purple-800 flex items-center gap-2">
                 <i class="fas fa-plus-circle"></i> Raise New Variation Price Request
             </h3>
-            <button onclick="openEstimator()" class="text-xs bg-white text-purple-700 border border-purple-200 px-3 py-1.5 rounded hover:bg-purple-100 font-bold shadow-sm">
-                <i class="fas fa-calculator mr-1"></i> Build Rate (Estimator)
+            <button onclick="openEstimator()" class="text-xs bg-white text-purple-700 border border-purple-200 px-3 py-1.5 rounded hover:bg-purple-100 font-bold shadow-sm flex items-center gap-2">
+                <i class="fas fa-database"></i> Open VO Cost Analyst
             </button>
         </div>
         
@@ -60,7 +60,7 @@
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Unit</label>
-                <input type="text" id="voUnit" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="m, m3, sum">
+                <input type="text" id="voUnit" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="m, m3">
             </div>
             <div>
                 <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Qty</label>
@@ -77,36 +77,26 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-purple-200 pt-4 mb-4">
-            
             <div class="bg-red-50 p-3 rounded border border-red-100">
                 <p class="text-[9px] font-bold text-red-500 uppercase mb-2"><i class="fas fa-gavel"></i> LBP / Building Act Check</p>
                 <div class="flex items-start gap-2">
                     <input type="checkbox" id="checkConsent" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
-                    <label for="checkConsent" class="text-[10px] text-slate-600 cursor-pointer">
-                        I confirm this implies NO change to the Consent <br>
-                        <strong>OR</strong> <br>
-                        The Owner has provided the approved Amendment/Minor Variation.
-                    </label>
+                    <label for="checkConsent" class="text-[10px] text-slate-600 cursor-pointer">I confirm this implies NO change to the Consent OR The Owner has provided the Amendment.</label>
                 </div>
             </div>
-
             <div class="bg-blue-50 p-3 rounded border border-blue-100">
                 <p class="text-[9px] font-bold text-blue-500 uppercase mb-2"><i class="fas fa-hard-hat"></i> H&S / Safe Work Check</p>
                 <div class="flex items-start gap-2">
                     <input type="checkbox" id="checkSafety" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
-                    <label for="checkSafety" class="text-[10px] text-slate-600 cursor-pointer">
-                        I have assessed the new risks and updated the SSSP/Task Analysis for this specific task.
-                    </label>
+                    <label for="checkSafety" class="text-[10px] text-slate-600 cursor-pointer">I have assessed risks and updated SSSP/Task Analysis.</label>
                 </div>
             </div>
-
             <div class="bg-slate-50 p-3 rounded border border-slate-200">
                 <label class="block text-[9px] font-bold text-slate-500 uppercase mb-2"><i class="fas fa-clock"></i> Extension of Time (EOT)</label>
                 <div class="flex items-center gap-2">
                     <input type="number" id="voTime" class="w-full p-2 rounded border border-slate-300 text-xs font-bold text-slate-700" placeholder="0">
                     <span class="text-[10px] text-slate-400 font-bold uppercase">Days</span>
                 </div>
-                <p class="text-[9px] text-slate-400 mt-1">Add to Completion Date?</p>
             </div>
         </div>
         
@@ -114,49 +104,75 @@
             <button onclick="createVO()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded shadow-lg transition flex items-center gap-2 ml-auto">
                 <i class="fas fa-file-signature"></i> Approve & Issue VO
             </button>
-            <p class="text-[9px] text-purple-400 mt-2 italic">* Issuing this VO authorizes the work and amends the Contract Sum.</p>
         </div>
     </div>
 
-    <div id="estimatorModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden">
-            <div class="bg-slate-800 p-4 flex justify-between items-center text-white">
-                <h3 class="font-bold"><i class="fas fa-calculator mr-2"></i>Rate Builder (Net Cost + Margin)</h3>
+    <div id="estimatorModal" class="fixed inset-0 bg-slate-900/80 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
+                <h3 class="font-bold"><i class="fas fa-server mr-2"></i>VO Cost Analyst</h3>
                 <button onclick="closeEstimator()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
-            <div class="p-6">
-                <p class="text-xs text-slate-500 mb-4">NZS 3910 Section 9.3: Valuation by Net Cost</p>
-                
+
+            <div class="p-4 bg-slate-100 border-b border-slate-200 shrink-0">
+                <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Import from Master Database</label>
+                <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 border border-slate-300 rounded text-sm font-bold text-slate-700 shadow-sm">
+                    <option value="">-- Start from Scratch (New Analysis) --</option>
+                </select>
+            </div>
+
+            <div class="p-6 overflow-y-auto">
+                <div class="flex justify-between mb-4">
+                    <div class="w-2/3">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Analysis Name</label>
+                        <input type="text" id="analysisName" class="w-full border-b-2 border-slate-200 focus:border-purple-500 outline-none font-bold text-lg text-slate-800" placeholder="e.g. Concrete Slab 20MPa">
+                    </div>
+                    <div class="w-1/4">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Base Unit</label>
+                        <input type="text" id="analysisUnit" class="w-full border-b-2 border-slate-200 focus:border-purple-500 outline-none text-center font-bold text-slate-600" placeholder="m3">
+                    </div>
+                </div>
+
                 <table class="w-full text-sm mb-4">
                     <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500">
                         <tr>
-                            <th class="p-2 text-left">Resource</th>
-                            <th class="p-2 w-20 text-right">Cost</th>
+                            <th class="p-2 text-left w-1/2">Resource Description</th>
+                            <th class="p-2 text-center w-20">Unit</th>
+                            <th class="p-2 text-center w-20">Yield</th>
+                            <th class="p-2 text-right w-24">Rate</th>
                             <th class="p-2 w-10"></th>
                         </tr>
                     </thead>
-                    <tbody id="estList">
-                        </tbody>
+                    <tbody id="estList"></tbody>
                 </table>
                 
                 <button onclick="addEstItem()" class="text-xs text-blue-600 font-bold hover:underline mb-6">+ Add Resource (Labor/Plant/Mat)</button>
 
-                <div class="bg-slate-50 p-4 rounded border border-slate-200 space-y-2">
+                <div class="bg-purple-50 p-4 rounded border border-purple-100 space-y-2">
                     <div class="flex justify-between text-sm">
-                        <span>Subtotal (Net Cost)</span>
+                        <span>Base Cost (Net)</span>
                         <span id="estSub" class="font-mono">$0.00</span>
                     </div>
                     <div class="flex justify-between text-sm items-center">
                         <span class="text-slate-600">Margin / Profit (%)</span>
-                        <input type="number" id="estMargin" value="15" onchange="calcEst()" class="w-12 text-right border rounded text-xs font-bold p-1">
+                        <input type="number" id="estMargin" value="15" onchange="calcEst()" class="w-16 text-right border rounded text-xs font-bold p-1 bg-white">
                     </div>
-                    <div class="flex justify-between text-lg font-bold text-purple-700 pt-2 border-t border-slate-200">
+                    <div class="flex justify-between text-xl font-bold text-purple-700 pt-2 border-t border-purple-200">
                         <span>Final Unit Rate</span>
                         <span id="estTotal">$0.00</span>
                     </div>
                 </div>
 
-                <button onclick="applyRate()" class="w-full mt-4 bg-purple-600 text-white py-3 rounded font-bold hover:bg-purple-700">Apply Rate to VO</button>
+                <div class="mt-4 flex items-center gap-2 p-3 bg-green-50 rounded border border-green-100">
+                    <input type="checkbox" id="saveToDbCheck" class="w-5 h-5 text-green-600 rounded cursor-pointer" checked>
+                    <div>
+                        <p class="text-xs font-bold text-green-800">Add to Master Database</p>
+                        <p class="text-[10px] text-green-600">CivilMate will remember this analysis for future VOs.</p>
+                    </div>
+                </div>
+
+                <button onclick="applyRate()" class="w-full mt-4 bg-slate-800 text-white py-3 rounded font-bold hover:bg-black shadow-lg transition">Apply Rate & Save</button>
             </div>
         </div>
     </div>
@@ -171,13 +187,17 @@
 
         let currentSchedule = [];
         let projectTotal = 0;
+        let masterItems = []; // Aquí cargaremos la BD Maestra
 
         // ESTIMATOR DATA
-        let estItems = [{ name: "Labor (hr)", cost: 45 }, { name: "Materials", cost: 0 }];
+        let estItems = [{ name: "General Labor", unit: "hr", yield: 1, cost: 45 }];
 
         init();
 
-        function init() { loadProject(); }
+        function init() { 
+            loadProject();
+            loadMasterLibrary(); // Cargar la BD al iniciar
+        }
 
         function loadProject() {
             db.collection('projects').doc(pid).onSnapshot(doc => {
@@ -189,6 +209,130 @@
                     renderTable(currentSchedule);
                 }
             });
+        }
+
+        // --- DATABASE LOGIC ---
+        function loadMasterLibrary() {
+            const select = document.getElementById('masterDbSelect');
+            // Cargar colección 'master_library'
+            db.collection('master_library').get().then(snap => {
+                masterItems = [];
+                select.innerHTML = '<option value="">-- Start from Scratch (New Analysis) --</option>';
+                
+                snap.forEach(doc => {
+                    const item = doc.data();
+                    item.id = doc.id;
+                    masterItems.push(item);
+                    select.innerHTML += `<option value="${doc.id}">${item.name} (${item.unit}) - $${item.rate.toFixed(2)}</option>`;
+                });
+
+                // Si está vacía (primera vez), usar datos semilla locales
+                if(snap.empty) {
+                    seedLocalData();
+                }
+            });
+        }
+
+        function seedLocalData() {
+            // Datos por defecto si no hay nada en Firebase
+            const seeds = [
+                { name: "Bulk Excavation (Simple)", unit: "m3", rate: 45.00, resources: [{name:"Excavator 20T", unit:"hr", yield:0.04, cost:140}, {name:"Operator", unit:"hr", yield:0.04, cost:45}] },
+                { name: "Concrete Footing 25MPa", unit: "m3", rate: 350.00, resources: [{name:"Concrete 25MPa", unit:"m3", yield:1.05, cost:220}, {name:"Labor", unit:"hr", yield:2, cost:45}] }
+            ];
+            const select = document.getElementById('masterDbSelect');
+            seeds.forEach((item, i) => {
+                // Guardamos en memoria temporal con ID simulado
+                item.id = "local_"+i;
+                masterItems.push(item);
+                select.innerHTML += `<option value="local_${i}">${item.name} (${item.unit}) - $${item.rate.toFixed(2)}</option>`;
+            });
+        }
+
+        function loadFromMaster() {
+            const id = document.getElementById('masterDbSelect').value;
+            if(!id) {
+                // Reset
+                document.getElementById('analysisName').value = "";
+                document.getElementById('analysisUnit').value = "";
+                estItems = [{ name: "", unit: "hr", yield: 1, cost: 0 }];
+                renderEst();
+                return;
+            }
+
+            const item = masterItems.find(i => i.id === id);
+            if(item) {
+                document.getElementById('analysisName').value = item.name;
+                document.getElementById('analysisUnit').value = item.unit;
+                estItems = JSON.parse(JSON.stringify(item.resources || []));
+                renderEst();
+            }
+        }
+
+        // --- ESTIMATOR UI ---
+        function openEstimator() { document.getElementById('estimatorModal').classList.remove('hidden'); renderEst(); }
+        function closeEstimator() { document.getElementById('estimatorModal').classList.add('hidden'); }
+        
+        function addEstItem() { estItems.push({ name: "", unit: "hr", yield: 1, cost: 0 }); renderEst(); }
+        
+        function renderEst() {
+            const list = document.getElementById('estList');
+            list.innerHTML = "";
+            estItems.forEach((item, i) => {
+                list.innerHTML += `
+                    <tr>
+                        <td class="p-1"><input type="text" value="${item.name}" onchange="updEst(${i}, 'name', this.value)" class="w-full border rounded px-2 py-1 text-xs" placeholder="Resource Name"></td>
+                        <td class="p-1"><input type="text" value="${item.unit}" onchange="updEst(${i}, 'unit', this.value)" class="w-full border rounded px-2 py-1 text-xs text-center"></td>
+                        <td class="p-1"><input type="number" value="${item.yield}" onchange="updEst(${i}, 'yield', this.value)" class="w-full border rounded px-2 py-1 text-xs text-center text-blue-600 font-bold"></td>
+                        <td class="p-1"><input type="number" value="${item.cost}" onchange="updEst(${i}, 'cost', this.value)" class="w-full border rounded px-2 py-1 text-xs text-right"></td>
+                        <td class="p-1 text-center"><button onclick="delEst(${i})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>
+                    </tr>
+                `;
+            });
+            calcEst();
+        }
+
+        function updEst(i, f, v) { estItems[i][f] = (f==='yield'||f==='cost') ? (parseFloat(v)||0) : v; calcEst(); }
+        function delEst(i) { estItems.splice(i, 1); renderEst(); }
+
+        function calcEst() {
+            let sub = 0;
+            estItems.forEach(i => sub += (i.yield * i.cost));
+            const margin = parseFloat(document.getElementById('estMargin').value) || 0;
+            const total = sub * (1 + (margin/100));
+            document.getElementById('estSub').innerText = fmtMoney(sub);
+            document.getElementById('estTotal').innerText = fmtMoney(total);
+            return total;
+        }
+
+        function applyRate() {
+            const finalRate = calcEst();
+            const name = document.getElementById('analysisName').value;
+            const unit = document.getElementById('analysisUnit').value;
+
+            // 1. LLENAR FORMULARIO PRINCIPAL
+            document.getElementById('voDesc').value = name; // Auto-fill descripción
+            document.getElementById('voUnit').value = unit;
+            document.getElementById('voRate').value = finalRate.toFixed(2);
+            calcTotal();
+
+            // 2. APRENDIZAJE (GUARDAR EN MASTER DB)
+            if(document.getElementById('saveToDbCheck').checked && name) {
+                const newItem = {
+                    name: name,
+                    unit: unit,
+                    rate: finalRate,
+                    resources: estItems,
+                    lastUsed: Date.now()
+                };
+                
+                // Guardar en Firebase 'master_library'
+                db.collection('master_library').add(newItem).then(() => {
+                    console.log("Analysis learned into Master DB");
+                    loadMasterLibrary(); // Recargar dropdown
+                });
+            }
+
+            closeEstimator();
         }
 
         function renderTable(items) {
@@ -219,58 +363,6 @@
             document.getElementById('voTotalDisplay').value = fmtMoney(q * r);
         }
 
-        // --- MINI ESTIMATOR FUNCTIONS ---
-        function openEstimator() { 
-            document.getElementById('estimatorModal').classList.remove('hidden'); 
-            renderEst();
-        }
-        function closeEstimator() { document.getElementById('estimatorModal').classList.add('hidden'); }
-        
-        function addEstItem() { estItems.push({ name: "", cost: 0 }); renderEst(); }
-        
-        function renderEst() {
-            const list = document.getElementById('estList');
-            list.innerHTML = "";
-            estItems.forEach((item, i) => {
-                list.innerHTML += `
-                    <tr>
-                        <td class="p-1"><input type="text" value="${item.name}" onchange="updEst(${i}, 'name', this.value)" class="w-full border rounded px-2 py-1 text-xs" placeholder="Desc"></td>
-                        <td class="p-1"><input type="number" value="${item.cost}" onchange="updEst(${i}, 'cost', this.value)" class="w-full border rounded px-2 py-1 text-xs text-right"></td>
-                        <td class="p-1 text-center"><button onclick="delEst(${i})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>
-                    </tr>
-                `;
-            });
-            calcEst();
-        }
-
-        function updEst(i, field, val) { 
-            estItems[i][field] = field === 'cost' ? parseFloat(val) || 0 : val; 
-            calcEst(); 
-        }
-        function delEst(i) { estItems.splice(i, 1); renderEst(); }
-
-        function calcEst() {
-            let sub = 0;
-            estItems.forEach(i => sub += i.cost);
-            const margin = parseFloat(document.getElementById('estMargin').value) || 0;
-            const total = sub * (1 + (margin/100));
-            
-            document.getElementById('estSub').innerText = fmtMoney(sub);
-            document.getElementById('estTotal').innerText = fmtMoney(total);
-            return total; // Retorna el valor numérico
-        }
-
-        function applyRate() {
-            const rate = calcEst(); // Recalcula para asegurar
-            // Quitar el símbolo de $ y la coma para el input
-            const rateNum = parseFloat(document.getElementById('estTotal').innerText.replace('$','').replace(',',''));
-            
-            document.getElementById('voRate').value = rateNum.toFixed(2);
-            calcTotal(); // Actualizar el total principal
-            closeEstimator();
-        }
-
-        // --- MAIN CREATE FUNCTION ---
         function createVO() {
             const desc = document.getElementById('voDesc').value;
             const unit = document.getElementById('voUnit').value;
@@ -308,7 +400,6 @@
                 updatedAt: Date.now()
             }).then(() => {
                 alert("✅ VO #" + voCount + " ISSUED SUCCESSFULLY.");
-                // Reset UI
                 document.getElementById('voDesc').value = "";
                 document.getElementById('voQty').value = "";
                 document.getElementById('voRate').value = "";
