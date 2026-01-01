@@ -27,10 +27,10 @@
     </div>
 
     <div class="mb-4">
-        <label class="text-[10px] font-bold text-slate-500 uppercase">Active Project</label>
-        <div class="bg-slate-800 p-3 rounded-lg border border-blue-900 mt-1">
-            <h2 class="font-bold text-lg text-white truncate" id="projectName">Loading...</h2>
-        </div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Select Active Project</label>
+        <select id="projectSelect" onchange="changeProject()" class="w-full bg-slate-800 p-3 rounded-lg border border-blue-900 mt-1 font-bold text-lg text-white outline-none focus:border-blue-500">
+            <option value="">Loading Projects...</option>
+        </select>
     </div>
 
     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 mb-4">
@@ -54,7 +54,7 @@
         <div>
             <label class="text-[10px] font-bold text-slate-500 uppercase">What are you working on?</label>
             <select id="itemSelect" class="input-dark mt-1" onchange="updateUnitLabel()">
-                <option value="">-- Select Item from Contract --</option>
+                <option value="">-- First Select Project --</option>
             </select>
             <p class="text-right mt-1"><a href="#" onclick="toggleExtraWork()" class="text-xs text-yellow-500 hover:underline">+ Report Unforeseen / Extra Work</a></p>
         </div>
@@ -99,7 +99,7 @@
     <div class="mt-8 border-t border-slate-800 pt-4">
         <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Today's Logs</h3>
         <div id="todayList" class="space-y-2 text-sm text-slate-400">
-            <p class="italic opacity-50">No logs yet today.</p>
+            <p class="italic opacity-50">Loading logs...</p>
         </div>
     </div>
 
@@ -108,43 +108,81 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        const pid = localStorage.getItem('civilmate_current_project_id');
-        if(!pid) { alert("Please select a project from the Dashboard first."); window.location.href='index.html'; }
-
+        let currentPid = localStorage.getItem('civilmate_current_project_id'); // ID inicial
         let compressedImage = null;
         let contractItems = [];
 
         // INIT
         document.getElementById('logDate').valueAsDate = new Date();
-        loadProjectData();
-        loadTodayLogs();
+        loadAllActiveProjects(); // Cargamos la lista de proyectos
 
-        function loadProjectData() {
-            db.collection('projects').doc(pid).get().then(doc => {
-                if(doc.exists) {
+        function loadAllActiveProjects() {
+            const select = document.getElementById('projectSelect');
+            select.innerHTML = '<option value="">Loading...</option>';
+
+            // Buscamos proyectos Activos o Pendientes (para pruebas)
+            db.collection('projects').where('status', 'in', ['Active', 'Pending', 'Won']).get().then(snap => {
+                select.innerHTML = '<option value="">-- Select Project --</option>';
+                
+                if (snap.empty) {
+                    select.innerHTML = '<option value="">No Active Projects Found</option>';
+                    return;
+                }
+
+                snap.forEach(doc => {
                     const p = doc.data();
-                    document.getElementById('projectName').innerText = p.name;
-                    
-                    // --- CORRECCIÓN: Soporte robusto para schedule/items ---
-                    contractItems = p.schedule || p.items || [];
-                    
-                    const sel = document.getElementById('itemSelect');
-                    sel.innerHTML = '<option value="">-- Select Item from Contract --</option>';
-                    
-                    contractItems.forEach((item, idx) => {
-                        // Forzamos un string válido para evitar "undefined" en el menú
-                        const name = item.desc || item.name || "Unnamed Item #" + (idx + 1);
-                        sel.innerHTML += `<option value="${idx}">${name}</option>`;
-                    });
+                    const isSelected = doc.id === currentPid ? 'selected' : '';
+                    select.innerHTML += `<option value="${doc.id}" ${isSelected}>${p.name}</option>`;
+                });
+
+                // Si ya había un proyecto seleccionado, cargar sus datos
+                if (currentPid) {
+                    loadProjectData(currentPid);
                 }
             });
+        }
+
+        function changeProject() {
+            const newPid = document.getElementById('projectSelect').value;
+            if (newPid) {
+                currentPid = newPid;
+                localStorage.setItem('civilmate_current_project_id', newPid); // Guardar para otras apps
+                loadProjectData(newPid);
+                loadTodayLogs(); // Recargar logs de este proyecto
+            } else {
+                document.getElementById('itemSelect').innerHTML = '<option value="">-- Select Project First --</option>';
+            }
+        }
+
+        function loadProjectData(id) {
+            db.collection('projects').doc(id).get().then(doc => {
+                if(doc.exists) {
+                    const p = doc.data();
+                    
+                    // --- PROTECCIÓN CONTRA UNDEFINED ---
+                    contractItems = p.schedule || p.items || [];
+                    
+                    const itemSel = document.getElementById('itemSelect');
+                    itemSel.innerHTML = '<option value="">-- Select Item from Contract --</option>';
+                    
+                    if (contractItems.length === 0) {
+                        itemSel.innerHTML = '<option value="">(No Items found in Contract)</option>';
+                    } else {
+                        contractItems.forEach((item, idx) => {
+                            // Validar nombre para evitar "undefined"
+                            const name = item.desc || item.name || `Item #${idx+1}`;
+                            itemSel.innerHTML += `<option value="${idx}">${name}</option>`;
+                        });
+                    }
+                }
+            });
+            loadTodayLogs();
         }
 
         function updateUnitLabel() {
             const idx = document.getElementById('itemSelect').value;
             if(idx !== "") {
                 const item = contractItems[idx];
-                // Protección contra unidad indefinida
                 document.getElementById('unitDisplay').value = item.unit || "ls";
                 document.getElementById('extraWorkArea').classList.add('hidden');
             }
@@ -168,21 +206,13 @@
                         const canvas = document.createElement('canvas');
                         let width = img.width;
                         let height = img.height;
-                        
-                        const maxSize = 800; // Reducir a 800px para evitar payload error
-                        if (width > height) {
-                            if (width > maxSize) { height *= maxSize / width; width = maxSize; }
-                        } else {
-                            if (height > maxSize) { width *= maxSize / height; height = maxSize; }
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
+                        const maxSize = 800;
+                        if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } } 
+                        else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
+                        canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
                         compressedImage = canvas.toDataURL('image/jpeg', 0.7);
-                        
                         document.getElementById('imgPreview').src = compressedImage;
                         document.getElementById('imgPreview').classList.remove('hidden');
                         document.querySelector('.fa-camera').classList.add('hidden');
@@ -194,6 +224,8 @@
         }
 
         function saveLog() {
+            if (!currentPid) return alert("Select a project first!");
+
             const btn = document.getElementById('btnSave');
             const status = document.getElementById('statusMsg');
             const idx = document.getElementById('itemSelect').value;
@@ -207,77 +239,70 @@
             let unit = "";
 
             if (idx !== "") {
-                // --- CORRECCIÓN CRÍTICA AQUÍ ---
-                // Forzamos un valor por defecto si desc/name son undefined
-                itemName = contractItems[idx].desc || contractItems[idx].name || "Item #" + (parseInt(idx)+1);
-                unit = contractItems[idx].unit || "ls";
+                // --- FIX LOOP: Validar nombre antes de enviar ---
+                const item = contractItems[idx];
+                itemName = item.desc || item.name || "Item #" + (parseInt(idx)+1);
+                unit = item.unit || "ls";
             } else if (extraDesc) {
                 itemName = "EXTRA: " + extraDesc;
                 unit = document.getElementById('unitDisplay').value;
             } else {
-                alert("Please select an item or describe the extra work.");
+                alert("Please select an item or describe extra work.");
                 return;
             }
 
             if (!qty) { alert("Please enter a quantity."); return; }
 
-            // Bloquear botón
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             btn.disabled = true;
 
             const logData = {
-                projectId: pid,
+                projectId: currentPid,
                 date: date,
-                itemName: itemName, // Ahora garantizamos que esto NUNCA es undefined
+                itemName: itemName,
                 qty: qty,
                 unit: unit,
                 weather: weather,
                 notes: notes,
-                photo: compressedImage || null, // null si no hay foto
+                photo: compressedImage || null,
                 timestamp: Date.now()
             };
 
-            db.collection('site_logs').add(logData)
-            .then(() => {
-                status.innerText = "✅ Log Saved Successfully!";
+            db.collection('site_logs').add(logData).then(() => {
+                status.innerText = "✅ Saved!";
                 status.className = "text-center text-xs mt-2 text-green-400 font-bold";
-                
-                // Reset UI
                 document.getElementById('qtyInput').value = "";
                 document.getElementById('notesInput').value = "";
                 document.getElementById('imgPreview').classList.add('hidden');
                 document.querySelector('.fa-camera').classList.remove('hidden');
                 compressedImage = null;
-                
                 loadTodayLogs();
-                
                 setTimeout(() => { 
                     btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
                     btn.disabled = false;
                     status.innerText = "";
                 }, 2000);
-
             }).catch((error) => {
                 console.error("Firebase Error:", error);
-                alert("Error saving: " + error.message);
+                alert("Error: " + error.message);
                 btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
                 btn.disabled = false;
             });
         }
 
         function loadTodayLogs() {
+            if (!currentPid) return;
             const today = document.getElementById('logDate').value;
             db.collection('site_logs')
-                .where('projectId', '==', pid)
+                .where('projectId', '==', currentPid)
                 .where('date', '==', today)
                 .get().then(snap => {
                     const div = document.getElementById('todayList');
                     div.innerHTML = "";
                     if(snap.empty) { div.innerHTML = '<p class="italic opacity-50">No logs yet today.</p>'; return; }
-                    
                     snap.forEach(doc => {
                         const d = doc.data();
-                        div.innerHTML += `<div class="bg-slate-800 p-2 rounded border border-slate-700 flex justify-between"><span>${d.itemName}</span> <span class="text-green-400 font-bold">${d.qty} ${d.unit}</span></div>`;
+                        div.innerHTML += `<div class="bg-slate-800 p-2 rounded border border-slate-700 flex justify-between mb-1"><span>${d.itemName}</span> <span class="text-green-400 font-bold">${d.qty} ${d.unit}</span></div>`;
                     });
                 });
         }
