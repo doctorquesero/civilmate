@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Variations Manager - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }</style>
+</head>
+<body class="p-6 max-w-[1200px] mx-auto min-h-screen">
+
+    <header class="mb-8 flex justify-between items-center">
+        <div>
+            <button onclick="window.location.href='project_hub.html'" class="text-sm text-slate-400 hover:text-slate-600 mb-2">
+                <i class="fas fa-arrow-left"></i> Back to Hub
+            </button>
+            <h1 class="text-3xl font-bold text-slate-800">Variations Register (VOs)</h1>
+            <p class="text-slate-500 text-sm">NZS 3910 - Section 9: Variations</p>
+        </div>
+        <div class="text-right">
+            <p class="text-xs font-bold text-slate-400 uppercase">Revised Contract Sum</p>
+            <h2 class="text-2xl font-bold text-purple-700" id="revisedTotal">$0.00</h2>
+        </div>
+    </header>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <table class="w-full text-left">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                <tr>
+                    <th class="p-4">VO #</th>
+                    <th class="p-4">Description of Change</th>
+                    <th class="p-4 text-center">Status</th>
+                    <th class="p-4 text-right">Value (Ex GST)</th>
+                    <th class="p-4"></th>
+                </tr>
+            </thead>
+            <tbody id="voTable" class="divide-y divide-slate-100 text-sm text-slate-700">
+                <tr><td colspan="5" class="p-6 text-center text-slate-400 italic">Loading Variations...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bg-purple-50 p-6 rounded-xl border border-purple-100 shadow-inner">
+        <h3 class="font-bold text-purple-800 mb-4 flex items-center gap-2">
+            <i class="fas fa-plus-circle"></i> Raise New Variation Price Request
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-4">
+            <div class="md:col-span-2">
+                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Description</label>
+                <input type="text" id="voDesc" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="e.g. Extra Drainage Line">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Unit</label>
+                <input type="text" id="voUnit" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="m, m3, sum">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Qty</label>
+                <input type="number" id="voQty" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Rate ($)</label>
+                <input type="number" id="voRate" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0.00">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-purple-200 pt-4 mb-4">
+            
+            <div class="bg-red-50 p-3 rounded border border-red-100">
+                <p class="text-[9px] font-bold text-red-500 uppercase mb-2"><i class="fas fa-gavel"></i> LBP / Building Act Check</p>
+                <div class="flex items-start gap-2">
+                    <input type="checkbox" id="checkConsent" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
+                    <label for="checkConsent" class="text-[10px] text-slate-600 cursor-pointer">
+                        I confirm this implies NO change to the Consent <br>
+                        <strong>OR</strong> <br>
+                        The Owner has provided the approved Amendment/Minor Variation.
+                    </label>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                <p class="text-[9px] font-bold text-blue-500 uppercase mb-2"><i class="fas fa-hard-hat"></i> H&S / Safe Work Check</p>
+                <div class="flex items-start gap-2">
+                    <input type="checkbox" id="checkSafety" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
+                    <label for="checkSafety" class="text-[10px] text-slate-600 cursor-pointer">
+                        I have assessed the new risks and updated the SSSP/Task Analysis for this specific task.
+                    </label>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                <label class="block text-[9px] font-bold text-slate-500 uppercase mb-2"><i class="fas fa-clock"></i> Extension of Time (EOT)</label>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="voTime" class="w-full p-2 rounded border border-slate-300 text-xs font-bold text-slate-700" placeholder="0">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Days</span>
+                </div>
+                <p class="text-[9px] text-slate-400 mt-1">Add to Completion Date?</p>
+            </div>
+        </div>
+        
+        <div class="text-right">
+            <button onclick="createVO()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded shadow-lg transition flex items-center gap-2 ml-auto">
+                <i class="fas fa-file-signature"></i> Approve & Issue VO
+            </button>
+            <p class="text-[9px] text-purple-400 mt-2 italic">* Issuing this VO authorizes the work and amends the Contract Sum.</p>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const pid = localStorage.getItem('civilmate_current_project_id');
+        if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
+
+        let currentSchedule = [];
+        let projectTotal = 0;
+
+        init();
+
+        function init() {
+            loadProject();
+        }
+
+        function loadProject() {
+            db.collection('projects').doc(pid).onSnapshot(doc => {
+                if(doc.exists) {
+                    const p = doc.data();
+                    currentSchedule = p.schedule || p.items || [];
+                    projectTotal = p.total || 0;
+                    
+                    document.getElementById('revisedTotal').innerText = fmtMoney(projectTotal);
+                    renderTable(currentSchedule);
+                }
+            });
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('voTable');
+            tbody.innerHTML = "";
+            
+            // Filtramos solo los ítems que sean Variaciones (Empiezan con VO#)
+            const variations = items.filter(i => (i.desc || i.name || "").startsWith("VO#"));
+
+            if(variations.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No Variations raised yet.</td></tr>`;
+                return;
+            }
+
+            variations.forEach((vo, index) => {
+                const val = vo.qty * vo.rate;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0">
+                        <td class="p-4 font-bold text-slate-700">VO #${index + 1}</td>
+                        <td class="p-4 font-medium">
+                            ${vo.desc || vo.name}
+                            ${vo.timeImpact ? `<span class="block text-[10px] text-orange-500 font-bold">+ ${vo.timeImpact} Days EOT</span>` : ''}
+                        </td>
+                        <td class="p-4 text-center"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase border border-green-200">Approved</span></td>
+                        <td class="p-4 text-right font-mono">${fmtMoney(val)}</td>
+                        <td class="p-4 text-center text-xs text-slate-400">Integrated to Contract</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function createVO() {
+            const desc = document.getElementById('voDesc').value;
+            const unit = document.getElementById('voUnit').value;
+            const qty = parseFloat(document.getElementById('voQty').value);
+            const rate = parseFloat(document.getElementById('voRate').value);
+            
+            // Compliance Checks
+            const hasConsentCheck = document.getElementById('checkConsent').checked;
+            const hasSafetyCheck = document.getElementById('checkSafety').checked;
+            const timeImpact = document.getElementById('voTime').value || "0";
+
+            if(!desc || !qty || !rate) return alert("Please fill all financial fields (Desc, Qty, Rate).");
+            
+            // BLINDAJE DE SEGURIDAD
+            if(!hasSafetyCheck) return alert("🛑 STOP WORK AUTHORITY:\n\nYou cannot issue a VO without confirming H&S/SSSP implications.\n\nPlease check the safety review box.");
+            
+            // BLINDAJE DE PERMISOS (LBP PROTECTION)
+            if(!hasConsentCheck) return alert("⚠️ LBP LICENSE WARNING:\n\nYou cannot proceed unless you confirm the Building Consent status.\n\n- If this is a Major Variation, wait for the Amendment.\n- If Minor, document it.\n\nCheck the box to confirm you are compliant.");
+
+            // NOMENCLATURA AUTOMÁTICA
+            // Buscamos cuántas VOs hay ya
+            const voCount = currentSchedule.filter(i => (i.desc || i.name || "").startsWith("VO#")).length + 1;
+            const voTitle = `VO#${voCount}: ${desc}`;
+
+            // CREAMOS EL OBJETO DE LA VARIACIÓN
+            const newVO = {
+                desc: voTitle,
+                name: voTitle,
+                unit: unit,
+                qty: qty,
+                rate: rate,
+                total: qty * rate,
+                timeImpact: timeImpact, // Guardamos el impacto en tiempo
+                approved: true
+            };
+
+            const newTotal = projectTotal + newVO.total;
+            const newSchedule = [...currentSchedule, newVO];
+
+            db.collection('projects').doc(pid).update({
+                schedule: newSchedule,
+                items: newSchedule,
+                total: newTotal,
+                updatedAt: Date.now()
+            }).then(() => {
+                alert("✅ VO #" + voCount + " ISSUED SUCCESSFULLY.\n\n- Contract Sum Updated\n- Tracker Updated\n- H&S/Compliance Check Logged");
+                // Limpiar campos
+                document.getElementById('voDesc').value = "";
+                document.getElementById('voQty').value = "";
+                document.getElementById('voRate').value = "";
+                document.getElementById('voTime').value = "";
+                document.getElementById('checkConsent').checked = false;
+                document.getElementById('checkSafety').checked = false;
+            }).catch(e => alert("Error: " + e.message));
+        }
+
+        function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+    </script>
+</body>
+</html>
