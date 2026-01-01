@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valuations - CivilMate</title>
+    <title>Smart Valuations - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -16,6 +16,9 @@
             #invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; }
             .no-print { display: none !important; }
             input { border: none; background: transparent; }
+            /* Ocultar flechas de inputs numéricos al imprimir */
+            input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+            input[type=number] { -moz-appearance: textfield; }
         }
     </style>
 </head>
@@ -25,9 +28,19 @@
         <button onclick="window.location.href='project_hub.html'" class="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 font-bold transition">
             <i class="fas fa-arrow-left"></i> Back to Hub
         </button>
-        <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black shadow-lg transition flex items-center gap-2">
-            <i class="fas fa-print"></i> Print / PDF
-        </button>
+        
+        <div class="flex gap-2">
+            <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-xs font-bold border border-blue-100 flex items-center">
+                <i class="fas fa-robot mr-2 text-lg"></i>
+                <div>
+                    <span class="block uppercase text-[9px] text-blue-400">Auto-Calc Mode</span>
+                    <span>Syncing with Site Tracker...</span>
+                </div>
+            </div>
+            <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black shadow-lg transition flex items-center gap-2">
+                <i class="fas fa-print"></i> Print / PDF
+            </button>
+        </div>
     </div>
 
     <div id="invoice" class="bg-white p-10 rounded-xl shadow-xl border border-slate-200 min-h-[1000px] relative">
@@ -81,12 +94,13 @@
                     <th class="py-3 text-center">Unit</th>
                     <th class="py-3 text-center">Contr. Qty</th>
                     <th class="py-3 text-right">Rate</th>
-                    <th class="py-3 text-center w-32 bg-yellow-50 border-x border-yellow-100 text-yellow-700">Total % Done</th>
+                    <th class="py-3 text-center w-32">Actual Qty (Logs)</th>
+                    <th class="py-3 text-center w-24 bg-yellow-50 border-x border-yellow-100 text-yellow-700">Total %</th>
                     <th class="py-3 text-right pr-2">Claim Value</th>
                 </tr>
             </thead>
             <tbody id="linesTable" class="divide-y divide-slate-100 text-sm">
-                <tr><td colspan="6" class="p-4 text-center text-slate-400 italic">Loading Schedule of Rates...</td></tr>
+                <tr><td colspan="7" class="p-4 text-center text-slate-400 italic">Analyzing Site Logs & Contract...</td></tr>
             </tbody>
         </table>
 
@@ -99,7 +113,7 @@
                     <tr>
                         <th class="p-2 w-24">Date</th>
                         <th class="p-2">Activity / Item</th>
-                        <th class="p-2 text-right">Qty</th>
+                        <th class="p-2 text-right">Qty Reported</th>
                         <th class="p-2">Reference / Notes</th>
                     </tr>
                 </thead>
@@ -130,76 +144,126 @@
         const pid = localStorage.getItem('civilmate_current_project_id');
         if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
 
+        // VARIABLES GLOBALES
         let scheduleData = [];
+        let executionMap = {}; // Aquí guardaremos la suma de lo ejecutado por item
 
         // INICIAR
         init();
 
-        function init() {
+        async function init() {
             document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
             
-            // 1. CARGAR PROYECTO Y TABLA
+            // 1. PRIMERO: Analizar los Logs para sumar cantidades (EL CEREBRO NUEVO)
+            await analyzeLogs();
+
+            // 2. SEGUNDO: Cargar el Contrato y llenar la tabla con los datos analizados
+            loadContractAndBuildTable();
+        }
+
+        function analyzeLogs() {
+            return db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
+                const logBody = document.getElementById('logsTable');
+                logBody.innerHTML = "";
+                
+                if(snap.empty) { 
+                    logBody.innerHTML = "<tr><td colspan='4' class='p-4 text-center text-slate-400'>No site logs found. Starting at 0% progress.</td></tr>";
+                    return;
+                }
+
+                let logs = [];
+                snap.forEach(d => logs.push(d.data()));
+                
+                // Ordenar por fecha reciente
+                logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                logs.forEach(log => {
+                    // A. SUMAR AL MAPA DE EJECUCIÓN
+                    // Normalizamos nombres (trim y uppercase) para evitar errores "Excavation" vs "excavation "
+                    const key = (log.itemName || "").trim(); 
+                    if(!executionMap[key]) executionMap[key] = 0;
+                    
+                    // Sumamos la cantidad reportada
+                    executionMap[key] += (parseFloat(log.qty) || 0);
+
+                    // B. AGREGAR A LA TABLA DE EVIDENCIA (Apéndice A)
+                    logBody.innerHTML += `
+                        <tr class="border-b border-slate-50 last:border-0">
+                            <td class="p-2 font-bold text-slate-700">${log.date}</td>
+                            <td class="p-2">${log.itemName}</td>
+                            <td class="p-2 text-right font-mono font-bold text-blue-600">${log.qty} ${log.unit}</td>
+                            <td class="p-2 italic text-slate-400">${log.notes || '-'}</td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        function loadContractAndBuildTable() {
             db.collection('projects').doc(pid).get().then(doc => {
                 if(doc.exists) {
                     const p = doc.data();
                     document.getElementById('projName').innerText = p.name;
                     
-                    // Renderizar tabla basada en el contrato (NO MANUAL)
                     const tbody = document.getElementById('linesTable');
                     tbody.innerHTML = "";
                     
-                    if(p.schedule && p.schedule.length > 0) {
-                        scheduleData = p.schedule;
+                    // Buscar schedule o items
+                    scheduleData = p.schedule || p.items || [];
+                    
+                    if(scheduleData.length > 0) {
                         scheduleData.forEach((item, index) => {
+                            // Normalizar nombre para buscar en el mapa
+                            const key = (item.desc || item.name || "").trim();
+                            
+                            // RECUPERAR LO EJECUTADO DESDE EL TRACKER
+                            const executedQty = executionMap[key] || 0;
+                            
+                            // CALCULAR PORCENTAJE SUGERIDO
+                            // (Ejecutado / Contratado) * 100
+                            let suggestedPercent = 0;
+                            if(item.qty > 0) {
+                                suggestedPercent = (executedQty / item.qty) * 100;
+                            }
+                            
+                            // Limitar visualmente a 2 decimales, pero permitir > 100% si hay sobre-ejecución
+                            suggestedPercent = Math.round(suggestedPercent * 100) / 100;
+
                             tbody.innerHTML += `
-                                <tr class="hover:bg-slate-50">
-                                    <td class="py-3 pl-2 font-bold text-slate-700">${item.desc}</td>
+                                <tr class="hover:bg-slate-50 transition">
+                                    <td class="py-3 pl-2 font-bold text-slate-700">
+                                        ${item.desc || item.name}
+                                    </td>
                                     <td class="py-3 text-center text-slate-500">${item.unit}</td>
                                     <td class="py-3 text-center">${item.qty}</td>
                                     <td class="py-3 text-right font-mono">$${item.rate}</td>
-                                    <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
-                                        <input type="number" min="0" max="100" value="0" 
-                                            onchange="calcRow(this, ${item.qty}, ${item.rate})"
-                                            class="w-16 text-center font-bold text-slate-800 border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent"> %
+                                    
+                                    <td class="py-3 text-center font-bold text-blue-600 text-xs">
+                                        ${executedQty} <span class="text-slate-400 font-normal">${item.unit}</span>
                                     </td>
+
+                                    <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
+                                        <input type="number" min="0" step="1" value="${suggestedPercent}" 
+                                            onchange="calcRow(this, ${item.qty}, ${item.rate})"
+                                            class="w-16 text-center font-bold text-slate-900 text-lg border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent"> %
+                                    </td>
+                                    
                                     <td class="py-3 text-right pr-2 font-bold font-mono text-slate-800 row-total">$0.00</td>
                                 </tr>
                             `;
+                            
+                            // Calcular el valor inicial automáticamente al cargar
+                            // Truco: Simulamos un evento para llenar los montos
+                            setTimeout(() => {
+                                const inputs = document.querySelectorAll('input[type="number"]');
+                                const thisInput = inputs[inputs.length - 1]; // El último agregado
+                                if(thisInput) calcRow(thisInput, item.qty, item.rate);
+                            }, 100);
                         });
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400">No Schedule of Rates found in contract.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">No Schedule of Rates found in contract.</td></tr>`;
                     }
                 }
-            });
-
-            // 2. CARGAR LOGS (SIN INDEX ERROR)
-            loadLogs();
-        }
-
-        function loadLogs() {
-            const tbody = document.getElementById('logsTable');
-            
-            // FIX: No usamos orderBy en la query
-            db.collection('site_logs').where('projectId', '==', pid).limit(50).get().then(snap => {
-                tbody.innerHTML = "";
-                if(snap.empty) { tbody.innerHTML = "<tr><td colspan='4' class='p-4 text-center text-slate-400'>No daily logs found.</td></tr>"; return; }
-
-                let logs = [];
-                snap.forEach(d => logs.push(d.data()));
-                
-                // Ordenar en JS
-                logs.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                logs.forEach(log => {
-                    tbody.innerHTML += `
-                        <tr class="border-b border-slate-50 last:border-0">
-                            <td class="p-2 font-bold text-slate-700">${log.date}</td>
-                            <td class="p-2">${log.itemName}</td>
-                            <td class="p-2 text-right font-mono">${log.qty} ${log.unit}</td>
-                            <td class="p-2 italic text-slate-400">${log.notes || '-'}</td>
-                        </tr>
-                    `;
-                });
             });
         }
 
