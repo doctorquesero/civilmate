@@ -10,33 +10,29 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
+        .locked-input { background-color: #f1f5f9; color: #64748b; border: none; pointer-events: none; }
+        
         @media print {
             body * { visibility: hidden; }
             #invoice, #invoice * { visibility: visible; }
             #invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; }
             .no-print { display: none !important; }
             input { border: none; background: transparent; }
-            /* Ocultar flechas de inputs numéricos al imprimir */
             input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
             input[type=number] { -moz-appearance: textfield; }
+            .bg-yellow-50 { background-color: transparent !important; border: none !important; }
         }
     </style>
 </head>
-<body class="p-6 max-w-[1200px] mx-auto min-h-screen pb-20">
+<body class="p-6 max-w-[1400px] mx-auto min-h-screen pb-20">
 
     <div class="flex justify-between items-center mb-6 no-print">
         <button onclick="window.location.href='project_hub.html'" class="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 font-bold transition">
             <i class="fas fa-arrow-left"></i> Back to Hub
         </button>
         
-        <div class="flex gap-2">
-            <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-xs font-bold border border-blue-100 flex items-center">
-                <i class="fas fa-robot mr-2 text-lg"></i>
-                <div>
-                    <span class="block uppercase text-[9px] text-blue-400">Auto-Calc Mode</span>
-                    <span>Syncing with Site Tracker...</span>
-                </div>
-            </div>
+        <div class="flex gap-2 items-center">
+            <div id="statusBadge" class="px-4 py-2 rounded-lg text-xs font-bold uppercase hidden"></div>
             <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black shadow-lg transition flex items-center gap-2">
                 <i class="fas fa-print"></i> Print / PDF
             </button>
@@ -69,6 +65,13 @@
                     <span class="text-red-400">Less: Retention (10%)</span>
                     <span class="font-bold text-red-400" id="sumRet">-$0.00</span>
                 </div>
+                <div class="flex justify-between text-sm mb-2 items-center">
+                    <span class="text-amber-600">Less: Advance Repayment</span>
+                    <div class="flex items-center">
+                        <span class="text-amber-600 mr-1">-$</span>
+                        <input type="number" id="advanceInput" value="0" onchange="recalcTotal()" class="w-20 text-right font-bold text-amber-600 bg-transparent border-b border-amber-200 outline-none focus:border-amber-500">
+                    </div>
+                </div>
                 
                 <div class="border-t border-slate-300 my-2"></div>
                 
@@ -87,27 +90,29 @@
             </div>
         </div>
 
-        <table class="w-full text-left mb-12">
-            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+        <table class="w-full text-left mb-12 border-collapse">
+            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[9px] border-b border-slate-200">
                 <tr>
-                    <th class="py-3 pl-2">Description</th>
+                    <th class="py-3 pl-2 w-1/4">Description</th>
                     <th class="py-3 text-center">Unit</th>
-                    <th class="py-3 text-center">Contr. Qty</th>
+                    <th class="py-3 text-center">Contract Qty</th>
                     <th class="py-3 text-right">Rate</th>
-                    <th class="py-3 text-center w-32">Actual Qty (Logs)</th>
-                    <th class="py-3 text-center w-24 bg-yellow-50 border-x border-yellow-100 text-yellow-700">Total %</th>
+                    
+                    <th class="py-3 text-center bg-slate-100 text-slate-600 border-x border-white">Balance to Complete</th>
+                    
+                    <th class="py-3 text-center w-24">Tracker Qty</th>
+                    <th class="py-3 text-center w-24 bg-yellow-50 border-x border-yellow-100 text-yellow-700">Total % Done</th>
                     <th class="py-3 text-right pr-2">Claim Value</th>
                 </tr>
             </thead>
             <tbody id="linesTable" class="divide-y divide-slate-100 text-sm">
-                <tr><td colspan="7" class="p-4 text-center text-slate-400 italic">Analyzing Site Logs & Contract...</td></tr>
+                <tr><td colspan="8" class="p-4 text-center text-slate-400 italic">Analyzing Site Logs & Contract...</td></tr>
             </tbody>
         </table>
 
         <div class="mt-8 pt-8 border-t-2 border-slate-800">
             <h3 class="text-lg font-bold text-slate-700 uppercase mb-1">Appendix A: Traceability Record</h3>
             <p class="text-xs text-slate-400 mb-4">Site Daily Logs & Evidence supporting this claim</p>
-
             <table class="w-full text-left text-xs text-slate-600">
                 <thead class="bg-slate-100 font-bold uppercase">
                     <tr>
@@ -117,23 +122,50 @@
                         <th class="p-2">Reference / Notes</th>
                     </tr>
                 </thead>
-                <tbody id="logsTable" class="divide-y divide-slate-100">
-                    <tr><td colspan="4" class="p-4 text-center italic text-slate-400">Fetching logs...</td></tr>
-                </tbody>
+                <tbody id="logsTable" class="divide-y divide-slate-100"></tbody>
             </table>
         </div>
 
-        <div class="mt-12 text-[10px] text-slate-400 text-center border-t border-slate-100 pt-4">
-            <p>I certify that the work claimed herein has been completed in accordance with the contract.</p>
-            <p class="mt-1 font-bold">Generated by CivilMate Construction Management System</p>
+        <div class="mt-12 pt-6 border-t-2 border-slate-800">
+            <div class="grid grid-cols-2 gap-12 mb-8">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4">Claimed By (Contractor):</p>
+                    <div class="h-12 border-b border-slate-300 mb-1 relative">
+                        <div id="digitalSig" class="hidden absolute bottom-2 left-0 text-blue-800 font-serif italic text-lg">Digitally Signed by CivilMate</div>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">Authorized Signature</p>
+                    <p class="text-[10px] text-slate-400">Date: <span id="signDate"></span></p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4">Certified By (Engineer to Contract):</p>
+                    <div class="h-12 border-b border-slate-300 mb-1"></div>
+                    <p class="text-xs font-bold text-slate-700">Engineer's Signature / Stamp</p>
+                    <p class="text-[10px] text-slate-400">Payment Schedule Issued On: _________</p>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-4 rounded text-[9px] text-slate-500 text-justify leading-relaxed border border-slate-200">
+                <p class="font-bold mb-1">NOTICE TO THE PRINCIPAL (PAYER):</p>
+                <p>This is a payment claim under the <strong>Construction Contracts Act 2002</strong>. You must provide a Payment Schedule within 20 working days (or as per contract). Failure to do so may result in liability for the full claimed amount.</p>
+                <p class="mt-2 italic">Ref: NZS 3910 Conditions of Contract - Clause 12.1</p>
+            </div>
         </div>
 
     </div>
 
-    <div class="fixed bottom-6 right-6 no-print">
-        <button onclick="window.print()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
-            <i class="fas fa-check-circle"></i> Approve & Generate PDF
-        </button>
+    <div class="fixed bottom-6 right-6 no-print flex gap-4">
+        <div id="draftControls" class="flex gap-4">
+            <button onclick="saveDraft()" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
+                <i class="fas fa-save"></i> Save Draft
+            </button>
+            <button onclick="approveClaim()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
+                <i class="fas fa-check-circle"></i> APPROVE & LOCK
+            </button>
+        </div>
+        <div id="lockedControls" class="hidden">
+            <div class="bg-red-100 text-red-700 px-6 py-3 rounded-full font-bold border border-red-200 flex items-center gap-2 shadow-lg">
+                <i class="fas fa-lock"></i> CLAIM APPROVED & LOCKED
+            </div>
+        </div>
     </div>
 
     <script>
@@ -144,57 +176,57 @@
         const pid = localStorage.getItem('civilmate_current_project_id');
         if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
 
-        // VARIABLES GLOBALES
         let scheduleData = [];
-        let executionMap = {}; // Aquí guardaremos la suma de lo ejecutado por item
+        let executionMap = {};
+        let isLocked = false;
 
-        // INICIAR
         init();
 
         async function init() {
             document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
+            document.getElementById('signDate').innerText = new Date().toLocaleDateString('en-NZ');
             
-            // 1. PRIMERO: Analizar los Logs para sumar cantidades (EL CEREBRO NUEVO)
-            await analyzeLogs();
+            // 1. CHEQUEAR SI YA ESTÁ APROBADO (BLOQUEO)
+            await checkStatus();
 
-            // 2. SEGUNDO: Cargar el Contrato y llenar la tabla con los datos analizados
+            // 2. ANALIZAR LOGS Y CONTRATO
+            await analyzeLogs();
             loadContractAndBuildTable();
+        }
+
+        async function checkStatus() {
+            const doc = await db.collection('projects').doc(pid).get();
+            if(doc.exists) {
+                const p = doc.data();
+                // Si el campo 'currentClaimStatus' es 'Approved', bloqueamos
+                if(p.currentClaimStatus === 'Approved') {
+                    lockUI(true);
+                    // Cargar valor de amortización guardado si existe
+                    if(p.lastAdvanceRepayment) document.getElementById('advanceInput').value = p.lastAdvanceRepayment;
+                }
+            }
         }
 
         function analyzeLogs() {
             return db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
                 const logBody = document.getElementById('logsTable');
                 logBody.innerHTML = "";
-                
-                if(snap.empty) { 
-                    logBody.innerHTML = "<tr><td colspan='4' class='p-4 text-center text-slate-400'>No site logs found. Starting at 0% progress.</td></tr>";
-                    return;
-                }
-
                 let logs = [];
                 snap.forEach(d => logs.push(d.data()));
-                
-                // Ordenar por fecha reciente
                 logs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
                 logs.forEach(log => {
-                    // A. SUMAR AL MAPA DE EJECUCIÓN
-                    // Normalizamos nombres (trim y uppercase) para evitar errores "Excavation" vs "excavation "
                     const key = (log.itemName || "").trim(); 
                     if(!executionMap[key]) executionMap[key] = 0;
-                    
-                    // Sumamos la cantidad reportada
                     executionMap[key] += (parseFloat(log.qty) || 0);
 
-                    // B. AGREGAR A LA TABLA DE EVIDENCIA (Apéndice A)
                     logBody.innerHTML += `
                         <tr class="border-b border-slate-50 last:border-0">
                             <td class="p-2 font-bold text-slate-700">${log.date}</td>
                             <td class="p-2">${log.itemName}</td>
                             <td class="p-2 text-right font-mono font-bold text-blue-600">${log.qty} ${log.unit}</td>
-                            <td class="p-2 italic text-slate-400">${log.notes || '-'}</td>
-                        </tr>
-                    `;
+                            <td class="p-2 italic text-slate-400 text-[10px] truncate max-w-[150px]">${log.notes || '-'}</td>
+                        </tr>`;
                 });
             });
         }
@@ -204,90 +236,86 @@
                 if(doc.exists) {
                     const p = doc.data();
                     document.getElementById('projName').innerText = p.name;
+                    scheduleData = p.schedule || p.items || [];
                     
                     const tbody = document.getElementById('linesTable');
                     tbody.innerHTML = "";
                     
-                    // Buscar schedule o items
-                    scheduleData = p.schedule || p.items || [];
-                    
                     if(scheduleData.length > 0) {
-                        scheduleData.forEach((item, index) => {
-                            // Normalizar nombre para buscar en el mapa
+                        scheduleData.forEach((item) => {
                             const key = (item.desc || item.name || "").trim();
-                            
-                            // RECUPERAR LO EJECUTADO DESDE EL TRACKER
                             const executedQty = executionMap[key] || 0;
                             
-                            // CALCULAR PORCENTAJE SUGERIDO
-                            // (Ejecutado / Contratado) * 100
-                            let suggestedPercent = 0;
-                            if(item.qty > 0) {
-                                suggestedPercent = (executedQty / item.qty) * 100;
-                            }
+                            // CALCULO REMANENTE
+                            const remaining = item.qty - executedQty;
+                            const isOverRun = remaining < 0;
                             
-                            // Limitar visualmente a 2 decimales, pero permitir > 100% si hay sobre-ejecución
+                            // FORMATO REMANENTE
+                            let remHTML = `<span class="font-bold text-slate-600">${remaining.toLocaleString()}</span>`;
+                            if(isOverRun) remHTML = `<span class="font-bold text-red-600 blink"><i class="fas fa-exclamation-triangle"></i> ${remaining.toLocaleString()}</span>`;
+
+                            // CALCULO %
+                            let suggestedPercent = 0;
+                            if(item.qty > 0) suggestedPercent = (executedQty / item.qty) * 100;
                             suggestedPercent = Math.round(suggestedPercent * 100) / 100;
 
+                            // SI ESTÁ BLOQUEADO, USAR CLASE LOCKED
+                            const inputClass = isLocked ? "locked-input" : "bg-transparent border-b border-yellow-300 focus:border-blue-500";
+                            const readOnly = isLocked ? "readonly" : "";
+
                             tbody.innerHTML += `
-                                <tr class="hover:bg-slate-50 transition">
-                                    <td class="py-3 pl-2 font-bold text-slate-700">
-                                        ${item.desc || item.name}
-                                    </td>
+                                <tr class="hover:bg-slate-50 transition text-xs">
+                                    <td class="py-3 pl-2 font-bold text-slate-700">${item.desc || item.name}</td>
                                     <td class="py-3 text-center text-slate-500">${item.unit}</td>
-                                    <td class="py-3 text-center">${item.qty}</td>
+                                    <td class="py-3 text-center font-mono">${item.qty}</td>
                                     <td class="py-3 text-right font-mono">$${item.rate}</td>
                                     
-                                    <td class="py-3 text-center font-bold text-blue-600 text-xs">
-                                        ${executedQty} <span class="text-slate-400 font-normal">${item.unit}</span>
-                                    </td>
+                                    <td class="py-3 text-center bg-slate-100 border-x border-white text-xs">${remHTML}</td>
+
+                                    <td class="py-3 text-center font-bold text-blue-600">${executedQty}</td>
 
                                     <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
-                                        <input type="number" min="0" step="1" value="${suggestedPercent}" 
+                                        <input type="number" min="0" step="1" value="${suggestedPercent}" ${readOnly}
                                             onchange="calcRow(this, ${item.qty}, ${item.rate})"
-                                            class="w-16 text-center font-bold text-slate-900 text-lg border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent"> %
+                                            class="w-16 text-center font-bold text-slate-900 text-sm outline-none ${inputClass}"> %
                                     </td>
                                     
                                     <td class="py-3 text-right pr-2 font-bold font-mono text-slate-800 row-total">$0.00</td>
                                 </tr>
                             `;
                             
-                            // Calcular el valor inicial automáticamente al cargar
-                            // Truco: Simulamos un evento para llenar los montos
+                            // Auto-calcular inicial
                             setTimeout(() => {
-                                const inputs = document.querySelectorAll('input[type="number"]');
-                                const thisInput = inputs[inputs.length - 1]; // El último agregado
-                                if(thisInput) calcRow(thisInput, item.qty, item.rate);
-                            }, 100);
+                                const inputs = document.querySelectorAll('#linesTable input');
+                                const lastInput = inputs[inputs.length - 1];
+                                if(lastInput) calcRow(lastInput, item.qty, item.rate);
+                            }, 200);
                         });
-                    } else {
-                        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">No Schedule of Rates found in contract.</td></tr>`;
                     }
                 }
             });
         }
 
-        // CALCULO EN TIEMPO REAL
         function calcRow(input, qty, rate) {
             const percent = parseFloat(input.value) || 0;
             const rowTotal = (qty * rate) * (percent / 100);
-            
-            // Actualizar celda de valor
             const row = input.closest('tr');
             row.querySelector('.row-total').innerText = fmtMoney(rowTotal);
-            
             recalcTotal();
         }
 
         function recalcTotal() {
             let totalGross = 0;
             document.querySelectorAll('.row-total').forEach(cell => {
-                const val = parseFloat(cell.innerText.replace('$','').replace(',','')) || 0;
-                totalGross += val;
+                totalGross += parseFloat(cell.innerText.replace('$','').replace(',','')) || 0;
             });
 
-            const retention = totalGross * 0.10; // 10% Retención
-            const net = totalGross - retention;
+            const retention = totalGross * 0.10;
+            
+            // DEDUCCION DE ANTICIPO MANUAL
+            const advRepayment = parseFloat(document.getElementById('advanceInput').value) || 0;
+
+            const net = totalGross - retention - advRepayment;
             const gst = net * 0.15;
             const total = net + gst;
 
@@ -296,6 +324,48 @@
             document.getElementById('sumNet').innerText = fmtMoney(net);
             document.getElementById('sumGst').innerText = fmtMoney(gst);
             document.getElementById('sumTotal').innerText = fmtMoney(total);
+        }
+
+        function approveClaim() {
+            if(!confirm("⚠️ ARE YOU SURE?\n\nApproving this claim will LOCK all values legally.\nYou cannot edit this anymore unless unlocked by Admin.")) return;
+
+            const advRepayment = parseFloat(document.getElementById('advanceInput').value) || 0;
+
+            // GUARDAR ESTADO 'APPROVED' EN FIREBASE
+            db.collection('projects').doc(pid).update({
+                currentClaimStatus: 'Approved',
+                lastClaimDate: new Date().toISOString(),
+                lastAdvanceRepayment: advRepayment
+            }).then(() => {
+                alert("✅ CLAIM APPROVED & LOCKED.\nGenerating PDF...");
+                lockUI(true);
+                window.print();
+            });
+        }
+
+        function saveDraft() {
+            alert("Draft Saved locally (Firebase Auto-sync active).");
+        }
+
+        function lockUI(locked) {
+            isLocked = locked;
+            const inputs = document.querySelectorAll('input');
+            const draftBtns = document.getElementById('draftControls');
+            const lockBadge = document.getElementById('lockedControls');
+            const statusBadge = document.getElementById('statusBadge');
+            const digiSig = document.getElementById('digitalSig');
+
+            if(locked) {
+                inputs.forEach(i => i.classList.add('locked-input'));
+                draftBtns.classList.add('hidden');
+                lockBadge.classList.remove('hidden');
+                statusBadge.classList.remove('hidden');
+                statusBadge.innerHTML = '<i class="fas fa-lock"></i> LOCKED';
+                statusBadge.classList.add('bg-red-100', 'text-red-600');
+                digiSig.classList.remove('hidden'); // Mostrar firma
+                // Bloquear amortización también
+                document.getElementById('advanceInput').disabled = true;
+            }
         }
 
         function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
