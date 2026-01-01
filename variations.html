@@ -8,7 +8,17 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }</style>
+    <style>
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
+        /* ESTILOS COPIADOS DE CONTRACTS PARA CONSISTENCIA */
+        .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
+        .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .res-table th { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
+        .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
+        .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; }
+        .res-input:hover { background-color: #f1f5f9; border-color: #e2e8f0; }
+        .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+    </style>
 </head>
 <body class="p-6 max-w-[1200px] mx-auto min-h-screen relative">
 
@@ -108,10 +118,10 @@
     </div>
 
     <div id="estimatorModal" class="fixed inset-0 bg-slate-900/80 z-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             
             <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
-                <h3 class="font-bold"><i class="fas fa-server mr-2"></i>VO Cost Analyst</h3>
+                <h3 class="font-bold"><i class="fas fa-server mr-2"></i>VO Cost Analyst (Standard APU)</h3>
                 <button onclick="closeEstimator()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
 
@@ -122,43 +132,31 @@
                 </select>
             </div>
 
-            <div class="p-6 overflow-y-auto">
-                <div class="flex justify-between mb-4">
+            <div class="p-6 overflow-y-auto bg-slate-50">
+                <div class="flex justify-between mb-6">
                     <div class="w-2/3">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Analysis Name</label>
-                        <input type="text" id="analysisName" class="w-full border-b-2 border-slate-200 focus:border-purple-500 outline-none font-bold text-lg text-slate-800" placeholder="e.g. Concrete Slab 20MPa">
+                        <input type="text" id="analysisName" class="w-full border-b-2 border-slate-200 bg-transparent focus:border-purple-500 outline-none font-bold text-lg text-slate-800" placeholder="e.g. Concrete Slab 20MPa">
                     </div>
                     <div class="w-1/4">
                         <label class="text-[10px] font-bold text-slate-400 uppercase">Base Unit</label>
-                        <input type="text" id="analysisUnit" class="w-full border-b-2 border-slate-200 focus:border-purple-500 outline-none text-center font-bold text-slate-600" placeholder="m3">
+                        <input type="text" id="analysisUnit" class="w-full border-b-2 border-slate-200 bg-transparent focus:border-purple-500 outline-none text-center font-bold text-slate-600" placeholder="m3">
                     </div>
                 </div>
 
-                <table class="w-full text-sm mb-4">
-                    <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-500">
-                        <tr>
-                            <th class="p-2 text-left w-1/2">Resource Description</th>
-                            <th class="p-2 text-center w-20">Unit</th>
-                            <th class="p-2 text-center w-20">Yield</th>
-                            <th class="p-2 text-right w-24">Rate</th>
-                            <th class="p-2 w-10"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="estList"></tbody>
-                </table>
-                
-                <button onclick="addEstItem()" class="text-xs text-blue-600 font-bold hover:underline mb-6">+ Add Resource (Labor/Plant/Mat)</button>
+                <div id="resourcesContainer" class="space-y-4 mb-6">
+                    </div>
 
-                <div class="bg-purple-50 p-4 rounded border border-purple-100 space-y-2">
-                    <div class="flex justify-between text-sm">
+                <div class="bg-white p-4 rounded border border-slate-200 space-y-2 shadow-sm">
+                    <div class="flex justify-between text-xs text-slate-500">
                         <span>Base Cost (Net)</span>
                         <span id="estSub" class="font-mono">$0.00</span>
                     </div>
                     <div class="flex justify-between text-sm items-center">
-                        <span class="text-slate-600">Margin / Profit (%)</span>
-                        <input type="number" id="estMargin" value="15" onchange="calcEst()" class="w-16 text-right border rounded text-xs font-bold p-1 bg-white">
+                        <span class="text-slate-600 font-bold">Margin / Profit (%)</span>
+                        <input type="number" id="estMargin" value="15" onchange="updateCalculations()" class="w-16 text-right border rounded text-xs font-bold p-1 bg-white focus:ring-2 ring-purple-500 outline-none">
                     </div>
-                    <div class="flex justify-between text-xl font-bold text-purple-700 pt-2 border-t border-purple-200">
+                    <div class="flex justify-between text-2xl font-bold text-purple-700 pt-2 border-t border-slate-100">
                         <span>Final Unit Rate</span>
                         <span id="estTotal">$0.00</span>
                     </div>
@@ -168,7 +166,7 @@
                     <input type="checkbox" id="saveToDbCheck" class="w-5 h-5 text-green-600 rounded cursor-pointer" checked>
                     <div>
                         <p class="text-xs font-bold text-green-800">Add to Master Database</p>
-                        <p class="text-[10px] text-green-600">CivilMate will remember this analysis for future VOs.</p>
+                        <p class="text-[10px] text-green-600">CivilMate will save this standard APU for future Contracts & VOs.</p>
                     </div>
                 </div>
 
@@ -187,16 +185,19 @@
 
         let currentSchedule = [];
         let projectTotal = 0;
-        let masterItems = []; // Aquí cargaremos la BD Maestra
-
-        // ESTIMATOR DATA
-        let estItems = [{ name: "General Labor", unit: "hr", yield: 1, cost: 45 }];
+        let masterItems = []; 
+        
+        // --- APU ENGINE VARIABLES (Standardized) ---
+        let currentResources = [
+            {n:"General Labor", u:"hr", q:1, c:45, t:"Lab"} // Default Item
+        ];
 
         init();
 
         function init() { 
             loadProject();
-            loadMasterLibrary(); // Cargar la BD al iniciar
+            loadMasterLibrary();
+            renderAllLists(); // Iniciar tablas vacías o por defecto
         }
 
         function loadProject() {
@@ -211,51 +212,30 @@
             });
         }
 
-        // --- DATABASE LOGIC ---
+        // --- DATABASE LOGIC (STANDARD FORMAT) ---
         function loadMasterLibrary() {
             const select = document.getElementById('masterDbSelect');
-            // Cargar colección 'master_library'
             db.collection('master_library').get().then(snap => {
                 masterItems = [];
                 select.innerHTML = '<option value="">-- Start from Scratch (New Analysis) --</option>';
-                
                 snap.forEach(doc => {
                     const item = doc.data();
                     item.id = doc.id;
                     masterItems.push(item);
-                    select.innerHTML += `<option value="${doc.id}">${item.name} (${item.unit}) - $${item.rate.toFixed(2)}</option>`;
+                    select.innerHTML += `<option value="${doc.id}">${item.name} (${item.unit}) - $${(item.rate || 0).toFixed(2)}</option>`;
                 });
-
-                // Si está vacía (primera vez), usar datos semilla locales
-                if(snap.empty) {
-                    seedLocalData();
-                }
-            });
-        }
-
-        function seedLocalData() {
-            // Datos por defecto si no hay nada en Firebase
-            const seeds = [
-                { name: "Bulk Excavation (Simple)", unit: "m3", rate: 45.00, resources: [{name:"Excavator 20T", unit:"hr", yield:0.04, cost:140}, {name:"Operator", unit:"hr", yield:0.04, cost:45}] },
-                { name: "Concrete Footing 25MPa", unit: "m3", rate: 350.00, resources: [{name:"Concrete 25MPa", unit:"m3", yield:1.05, cost:220}, {name:"Labor", unit:"hr", yield:2, cost:45}] }
-            ];
-            const select = document.getElementById('masterDbSelect');
-            seeds.forEach((item, i) => {
-                // Guardamos en memoria temporal con ID simulado
-                item.id = "local_"+i;
-                masterItems.push(item);
-                select.innerHTML += `<option value="local_${i}">${item.name} (${item.unit}) - $${item.rate.toFixed(2)}</option>`;
             });
         }
 
         function loadFromMaster() {
             const id = document.getElementById('masterDbSelect').value;
             if(!id) {
-                // Reset
+                // Reset to default
                 document.getElementById('analysisName').value = "";
                 document.getElementById('analysisUnit').value = "";
-                estItems = [{ name: "", unit: "hr", yield: 1, cost: 0 }];
-                renderEst();
+                currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
+                renderAllLists();
+                updateCalculations();
                 return;
             }
 
@@ -263,71 +243,104 @@
             if(item) {
                 document.getElementById('analysisName').value = item.name;
                 document.getElementById('analysisUnit').value = item.unit;
-                estItems = JSON.parse(JSON.stringify(item.resources || []));
-                renderEst();
+                // Importante: Deep copy para no alterar la referencia
+                currentResources = JSON.parse(JSON.stringify(item.resources || []));
+                renderAllLists();
+                updateCalculations();
             }
         }
 
-        // --- ESTIMATOR UI ---
-        function openEstimator() { document.getElementById('estimatorModal').classList.remove('hidden'); renderEst(); }
-        function closeEstimator() { document.getElementById('estimatorModal').classList.add('hidden'); }
-        
-        function addEstItem() { estItems.push({ name: "", unit: "hr", yield: 1, cost: 0 }); renderEst(); }
-        
-        function renderEst() {
-            const list = document.getElementById('estList');
-            list.innerHTML = "";
-            estItems.forEach((item, i) => {
-                list.innerHTML += `
-                    <tr>
-                        <td class="p-1"><input type="text" value="${item.name}" onchange="updEst(${i}, 'name', this.value)" class="w-full border rounded px-2 py-1 text-xs" placeholder="Resource Name"></td>
-                        <td class="p-1"><input type="text" value="${item.unit}" onchange="updEst(${i}, 'unit', this.value)" class="w-full border rounded px-2 py-1 text-xs text-center"></td>
-                        <td class="p-1"><input type="number" value="${item.yield}" onchange="updEst(${i}, 'yield', this.value)" class="w-full border rounded px-2 py-1 text-xs text-center text-blue-600 font-bold"></td>
-                        <td class="p-1"><input type="number" value="${item.cost}" onchange="updEst(${i}, 'cost', this.value)" class="w-full border rounded px-2 py-1 text-xs text-right"></td>
-                        <td class="p-1 text-center"><button onclick="delEst(${i})" class="text-red-400 hover:text-red-600"><i class="fas fa-times"></i></button></td>
+        // --- APU ENGINE (THE CONTRACTS LOGIC) ---
+        function renderAllLists() {
+            renderList('Lab', 'Labor Cost', 'bg-orange-50', 'text-orange-800', 'border-orange-200', 'text-orange-600');
+            renderList('Plant', 'Plant Cost', 'bg-green-50', 'text-green-800', 'border-green-200', 'text-green-600');
+            renderList('Mat', 'Material Cost', 'bg-blue-50', 'text-blue-800', 'border-blue-200', 'text-blue-600');
+        }
+
+        function renderList(type, title, bgClass, textClass, borderClass, btnClass) {
+            // Verificar si el contenedor ya existe, si no, crearlo dinámicamente
+            // Esto es un truco para reutilizar el contenedor 'resourcesContainer'
+            let sectionId = `section-${type}`;
+            let container = document.getElementById('resourcesContainer');
+            
+            // Buscar si ya pintamos esta sección, si no, la agregamos
+            let sectionHTML = `
+                <div id="${sectionId}" class="border ${borderClass} rounded-lg overflow-hidden shadow-sm">
+                    <div class="${bgClass} px-3 py-2 flex justify-between items-center border-b ${borderClass.replace('200','100')}">
+                        <span class="text-[10px] font-bold ${textClass} uppercase tracking-wider">${title}</span>
+                        <button onclick="addRes('${type}')" class="${btnClass} hover:brightness-75 text-xs font-bold bg-white px-2 py-0.5 rounded border ${borderClass} shadow-sm transition">+ Add</button>
+                    </div>
+                    <div class="bg-white">
+                        <table class="res-table">
+                            <thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead>
+                            <tbody id="list${type}"></tbody>
+                        </table>
+                    </div>
+                </div>`;
+
+            // Si es la primera vez (renderAllLists), limpiamos el container al inicio del loop
+            if (type === 'Lab') container.innerHTML = ""; 
+            
+            container.innerHTML += sectionHTML;
+
+            // Llenar filas
+            const tbody = document.getElementById(`list${type}`);
+            currentResources.forEach((res, idx) => {
+                if(res.t !== type) return;
+                const total = (res.c * res.q).toFixed(2);
+                tbody.innerHTML += `
+                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
+                        <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
+                        <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
+                        <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
+                        <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td>
+                        <td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td>
+                        <td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td>
                     </tr>
                 `;
             });
-            calcEst();
         }
 
-        function updEst(i, f, v) { estItems[i][f] = (f==='yield'||f==='cost') ? (parseFloat(v)||0) : v; calcEst(); }
-        function delEst(i) { estItems.splice(i, 1); renderEst(); }
+        window.addRes = (t) => { currentResources.push({n:"New Item", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
+        window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
+        window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
 
-        function calcEst() {
-            let sub = 0;
-            estItems.forEach(i => sub += (i.yield * i.cost));
+        function updateCalculations() {
+            let cost = 0;
+            currentResources.forEach(r => cost += (r.c * r.q));
             const margin = parseFloat(document.getElementById('estMargin').value) || 0;
-            const total = sub * (1 + (margin/100));
-            document.getElementById('estSub').innerText = fmtMoney(sub);
-            document.getElementById('estTotal').innerText = fmtMoney(total);
-            return total;
+            const price = cost * (1 + (margin/100));
+            document.getElementById('estSub').innerText = fmtMoney(cost);
+            document.getElementById('estTotal').innerText = fmtMoney(price);
+            return price;
         }
 
+        // --- APPLY TO VO & SAVE TO MASTER DB ---
         function applyRate() {
-            const finalRate = calcEst();
+            const finalRate = updateCalculations();
             const name = document.getElementById('analysisName').value;
             const unit = document.getElementById('analysisUnit').value;
 
+            if(!name) return alert("Please name this analysis (e.g. Concrete Slab).");
+
             // 1. LLENAR FORMULARIO PRINCIPAL
-            document.getElementById('voDesc').value = name; // Auto-fill descripción
+            document.getElementById('voDesc').value = name;
             document.getElementById('voUnit').value = unit;
             document.getElementById('voRate').value = finalRate.toFixed(2);
             calcTotal();
 
-            // 2. APRENDIZAJE (GUARDAR EN MASTER DB)
-            if(document.getElementById('saveToDbCheck').checked && name) {
+            // 2. APRENDIZAJE (GUARDAR EN FORMATO ESTÁNDAR)
+            if(document.getElementById('saveToDbCheck').checked) {
                 const newItem = {
                     name: name,
                     unit: unit,
                     rate: finalRate,
-                    resources: estItems,
+                    resources: currentResources, // ESTA ES LA CLAVE: Guardamos el array estructurado
                     lastUsed: Date.now()
                 };
                 
-                // Guardar en Firebase 'master_library'
                 db.collection('master_library').add(newItem).then(() => {
-                    console.log("Analysis learned into Master DB");
+                    alert("Analysis saved to Master Database (Standard Format) ✅");
                     loadMasterLibrary(); // Recargar dropdown
                 });
             }
@@ -335,6 +348,10 @@
             closeEstimator();
         }
 
+        // --- UI HELPERS ---
+        function openEstimator() { document.getElementById('estimatorModal').classList.remove('hidden'); renderAllLists(); updateCalculations(); }
+        function closeEstimator() { document.getElementById('estimatorModal').classList.add('hidden'); }
+        
         function renderTable(items) {
             const tbody = document.getElementById('voTable');
             tbody.innerHTML = "";
