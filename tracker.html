@@ -9,14 +9,22 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; }
+        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; touch-action: manipulation; }
         .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px; width: 100%; padding: 12px; outline: none; }
         .input-dark:focus { border-color: #3b82f6; }
-        .btn-primary { background: #2563eb; color: white; font-weight: bold; py: 3; border-radius: 8px; width: 100%; display: flex; justify-content: center; items-center: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .btn-primary { background: #2563eb; color: white; font-weight: bold; padding: 15px; border-radius: 8px; width: 100%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: transform 0.1s; }
         .btn-primary:active { transform: scale(0.98); }
+        
+        /* ESTILOS FIRMA DIGITAL */
+        canvas { background-color: white; border-radius: 0.5rem; cursor: crosshair; touch-action: none; width: 100%; }
+        
+        /* GRID DE FOTOS */
+        .photo-thumb { position: relative; width: 100%; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-del { position: absolute; top: 0; right: 0; background: rgba(220, 38, 38, 0.9); color: white; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-bottom-left-radius: 8px; cursor: pointer; }
     </style>
 </head>
-<body class="p-4 max-w-md mx-auto min-h-screen flex flex-col">
+<body class="p-4 max-w-md mx-auto min-h-screen flex flex-col pb-24">
 
     <div class="flex justify-between items-center mb-6">
         <div>
@@ -76,27 +84,45 @@
         </div>
 
         <div>
-            <label class="text-[10px] font-bold text-slate-500 uppercase">Evidence (Photo & Notes)</label>
-            <div class="flex gap-2 mt-1 h-24">
-                <label class="w-24 h-full bg-slate-800 border border-dashed border-slate-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-slate-700 relative overflow-hidden">
-                    <i class="fas fa-camera text-2xl text-slate-400 mb-1"></i>
-                    <span class="text-[9px] text-slate-500">Add Photo</span>
-                    <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="previewImage()">
-                    <img id="imgPreview" class="absolute inset-0 w-full h-full object-cover hidden">
+            <div class="flex justify-between items-end mb-2">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Evidence (Max 10 Photos)</label>
+                <span id="photoCount" class="text-[9px] text-slate-400">0/10</span>
+            </div>
+            
+            <div class="flex gap-2 h-24 mb-3">
+                <label class="w-24 h-full bg-slate-800 border border-dashed border-slate-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-slate-700 transition active:scale-95 flex-shrink-0">
+                    <i class="fas fa-camera text-2xl text-blue-400 mb-1"></i>
+                    <span class="text-[9px] text-slate-500 text-center">Add<br>Photos</span>
+                    <input type="file" id="photoInput" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
                 </label>
                 
                 <textarea id="notesInput" class="flex-1 input-dark h-full text-xs resize-none" placeholder="Add specific details (Location, gridline, issues)..."></textarea>
             </div>
+
+            <div id="photoGrid" class="grid grid-cols-4 gap-2">
+                </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800">
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Certified By (Site Engineer)</label>
+            <input type="text" id="signerName" class="input-dark mt-1 mb-3 py-2 text-sm" placeholder="Enter your full name">
+            
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Digital Signature</label>
+            <div class="relative rounded-lg overflow-hidden border border-slate-600 mt-1 bg-white">
+                <canvas id="sigCanvas" height="120"></canvas>
+                <button onclick="clearSig()" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-slate-800 px-2 py-1 rounded shadow hover:bg-slate-300">Clear</button>
+            </div>
+            <p class="text-[9px] text-slate-500 mt-1 italic text-center">I certify this measurement is accurate per NZS 3910.</p>
         </div>
 
     </div>
 
-    <button onclick="saveLog()" id="btnSave" class="btn-primary py-4 mt-6 text-lg shadow-blue-900/50">
+    <button onclick="saveLog()" id="btnSave" class="btn-primary py-4 mt-6 text-lg shadow-blue-900/50 mb-8">
         <i class="fas fa-save mr-2"></i> Save Daily Log
     </button>
-    <p id="statusMsg" class="text-center text-xs mt-2 text-slate-500"></p>
+    <p id="statusMsg" class="text-center text-xs mt-2 text-slate-500 mb-4"></p>
 
-    <div class="mt-8 border-t border-slate-800 pt-4">
+    <div class="border-t border-slate-800 pt-4">
         <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Today's Logs</h3>
         <div id="todayList" class="space-y-2 text-sm text-slate-400">
             <p class="italic opacity-50">Loading logs...</p>
@@ -108,26 +134,28 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let currentPid = localStorage.getItem('civilmate_current_project_id'); // ID inicial
-        let compressedImage = null;
+        let currentPid = localStorage.getItem('civilmate_current_project_id'); 
+        let photoEvidence = []; // Array para múltiples fotos
         let contractItems = [];
+
+        // SIGNATURE CANVAS SETUP
+        const canvas = document.getElementById('sigCanvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
 
         // INIT
         document.getElementById('logDate').valueAsDate = new Date();
-        loadAllActiveProjects(); // Cargamos la lista de proyectos
+        setupCanvas(); // Configurar firma
+        loadAllActiveProjects(); 
 
+        // --- 1. PROJECT LOGIC ---
         function loadAllActiveProjects() {
             const select = document.getElementById('projectSelect');
             select.innerHTML = '<option value="">Loading...</option>';
 
-            // Buscamos proyectos Activos o Pendientes (para pruebas)
             db.collection('projects').where('status', 'in', ['Active', 'Pending', 'Won']).get().then(snap => {
                 select.innerHTML = '<option value="">-- Select Project --</option>';
-                
-                if (snap.empty) {
-                    select.innerHTML = '<option value="">No Active Projects Found</option>';
-                    return;
-                }
+                if (snap.empty) { select.innerHTML = '<option value="">No Active Projects</option>'; return; }
 
                 snap.forEach(doc => {
                     const p = doc.data();
@@ -135,10 +163,7 @@
                     select.innerHTML += `<option value="${doc.id}" ${isSelected}>${p.name}</option>`;
                 });
 
-                // Si ya había un proyecto seleccionado, cargar sus datos
-                if (currentPid) {
-                    loadProjectData(currentPid);
-                }
+                if (currentPid) loadProjectData(currentPid);
             });
         }
 
@@ -146,9 +171,8 @@
             const newPid = document.getElementById('projectSelect').value;
             if (newPid) {
                 currentPid = newPid;
-                localStorage.setItem('civilmate_current_project_id', newPid); // Guardar para otras apps
+                localStorage.setItem('civilmate_current_project_id', newPid);
                 loadProjectData(newPid);
-                loadTodayLogs(); // Recargar logs de este proyecto
             } else {
                 document.getElementById('itemSelect').innerHTML = '<option value="">-- Select Project First --</option>';
             }
@@ -158,18 +182,14 @@
             db.collection('projects').doc(id).get().then(doc => {
                 if(doc.exists) {
                     const p = doc.data();
-                    
-                    // --- PROTECCIÓN CONTRA UNDEFINED ---
                     contractItems = p.schedule || p.items || [];
-                    
                     const itemSel = document.getElementById('itemSelect');
                     itemSel.innerHTML = '<option value="">-- Select Schedule Item --</option>';
                     
                     if (contractItems.length === 0) {
-                        itemSel.innerHTML = '<option value="">(No Items found in Contract)</option>';
+                        itemSel.innerHTML = '<option value="">(No Items found)</option>';
                     } else {
                         contractItems.forEach((item, idx) => {
-                            // Validar nombre para evitar "undefined"
                             const name = item.desc || item.name || `Item #${idx+1}`;
                             itemSel.innerHTML += `<option value="${idx}">${name}</option>`;
                         });
@@ -195,98 +215,144 @@
             document.getElementById('extraDesc').focus();
         }
 
-        // COMPRESOR DE IMAGEN
-        function previewImage() {
-            const file = document.getElementById('photoInput').files[0];
-            if (file) {
+        // --- 2. MULTI-PHOTO LOGIC ---
+        function handleFileSelect(evt) {
+            const files = evt.target.files;
+            if (!files.length) return;
+
+            if (photoEvidence.length + files.length > 10) {
+                alert("⚠️ Limit reached: Max 10 photos allowed.");
+                return;
+            }
+
+            Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const img = new Image();
                     img.onload = function() {
+                        // Compresión básica
                         const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
+                        let width = img.width, height = img.height;
                         const maxSize = 800;
                         if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } } 
                         else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
                         canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        compressedImage = canvas.toDataURL('image/jpeg', 0.7);
-                        document.getElementById('imgPreview').src = compressedImage;
-                        document.getElementById('imgPreview').classList.remove('hidden');
-                        document.querySelector('.fa-camera').classList.add('hidden');
+                        
+                        photoEvidence.push(canvas.toDataURL('image/jpeg', 0.7)); // Guardar Base64
+                        renderPhotoGrid();
                     };
                     img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
-            }
+            });
         }
 
+        function renderPhotoGrid() {
+            const grid = document.getElementById('photoGrid');
+            grid.innerHTML = "";
+            document.getElementById('photoCount').innerText = `${photoEvidence.length}/10`;
+
+            photoEvidence.forEach((src, idx) => {
+                grid.innerHTML += `
+                    <div class="photo-thumb">
+                        <img src="${src}">
+                        <div class="photo-del" onclick="removePhoto(${idx})"><i class="fas fa-times"></i></div>
+                    </div>
+                `;
+            });
+        }
+
+        window.removePhoto = (idx) => {
+            photoEvidence.splice(idx, 1);
+            renderPhotoGrid();
+        }
+
+        // --- 3. SIGNATURE LOGIC ---
+        function setupCanvas() {
+            canvas.width = canvas.parentElement.offsetWidth; // Ajustar ancho
+            
+            // Mouse
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDraw);
+            
+            // Touch (Prevenir scroll)
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); }, {passive: false});
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+            canvas.addEventListener('touchend', stopDraw);
+        }
+
+        function startDraw(e) {
+            drawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if(!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDraw() { drawing = false; }
+        window.clearSig = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        function isCanvasBlank() {
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width; blank.height = canvas.height;
+            return canvas.toDataURL() === blank.toDataURL();
+        }
+
+        // --- 4. SAVE LOGIC ---
         function saveLog() {
             if (!currentPid) return alert("Select a project first!");
 
-            const btn = document.getElementById('btnSave');
-            const status = document.getElementById('statusMsg');
             const idx = document.getElementById('itemSelect').value;
             const extraDesc = document.getElementById('extraDesc').value;
             const qty = parseFloat(document.getElementById('qtyInput').value);
+            const signer = document.getElementById('signerName').value;
             const notes = document.getElementById('notesInput').value;
-            const date = document.getElementById('logDate').value;
-            const weather = document.getElementById('weatherSelect').value + " " + document.getElementById('tempInput').value + "°C";
+            
+            // Validaciones Legales
+            if(!idx && !extraDesc) return alert("Select item or describe extra work.");
+            if(!qty) return alert("Enter quantity.");
+            if(!signer) return alert("⚠️ Traceability: Name Required.");
+            if(isCanvasBlank()) return alert("⚠️ Traceability: Signature Required.");
+            if(photoEvidence.length === 0) return alert("⚠️ Evidence: At least 1 photo required.");
 
-            let itemName = "";
-            let unit = "";
-
-            if (idx !== "") {
-                // --- FIX LOOP: Validar nombre antes de enviar ---
-                const item = contractItems[idx];
-                itemName = item.desc || item.name || "Item #" + (parseInt(idx)+1);
-                unit = item.unit || "ls";
-            } else if (extraDesc) {
-                itemName = "EXTRA: " + extraDesc;
-                unit = document.getElementById('unitDisplay').value;
-            } else {
-                alert("Please select an item or describe extra work.");
-                return;
-            }
-
-            if (!qty) { alert("Please enter a quantity."); return; }
-
+            const btn = document.getElementById('btnSave');
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             btn.disabled = true;
 
+            let itemName = idx !== "" ? (contractItems[idx].desc || contractItems[idx].name) : "EXTRA: " + extraDesc;
+            let unit = idx !== "" ? (contractItems[idx].unit || "ls") : document.getElementById('unitDisplay').value;
+
             const logData = {
                 projectId: currentPid,
-                date: date,
+                date: document.getElementById('logDate').value,
                 itemName: itemName,
                 qty: qty,
                 unit: unit,
-                weather: weather,
+                weather: document.getElementById('weatherSelect').value + " " + document.getElementById('tempInput').value + "°C",
                 notes: notes,
-                photo: compressedImage || null,
+                photos: photoEvidence, // Array
+                signedBy: signer,
+                signature: canvas.toDataURL(), // Base64
                 timestamp: Date.now()
             };
 
             db.collection('site_logs').add(logData).then(() => {
-                status.innerText = "✅ Saved!";
-                status.className = "text-center text-xs mt-2 text-green-400 font-bold";
-                document.getElementById('qtyInput').value = "";
-                document.getElementById('notesInput').value = "";
-                document.getElementById('imgPreview').classList.add('hidden');
-                document.querySelector('.fa-camera').classList.remove('hidden');
-                compressedImage = null;
-                loadTodayLogs();
-                setTimeout(() => { 
-                    btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
-                    btn.disabled = false;
-                    status.innerText = "";
-                }, 2000);
+                document.getElementById('statusMsg').innerText = "✅ Saved Successfully!";
+                setTimeout(() => location.reload(), 1500); // Recargar para limpiar
             }).catch((error) => {
-                console.error("Firebase Error:", error);
                 alert("Error: " + error.message);
-                btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
                 btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
             });
         }
 
@@ -309,4 +375,3 @@
     </script>
 </body>
 </html>
-
