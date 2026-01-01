@@ -3,122 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Site Tracker Pro - CivilMate</title>
+    <title>Site Tracker - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; }
-        .field-input { background: #1e293b; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; width: 100%; outline: none; font-size: 16px; }
-        .field-input:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; }
-        select.field-input { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem center; background-size: 0.65em auto; }
-        
-        .camera-btn { border: 2px dashed #475569; display: flex; align-items: center; justify-content: center; padding: 15px; border-radius: 10px; cursor: pointer; transition: 0.2s; color: #94a3b8; }
-        .camera-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-
-        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #10b981; color: #fff; text-align: center; border-radius: 50px; padding: 16px; position: fixed; z-index: 99; left: 50%; bottom: 30px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
-        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
-        #toast.error { background-color: #ef4444; }
+        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px; width: 100%; padding: 12px; outline: none; }
+        .input-dark:focus { border-color: #3b82f6; }
+        .btn-primary { background: #2563eb; color: white; font-weight: bold; py: 3; border-radius: 8px; width: 100%; display: flex; justify-content: center; items-center: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .btn-primary:active { transform: scale(0.98); }
     </style>
 </head>
 <body class="p-4 max-w-md mx-auto min-h-screen flex flex-col">
 
-    <div id="toast"><i class="fas fa-check-circle mr-2"></i> Record Saved!</div>
-
-    <header class="flex justify-between items-center mb-6">
+    <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-white"><i class="fas fa-hard-hat text-yellow-400 mr-2"></i>Site Tracker</h1>
+            <h1 class="text-xl font-bold text-yellow-500"><i class="fas fa-hard-hat mr-2"></i>Site Tracker</h1>
             <p class="text-xs text-slate-400">Supervisor Daily Log</p>
         </div>
-        <a href="index.html" class="bg-slate-700 px-3 py-2 rounded text-sm font-bold text-slate-300">Exit</a>
-    </header>
-
-    <div class="mb-4">
-        <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Active Project</label>
-        <select id="projectSelect" onchange="loadProjectData()" class="field-input font-bold text-lg border-l-4 border-l-blue-500">
-            <option value="">-- Select Site --</option>
-        </select>
+        <button onclick="window.location.href='index.html'" class="bg-slate-700 text-xs px-3 py-1 rounded hover:bg-slate-600">Exit</button>
     </div>
 
-    <div id="logForm" class="hidden flex-1 flex flex-col gap-5">
+    <div class="mb-4">
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Active Project</label>
+        <div class="bg-slate-800 p-3 rounded-lg border border-blue-900 mt-1">
+            <h2 class="font-bold text-lg text-white truncate" id="projectName">Loading...</h2>
+        </div>
+    </div>
+
+    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 mb-4">
+        <div class="flex justify-between items-center mb-2">
+            <label class="text-[10px] font-bold text-blue-400 uppercase"><i class="fas fa-cloud mr-1"></i> Weather Conditions</label>
+            <input type="date" id="logDate" class="bg-transparent text-xs text-slate-300 outline-none text-right">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <select id="weatherSelect" class="input-dark text-sm py-2">
+                <option value="Sunny ☀️">Sunny ☀️</option>
+                <option value="Cloudy ☁️">Cloudy ☁️</option>
+                <option value="Rain 🌧️">Rain 🌧️</option>
+                <option value="Windy 💨">Windy 💨</option>
+            </select>
+            <input type="number" id="tempInput" placeholder="Temp °C" class="input-dark text-sm py-2">
+        </div>
+    </div>
+
+    <div class="space-y-4 flex-1">
         
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-            <div class="flex justify-between items-center mb-2">
-                <label class="text-[10px] uppercase font-bold text-blue-400"><i class="fas fa-cloud-sun-rain mr-1"></i> Weather Conditions</label>
-                <input type="date" id="logDate" class="bg-transparent text-white text-xs border-b border-slate-600 outline-none text-right">
-            </div>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <select id="weatherType" class="field-input text-sm" onchange="checkRain()">
-                    <option value="">-- Select --</option>
-                    <option value="Sunny">Sunny ☀️</option>
-                    <option value="Cloudy">Cloudy ☁️</option>
-                    <option value="Windy">Windy 💨</option>
-                    <option value="Rain">Rain / Wet 🌧️</option>
-                    <option value="Storm">Storm / Site Closed ⛈️</option>
-                </select>
-                <input type="text" id="weatherTemp" class="field-input text-sm" placeholder="Temp (°C) / Rain (mm)">
-            </div>
-            <p id="rainAlert" class="hidden text-xs text-yellow-400 mt-2 italic"><i class="fas fa-exclamation-triangle"></i> Rain selected: Please photograph rain gauge.</p>
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase">What are you working on?</label>
+            <select id="itemSelect" class="input-dark mt-1" onchange="updateUnitLabel()">
+                <option value="">-- Select Item from Contract --</option>
+            </select>
+            <p class="text-right mt-1"><a href="#" onclick="toggleExtraWork()" class="text-xs text-yellow-500 hover:underline">+ Report Unforeseen / Extra Work</a></p>
         </div>
 
-        <div>
-            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">What are you working on?</label>
-            <select id="itemSelect" class="field-input text-sm mb-2" onchange="updateUnit()">
-                <option value="">-- Select Activity --</option>
-            </select>
-            
-            <button onclick="toggleNewItem()" class="text-xs text-yellow-500 hover:text-yellow-400 underline w-full text-right">
-                + Report Unforeseen / Extra Work
-            </button>
-
-            <div id="newVarBox" class="hidden mt-2 p-3 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
-                <label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">Describe New Variation Work</label>
-                <input type="text" id="newVarName" class="field-input text-sm mb-2" placeholder="e.g. Remove Soft Spot at entrance">
-            </div>
+        <div id="extraWorkArea" class="hidden bg-yellow-900/20 p-3 rounded border border-yellow-700/50">
+            <label class="text-[10px] font-bold text-yellow-500 uppercase">Extra Work Description</label>
+            <input type="text" id="extraDesc" class="input-dark mt-1 border-yellow-700" placeholder="e.g. Broken pipe repair">
         </div>
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Qty Completed Today</label>
-                <input type="number" id="logQty" class="field-input text-center text-xl font-bold border-green-900 focus:border-green-500" placeholder="0">
+                <label class="text-[10px] font-bold text-green-500 uppercase">Qty Completed Today</label>
+                <input type="number" id="qtyInput" class="input-dark mt-1 text-2xl font-bold text-center text-green-400 border-green-900 bg-green-900/10" placeholder="0">
             </div>
             <div>
-                <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Unit</label>
-                <input type="text" id="logUnit" class="field-input text-center text-slate-400 bg-slate-800" disabled value="...">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Unit</label>
+                <input type="text" id="unitDisplay" class="input-dark mt-1 text-center text-slate-400" readonly placeholder="-">
             </div>
         </div>
 
         <div>
-            <label class="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Evidence (Photo & Notes)</label>
-            
-            <div class="flex gap-4 mb-3">
-                <label for="photoInput" class="camera-btn flex-1 text-center" id="cameraBtn">
-                    <div id="cameraLabel">
-                        <i class="fas fa-camera text-2xl mb-1"></i><br>
-                        <span class="text-xs font-bold">Photo</span>
-                    </div>
-                    <img id="photoPreview" class="hidden w-full h-20 object-cover rounded-lg">
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Evidence (Photo & Notes)</label>
+            <div class="flex gap-2 mt-1 h-24">
+                <label class="w-24 h-full bg-slate-800 border border-dashed border-slate-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-slate-700 relative overflow-hidden">
+                    <i class="fas fa-camera text-2xl text-slate-400 mb-1"></i>
+                    <span class="text-[9px] text-slate-500">Add Photo</span>
+                    <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="previewImage()">
+                    <img id="imgPreview" class="absolute inset-0 w-full h-full object-cover hidden">
                 </label>
-                <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhotoCompression(this)">
                 
-                <div class="w-2/3">
-                    <textarea id="logNotes" rows="3" class="field-input text-sm h-full" placeholder="Notes: QA checked, Docket #123..."></textarea>
-                </div>
+                <textarea id="notesInput" class="flex-1 input-dark h-full text-xs resize-none" placeholder="Add specific details (Location, gridline, issues)..."></textarea>
             </div>
-            <p id="compressingMsg" class="hidden text-xs text-blue-400 text-center animate-pulse">Compressing image...</p>
         </div>
 
-        <button id="btnSave" onclick="saveLog()" class="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95">
-            <i class="fas fa-save"></i> Save Daily Record
-        </button>
+    </div>
 
-        <div class="mt-6 border-t border-slate-700 pt-4">
-            <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Today's Logs</h3>
-            <div id="recentLogs" class="space-y-3"></div>
+    <button onclick="saveLog()" id="btnSave" class="btn-primary py-4 mt-6 text-lg shadow-blue-900/50">
+        <i class="fas fa-save mr-2"></i> Save Daily Log
+    </button>
+    <p id="statusMsg" class="text-center text-xs mt-2 text-slate-500"></p>
+
+    <div class="mt-8 border-t border-slate-800 pt-4">
+        <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Today's Logs</h3>
+        <div id="todayList" class="space-y-2 text-sm text-slate-400">
+            <p class="italic opacity-50">No logs yet today.</p>
         </div>
-
     </div>
 
     <script>
@@ -126,244 +108,178 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let activeProject = null;
+        const pid = localStorage.getItem('civilmate_current_project_id');
+        if(!pid) { alert("Please select a project from the Dashboard first."); window.location.href='index.html'; }
+
+        let compressedImage = null;
         let contractItems = [];
-        let isNewVariation = false;
-        let currentPhotoData = null;
 
+        // INIT
         document.getElementById('logDate').valueAsDate = new Date();
-        loadProjects();
-
-        function showToast(msg, isError = false) {
-            const t = document.getElementById('toast');
-            t.innerHTML = isError ? `<i class="fas fa-times-circle mr-2"></i> ${msg}` : `<i class="fas fa-check-circle mr-2"></i> ${msg}`;
-            t.className = isError ? 'error show' : 'show';
-            setTimeout(() => { t.className = t.className.replace('show', ''); }, 3000);
-        }
-
-        function loadProjects() {
-            db.collection('projects').where('status', '==', 'Active').get().then(snapshot => {
-                const select = document.getElementById('projectSelect');
-                snapshot.forEach(doc => {
-                    const p = doc.data();
-                    select.innerHTML += `<option value="${doc.id}">${p.name}</option>`;
-                });
-            });
-        }
+        loadProjectData();
+        loadTodayLogs();
 
         function loadProjectData() {
-            const pid = document.getElementById('projectSelect').value;
-            if(!pid) return;
-
             db.collection('projects').doc(pid).get().then(doc => {
-                activeProject = doc.data();
-                contractItems = activeProject.items || [];
-                
-                const itemSelect = document.getElementById('itemSelect');
-                itemSelect.innerHTML = '<option value="">-- Select Activity --</option>';
-                
-                let contractGroup = document.createElement('optgroup');
-                contractGroup.label = "CONTRACT SCHEDULE";
-                
-                contractItems.forEach((item, idx) => {
-                    let opt = document.createElement('option');
-                    opt.value = idx;
-                    opt.innerHTML = `${item.name} (${item.unit})`;
-                    contractGroup.appendChild(opt);
-                });
-
-                itemSelect.appendChild(contractGroup);
-                document.getElementById('logForm').classList.remove('hidden');
-                loadLocalLogs(pid);
+                if(doc.exists) {
+                    const p = doc.data();
+                    document.getElementById('projectName').innerText = p.name;
+                    
+                    // --- CORRECCIÓN: Soporte robusto para schedule/items ---
+                    contractItems = p.schedule || p.items || [];
+                    
+                    const sel = document.getElementById('itemSelect');
+                    sel.innerHTML = '<option value="">-- Select Item from Contract --</option>';
+                    
+                    contractItems.forEach((item, idx) => {
+                        // Forzamos un string válido para evitar "undefined" en el menú
+                        const name = item.desc || item.name || "Unnamed Item #" + (idx + 1);
+                        sel.innerHTML += `<option value="${idx}">${name}</option>`;
+                    });
+                }
             });
         }
 
-        function checkRain() {
-            const w = document.getElementById('weatherType').value;
-            if(w === 'Rain' || w === 'Storm') {
-                document.getElementById('rainAlert').classList.remove('hidden');
-                document.getElementById('weatherTemp').placeholder = "Rain Gauge (mm)";
-            } else {
-                document.getElementById('rainAlert').classList.add('hidden');
-                document.getElementById('weatherTemp').placeholder = "Temperature (°C)";
-            }
-        }
-
-        function updateUnit() {
+        function updateUnitLabel() {
             const idx = document.getElementById('itemSelect').value;
             if(idx !== "") {
-                document.getElementById('logUnit').value = contractItems[idx].unit;
-                isNewVariation = false;
-                document.getElementById('newVarBox').classList.add('hidden');
+                const item = contractItems[idx];
+                // Protección contra unidad indefinida
+                document.getElementById('unitDisplay').value = item.unit || "ls";
+                document.getElementById('extraWorkArea').classList.add('hidden');
             }
         }
 
-        function toggleNewItem() {
-            isNewVariation = !isNewVariation;
-            const box = document.getElementById('newVarBox');
-            const select = document.getElementById('itemSelect');
-            if(isNewVariation) {
-                box.classList.remove('hidden');
-                select.value = ""; 
-                select.disabled = true;
-                document.getElementById('logUnit').value = "hr"; 
-                document.getElementById('newVarName').focus();
-            } else {
-                box.classList.add('hidden');
-                select.disabled = false;
-            }
+        function toggleExtraWork() {
+            document.getElementById('itemSelect').value = "";
+            document.getElementById('unitDisplay').value = "hr"; 
+            document.getElementById('extraWorkArea').classList.remove('hidden');
+            document.getElementById('extraDesc').focus();
         }
 
-        // --- NEW: IMAGE COMPRESSION LOGIC ---
-        function handlePhotoCompression(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            document.getElementById('compressingMsg').classList.remove('hidden');
-
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            
-            reader.onload = function (event) {
-                const img = new Image();
-                img.src = event.target.result;
-                
-                img.onload = function () {
-                    // Resize Logic
-                    const canvas = document.createElement("canvas");
-                    const ctx = canvas.getContext("2d");
-                    const maxWidth = 800; // Resize to 800px width max
-                    const scaleSize = maxWidth / img.width;
-                    
-                    canvas.width = maxWidth;
-                    canvas.height = img.height * scaleSize;
-
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    // Compress to JPEG 0.7 quality
-                    const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
-                    
-                    // Store & Preview
-                    currentPhotoData = compressedDataUrl;
-                    
-                    document.getElementById('cameraLabel').classList.add('hidden');
-                    const preview = document.getElementById('photoPreview');
-                    preview.src = currentPhotoData;
-                    preview.classList.remove('hidden');
-                    document.getElementById('compressingMsg').classList.add('hidden');
-                }
+        // COMPRESOR DE IMAGEN
+        function previewImage() {
+            const file = document.getElementById('photoInput').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        const maxSize = 800; // Reducir a 800px para evitar payload error
+                        if (width > height) {
+                            if (width > maxSize) { height *= maxSize / width; width = maxSize; }
+                        } else {
+                            if (height > maxSize) { width *= maxSize / height; height = maxSize; }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        compressedImage = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        document.getElementById('imgPreview').src = compressedImage;
+                        document.getElementById('imgPreview').classList.remove('hidden');
+                        document.querySelector('.fa-camera').classList.add('hidden');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         }
 
         function saveLog() {
             const btn = document.getElementById('btnSave');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
-            btn.disabled = true;
-            btn.classList.add('opacity-50');
-
-            const pid = document.getElementById('projectSelect').value;
+            const status = document.getElementById('statusMsg');
+            const idx = document.getElementById('itemSelect').value;
+            const extraDesc = document.getElementById('extraDesc').value;
+            const qty = parseFloat(document.getElementById('qtyInput').value);
+            const notes = document.getElementById('notesInput').value;
             const date = document.getElementById('logDate').value;
-            const weather = document.getElementById('weatherType').value;
-            const weatherData = document.getElementById('weatherTemp').value;
-            
-            if(!weather) { resetBtn(); return showToast("Select Weather!", true); }
-            if((weather === 'Rain' || weather === 'Storm') && !weatherData) { resetBtn(); return showToast("Enter Rain mm!", true); }
+            const weather = document.getElementById('weatherSelect').value + " " + document.getElementById('tempInput').value + "°C";
 
-            let itemName, itemUnit, itemIdx;
-            
-            if(isNewVariation) {
-                itemName = document.getElementById('newVarName').value;
-                if(!itemName) { resetBtn(); return showToast("Describe Extra Work", true); }
-                itemName = "[VO Request] " + itemName; 
-                itemUnit = "hr"; 
-                itemIdx = -1; 
+            let itemName = "";
+            let unit = "";
+
+            if (idx !== "") {
+                // --- CORRECCIÓN CRÍTICA AQUÍ ---
+                // Forzamos un valor por defecto si desc/name son undefined
+                itemName = contractItems[idx].desc || contractItems[idx].name || "Item #" + (parseInt(idx)+1);
+                unit = contractItems[idx].unit || "ls";
+            } else if (extraDesc) {
+                itemName = "EXTRA: " + extraDesc;
+                unit = document.getElementById('unitDisplay').value;
             } else {
-                itemIdx = document.getElementById('itemSelect').value;
-                if(itemIdx === "") { resetBtn(); return showToast("Select Activity", true); }
-                itemName = contractItems[itemIdx].name;
-                itemUnit = contractItems[itemIdx].unit;
+                alert("Please select an item or describe the extra work.");
+                return;
             }
 
-            const qty = document.getElementById('logQty').value;
-            const notes = document.getElementById('logNotes').value;
+            if (!qty) { alert("Please enter a quantity."); return; }
 
-            if(!qty || !notes) { resetBtn(); return showToast("Qty & Notes Required", true); }
+            // Bloquear botón
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            btn.disabled = true;
 
-            const logEntry = {
+            const logData = {
                 projectId: pid,
-                projectName: activeProject.name,
-                itemIdx: parseInt(itemIdx),
-                itemName: itemName,
-                unit: itemUnit,
-                qty: parseFloat(qty),
-                weather: `${weather} (${weatherData})`,
-                notes: notes,
-                photo: currentPhotoData, // Now this is compressed!
                 date: date,
+                itemName: itemName, // Ahora garantizamos que esto NUNCA es undefined
+                qty: qty,
+                unit: unit,
+                weather: weather,
+                notes: notes,
+                photo: compressedImage || null, // null si no hay foto
                 timestamp: Date.now()
             };
 
-            db.collection('site_logs').add(logEntry)
+            db.collection('site_logs').add(logData)
             .then(() => {
-                resetBtn();
-                showToast("Record Saved Successfully!");
+                status.innerText = "✅ Log Saved Successfully!";
+                status.className = "text-center text-xs mt-2 text-green-400 font-bold";
                 
-                document.getElementById('logQty').value = "";
-                document.getElementById('logNotes').value = "";
-                currentPhotoData = null;
-                document.getElementById('photoInput').value = "";
-                document.getElementById('photoPreview').classList.add('hidden');
-                document.getElementById('photoPreview').src = "";
-                document.getElementById('cameraLabel').classList.remove('hidden');
+                // Reset UI
+                document.getElementById('qtyInput').value = "";
+                document.getElementById('notesInput').value = "";
+                document.getElementById('imgPreview').classList.add('hidden');
+                document.querySelector('.fa-camera').classList.remove('hidden');
+                compressedImage = null;
                 
-                if(isNewVariation) { toggleNewItem(); document.getElementById('newVarName').value = ""; }
+                loadTodayLogs();
                 
-                loadLocalLogs(pid);
-            })
-            .catch((error) => {
-                resetBtn();
-                // If it still fails, it's a very large image, but compression should fix 99%
-                showToast("Error: " + error.message, true);
-            });
+                setTimeout(() => { 
+                    btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
+                    btn.disabled = false;
+                    status.innerText = "";
+                }, 2000);
 
-            function resetBtn() {
-                btn.innerHTML = originalText;
+            }).catch((error) => {
+                console.error("Firebase Error:", error);
+                alert("Error saving: " + error.message);
+                btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
                 btn.disabled = false;
-                btn.classList.remove('opacity-50');
-            }
+            });
         }
 
-        function loadLocalLogs(pid) {
-            const container = document.getElementById('recentLogs');
-            const todayStr = document.getElementById('logDate').value;
-
+        function loadTodayLogs() {
+            const today = document.getElementById('logDate').value;
             db.collection('site_logs')
-              .where('projectId', '==', pid)
-              .where('date', '==', todayStr)
-              .orderBy('timestamp', 'desc')
-              .onSnapshot(snapshot => {
-                  container.innerHTML = "";
-                  if(snapshot.empty) container.innerHTML = "<p class='text-slate-600 text-xs'>No logs for this date.</p>";
-                  
-                  snapshot.forEach(doc => {
-                      const log = doc.data();
-                      const isVo = log.itemName.startsWith('[VO');
-                      const borderClass = isVo ? 'border-yellow-600' : 'border-slate-700';
-                      const photoIcon = log.photo ? '<i class="fas fa-camera text-blue-400 ml-2"></i>' : '';
-
-                      container.innerHTML += `
-                        <div class="bg-slate-800 p-3 rounded border-l-4 ${borderClass} shadow-sm">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="font-bold text-sm text-white">${log.itemName} ${photoIcon}</span>
-                                <span class="text-xs bg-slate-700 px-2 py-1 rounded text-white font-mono">${log.qty} ${log.unit}</span>
-                            </div>
-                            <div class="text-xs text-slate-400 mb-1"><i class="fas fa-cloud text-slate-500"></i> ${log.weather}</div>
-                            <div class="text-xs text-slate-300 italic border-t border-slate-700 pt-1 mt-1">Ref: ${log.notes}</div>
-                        </div>
-                      `;
-                  });
-              });
+                .where('projectId', '==', pid)
+                .where('date', '==', today)
+                .get().then(snap => {
+                    const div = document.getElementById('todayList');
+                    div.innerHTML = "";
+                    if(snap.empty) { div.innerHTML = '<p class="italic opacity-50">No logs yet today.</p>'; return; }
+                    
+                    snap.forEach(doc => {
+                        const d = doc.data();
+                        div.innerHTML += `<div class="bg-slate-800 p-2 rounded border border-slate-700 flex justify-between"><span>${d.itemName}</span> <span class="text-green-400 font-bold">${d.qty} ${d.unit}</span></div>`;
+                    });
+                });
         }
     </script>
 </body>
