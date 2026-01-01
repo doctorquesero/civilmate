@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator - CivilMate</title>
+    <title>Contract & Estimator V6 - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -30,7 +30,6 @@
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
 
-        /* BLOQUEO DE SOLO LECTURA (Active Contract) */
         .locked-area { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
         .status-badge { font-size: 10px; padding: 4px 8px; border-radius: 99px; font-weight: bold; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; }
 
@@ -40,7 +39,10 @@
             #printSection, #printSection * { visibility: visible; }
             #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
             
-            /* Si estamos imprimiendo el CONTRATO LEGAL */
+            /* Control de APU Detallado (NUEVO) */
+            .print-apu-hidden #apuAppendix { display: none !important; }
+            .print-apu-visible #apuAppendix { display: block !important; page-break-before: always; }
+            
             #legalContractModal.show-print * { visibility: visible; }
             #legalContractModal.show-print { position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 9999; display: block !important; }
             
@@ -55,12 +57,13 @@
 
     <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
         <div class="flex items-center gap-3">
-            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-signature"></i></div>
+            <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-invoice"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Contract Suite V5.1 (Integrated)</p>
+                <p class="text-[10px] text-slate-500">Estimator V6.0 (Master DB Linked)</p>
             </div>
-            <div id="projectStatusBadge"></div> </div>
+            <div id="projectStatusBadge"></div> 
+        </div>
         
         <div class="flex gap-2 items-center">
             <button id="btnLegal" onclick="generateLegalContract()" class="hidden px-3 py-1.5 text-xs font-bold text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded transition flex items-center gap-2">
@@ -82,27 +85,22 @@
             
             <div class="p-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
                 <div class="flex gap-2">
-                    <div class="w-1/3">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">1. Discipline</label>
-                        <select id="disciplineSelect" onchange="loadKits()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="w-1/3">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">2. Standard Item</label>
-                        <select id="kitSelect" onchange="loadKitDetails()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm" disabled>
-                            <option>-- Select Discipline --</option>
+                    <div class="w-2/3">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Load Item from Master DB</label>
+                        <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
+                            <option value="">-- Select Standard Item --</option>
+                            <option value="new">+ Create New Item</option>
                         </select>
                     </div>
                     <div class="w-1/3 flex items-end">
                         <button onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2">
-                            <i class="fas fa-plus"></i> Create Custom
+                            <i class="fas fa-eraser"></i> Clear / New
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div id="builderArea" class="hidden flex-1 flex flex-col p-6 pb-24">
+            <div id="builderArea" class="flex-1 flex flex-col p-6 pb-24">
                 
                 <div class="flex justify-center mb-6">
                     <div class="bg-slate-100 p-1 rounded-lg flex w-full max-w-sm shadow-inner border border-slate-200">
@@ -130,22 +128,32 @@
                     </div>
 
                 <div class="absolute bottom-0 left-0 w-full bg-slate-900 text-white p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] z-30">
-                    <div class="flex items-center justify-between gap-4">
-                        <div class="flex gap-8 text-xs">
-                            <div><span class="block text-slate-400 font-bold uppercase text-[9px] mb-1">Base Cost</span><span class="font-mono text-slate-200 text-xl font-bold" id="rawCostDisplay">$0.00</span></div>
+                    <div class="flex items-center justify-between gap-4 mb-3 border-b border-slate-700 pb-3">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="updateDbCheck" class="w-4 h-4 text-green-500 rounded cursor-pointer">
                             <div>
-                                <span class="block text-yellow-500 font-bold uppercase text-[9px] mb-1">Margin %</span>
-                                <div class="flex items-center gap-1"><input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 transition"></div>
+                                <label for="updateDbCheck" class="text-[10px] font-bold text-green-400 uppercase cursor-pointer block">Update Master DB</label>
+                                <p class="text-[9px] text-slate-400">Save changes to library for future use.</p>
                             </div>
-                            <div><span class="block text-green-400 font-bold uppercase text-[9px] mb-1">Unit Rate</span><span class="font-mono text-green-400 text-3xl font-bold leading-none" id="finalRateDisplay">$0.00</span></div>
+                        </div>
+                        <div class="text-right">
+                             <span class="block text-slate-400 font-bold uppercase text-[9px]">Margin %</span>
+                             <input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 text-xs">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex gap-4 text-xs">
+                            <div><span class="block text-slate-400 font-bold uppercase text-[9px]">Base Cost</span><span class="font-mono text-slate-200 text-lg font-bold" id="rawCostDisplay">$0.00</span></div>
+                            <div><span class="block text-green-400 font-bold uppercase text-[9px]">Sell Rate</span><span class="font-mono text-green-400 text-2xl font-bold leading-none" id="finalRateDisplay">$0.00</span></div>
                         </div>
                         <div class="flex items-center gap-3">
                             <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
                                 <label class="text-[9px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
-                                <input type="number" id="qtyInput" class="w-20 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1">
+                                <input type="number" id="qtyInput" class="w-16 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1">
                             </div>
-                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded font-bold shadow-lg shadow-blue-900/50 transition flex items-center gap-2">
-                                <i class="fas fa-arrow-right"></i> Add to Quote
+                            <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded font-bold shadow-lg transition flex items-center gap-2 text-sm">
+                                <i class="fas fa-plus"></i> Add to Quote
                             </button>
                         </div>
                     </div>
@@ -153,7 +161,7 @@
             </div>
         </div>
 
-        <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto" id="printSection">
+        <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto relative" id="printSection">
             
             <div class="bg-white min-h-[29.7cm] w-full max-w-[21cm] mx-auto my-8 shadow-2xl p-12 flex flex-col relative" id="a4Page">
                 
@@ -166,7 +174,6 @@
                         <input type="text" id="myCompany" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
                         <input type="text" id="myAddress" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
                         <input type="text" id="myPhone" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
-                        <input type="text" value="www.civilmate.nz" class="company-input text-xs text-blue-500">
                     </div>
                 </div>
 
@@ -231,9 +238,20 @@
                         </ul>
                     </div>
                 </div>
+                
+                <div id="apuAppendix" class="hidden mt-8 pt-8 border-t-4 border-slate-800">
+                    <h2 class="text-2xl font-bold text-slate-700 uppercase mb-6">Appendix: Rate Analysis Breakdown</h2>
+                    <div id="apuContent" class="space-y-8">
+                        </div>
+                </div>
+
             </div>
             
-            <div class="fixed bottom-8 right-8 no-print z-50">
+            <div class="fixed bottom-8 right-8 no-print z-50 flex flex-col items-end gap-2">
+                <div class="bg-white p-2 rounded shadow border border-slate-200 flex items-center gap-2">
+                    <input type="checkbox" id="printApuCheck" class="w-4 h-4 text-blue-600 rounded cursor-pointer">
+                    <label for="printApuCheck" class="text-xs font-bold text-slate-600 cursor-pointer">Include Detailed Rate Analysis (APU)</label>
+                </div>
                 <button onclick="printQuote()" class="bg-slate-800 hover:bg-black text-white px-6 py-4 rounded-full shadow-2xl font-bold flex items-center gap-3 transition transform hover:-translate-y-1">
                     <i class="fas fa-print text-xl"></i> <span>Download / Print</span>
                 </button>
@@ -251,16 +269,13 @@
                     <button onclick="document.getElementById('legalContractModal').classList.add('hidden')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold hover:bg-slate-300">Close</button>
                 </div>
             </div>
-
             <div class="font-serif text-slate-800 leading-relaxed text-sm">
                 <div class="text-center mb-10">
                     <h1 class="text-3xl font-bold uppercase tracking-widest border-b-2 border-black pb-2 inline-block">Short Form Agreement</h1>
                     <p class="mt-2 text-slate-500 italic">For Construction Works</p>
                 </div>
-
                 <div class="mb-8">
                     <p class="mb-4"><strong>DATE:</strong> <span id="contractDate"></span></p>
-                    
                     <div class="grid grid-cols-2 gap-8">
                         <div>
                             <p class="font-bold uppercase text-xs text-slate-500">THE PRINCIPAL (CLIENT)</p>
@@ -274,40 +289,21 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="mb-8">
                     <h3 class="font-bold uppercase border-b border-slate-300 mb-2">1. The Works</h3>
                     <p>The Contractor agrees to carry out and complete the works described in the attached <strong>Schedule of Rates</strong> at the location: <strong id="contractSiteAddr"></strong>.</p>
                 </div>
-
                 <div class="mb-8">
                     <h3 class="font-bold uppercase border-b border-slate-300 mb-2">2. Contract Price</h3>
                     <p>The Principal shall pay the Contractor the sum of <strong id="contractTotal"></strong> (inclusive of GST), subject to remeasurement of quantities as per the attached Schedule.</p>
                 </div>
-
                 <div class="mb-8">
                     <h3 class="font-bold uppercase border-b border-slate-300 mb-2">3. Payment Terms (CCA 2002)</h3>
-                    <p>Payment Claims shall be submitted monthly. The Principal must provide a Payment Schedule within 5 working days and pay the scheduled amount by the 20th of the month following the claim, in accordance with the <em>Construction Contracts Act 2002</em>.</p>
+                    <p>Payment Claims shall be submitted monthly. The Principal must provide a Payment Schedule within 5 working days and pay the scheduled amount by the 20th of the month following the claim.</p>
                 </div>
-
-                <div class="mb-8">
-                    <h3 class="font-bold uppercase border-b border-slate-300 mb-2">4. Disputes</h3>
-                    <p>Any dispute shall be referred to adjudication under the Construction Contracts Act 2002.</p>
-                </div>
-
                 <div class="mt-16 grid grid-cols-2 gap-16">
-                    <div>
-                        <div class="border-b border-black h-8"></div>
-                        <p class="text-xs uppercase mt-1 font-bold">Signed by the Principal</p>
-                    </div>
-                    <div>
-                        <div class="border-b border-black h-8"></div>
-                        <p class="text-xs uppercase mt-1 font-bold">Signed by the Contractor</p>
-                    </div>
-                </div>
-                
-                <div class="mt-12 text-center text-xs text-slate-400">
-                    <p>Attached: Schedule of Rates (Financial Summary)</p>
+                    <div><div class="border-b border-black h-8"></div><p class="text-xs uppercase mt-1 font-bold">Signed by the Principal</p></div>
+                    <div><div class="border-b border-black h-8"></div><p class="text-xs uppercase mt-1 font-bold">Signed by the Contractor</p></div>
                 </div>
             </div>
         </div>
@@ -315,153 +311,101 @@
 
     <script>
         // CONFIG
-        const firebaseConfig = {
-            apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk",
-            authDomain: "civilmate-933db.firebaseapp.com",
-            projectId: "civilmate-933db",
-            storageBucket: "civilmate-933db.firebasestorage.app",
-            messagingSenderId: "679829297548",
-            appId: "1:679829297548:web:42f9a5217314b787ed9ea9"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
 
-        // DATABASE
-        let standardDB = {
-            "Earthworks": [ { name: "Bulk Excavation", unit: "m3", resources: [{n:"Excavator 20T", u:"hr", q:0.05, c:140, t:"Plant"}, {n:"Operator", u:"hr", q:0.05, c:45, t:"Lab"}, {n:"Tip Fees", u:"m3", q:1, c:35, t:"Mat"}] } ],
-            "Concrete": [ { name: "Footing 20MPa", unit: "m3", resources: [{n:"Concrete 20MPa", u:"m3", q:1.05, c:250, t:"Mat"}, {n:"Line Pump", u:"hr", q:0.2, c:180, t:"Plant"}] } ],
-            "User Custom": [] 
-        };
-
         // VARS
-        let currentResources = [];
+        let currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
         let quoteItems = [];
+        let masterItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
         let projectStatus = "Pending";
-        let unitModeSnapshot = null;
 
-        // INIT
         init();
 
         function init() {
-            renderDisciplineSelect();
+            loadMasterLibrary(); // Carga la DB real
             renderAllLists();
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
-        // --- RENDER TABLES (FIXED) ---
-        function renderAllLists() {
-            renderList('Lab', 'listLab');
-            renderList('Plant', 'listPlant');
-            renderList('Mat', 'listMat');
-        }
-
-        function renderList(type, elementId) {
-            const list = document.getElementById(elementId);
-            if(!list) {
-                const container = document.getElementById('resourcesContainer');
-                if(!container.innerHTML.trim()) {
-                    container.innerHTML = `
-                        <div class="border border-orange-200 rounded-lg overflow-hidden shadow-sm mb-4">
-                            <div class="bg-orange-50 px-3 py-2 flex justify-between items-center border-b border-orange-100"><span class="text-[10px] font-bold text-orange-800 uppercase tracking-wider"><i class="fas fa-user-hard-hat mr-1"></i> Labor Cost</span><button onclick="addRes('Lab')" class="text-orange-600 hover:text-orange-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-orange-200 shadow-sm transition hover:shadow">+ Add</button></div>
-                            <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="listLab"></tbody></table></div>
-                        </div>
-                        <div class="border border-green-200 rounded-lg overflow-hidden shadow-sm mb-4">
-                            <div class="bg-green-50 px-3 py-2 flex justify-between items-center border-b border-green-100"><span class="text-[10px] font-bold text-green-800 uppercase tracking-wider"><i class="fas fa-truck-monster mr-1"></i> Plant Cost</span><button onclick="addRes('Plant')" class="text-green-600 hover:text-green-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-green-200 shadow-sm transition hover:shadow">+ Add</button></div>
-                            <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="listPlant"></tbody></table></div>
-                        </div>
-                        <div class="border border-blue-200 rounded-lg overflow-hidden shadow-sm">
-                            <div class="bg-blue-50 px-3 py-2 flex justify-between items-center border-b border-blue-100"><span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider"><i class="fas fa-cubes mr-1"></i> Material Cost</span><button onclick="addRes('Mat')" class="text-blue-600 hover:text-blue-900 text-xs font-bold bg-white px-2 py-0.5 rounded border border-blue-200 shadow-sm transition hover:shadow">+ Add</button></div>
-                            <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Qty</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="listMat"></tbody></table></div>
-                        </div>
-                    `;
-                }
-            }
-            
-            const target = document.getElementById(elementId);
-            if(target) {
-                target.innerHTML = "";
-                currentResources.forEach((res, idx) => {
-                    if(res.t !== type) return;
-                    const total = (res.c * res.q).toFixed(2);
-                    target.innerHTML += `
-                        <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
-                            <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
-                            <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
-                            <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
-                            <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td>
-                            <td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td>
-                            <td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td>
-                        </tr>
-                    `;
+        // --- 1. LOGICA DE BASE DE DATOS MAESTRA ---
+        function loadMasterLibrary() {
+            db.collection('master_library').get().then(snap => {
+                masterItems = [];
+                const select = document.getElementById('masterDbSelect');
+                select.innerHTML = '<option value="">-- Select Standard Item --</option>';
+                
+                snap.forEach(doc => {
+                    const item = doc.data();
+                    item.id = doc.id; // Guardamos ID para poder actualizar
+                    masterItems.push(item);
+                    select.innerHTML += `<option value="${doc.id}">${item.name} (${item.unit}) - $${(item.rate||0).toFixed(2)}</option>`;
                 });
+                select.innerHTML += '<option value="new">+ Create New Item</option>';
+            });
+        }
+
+        function loadFromMaster() {
+            const id = document.getElementById('masterDbSelect').value;
+            if (id === 'new' || id === "") {
+                createNewItem();
+                return;
+            }
+            const item = masterItems.find(i => i.id === id);
+            if (item) {
+                document.getElementById('itemName').value = item.name;
+                document.getElementById('itemUnit').value = item.unit;
+                currentResources = JSON.parse(JSON.stringify(item.resources || []));
+                renderAllLists();
+                updateCalculations();
             }
         }
 
-        // --- CORE FUNCTIONS ---
-        function renderDisciplineSelect() {
-            const discSelect = document.getElementById('disciplineSelect');
-            discSelect.innerHTML = '<option value="">-- Select --</option>';
-            Object.keys(standardDB).forEach(d => { if(standardDB[d].length > 0) discSelect.innerHTML += `<option value="${d}">${d}</option>`; });
+        // --- BUILDER LOGIC ---
+        function renderAllLists() {
+            renderList('Lab', 'Labor Cost', 'bg-orange-50', 'text-orange-800', 'border-orange-200', 'text-orange-600');
+            renderList('Plant', 'Plant Cost', 'bg-green-50', 'text-green-800', 'border-green-200', 'text-green-600');
+            renderList('Mat', 'Material Cost', 'bg-blue-50', 'text-blue-800', 'border-blue-200', 'text-blue-600');
         }
-        function loadKits() {
-            const d = document.getElementById('disciplineSelect').value;
-            const k = document.getElementById('kitSelect');
-            k.innerHTML = '<option>-- Select Item --</option>';
-            k.disabled = !d;
-            if(d && standardDB[d]) standardDB[d].forEach((item, i) => k.innerHTML += `<option value="${d}|${i}">${item.name}</option>`);
+
+        function renderList(type, title, bgClass, textClass, borderClass, btnClass) {
+            let container = document.getElementById('resourcesContainer');
+            if (type === 'Lab') container.innerHTML = ""; // Reset on first call
+
+            let sectionHTML = `
+                <div class="border ${borderClass} rounded-lg overflow-hidden shadow-sm">
+                    <div class="${bgClass} px-3 py-2 flex justify-between items-center border-b ${borderClass.replace('200','100')}">
+                        <span class="text-[10px] font-bold ${textClass} uppercase tracking-wider">${title}</span>
+                        <button onclick="addRes('${type}')" class="${btnClass} hover:brightness-75 text-xs font-bold bg-white px-2 py-0.5 rounded border ${borderClass} shadow-sm transition">+ Add</button>
+                    </div>
+                    <div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="list${type}"></tbody></table></div>
+                </div>`;
+            
+            container.innerHTML += sectionHTML;
+
+            const tbody = document.getElementById(`list${type}`);
+            currentResources.forEach((res, idx) => {
+                if(res.t !== type) return;
+                const total = (res.c * res.q).toFixed(2);
+                tbody.innerHTML += `
+                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
+                        <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
+                        <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
+                        <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
+                        <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td>
+                        <td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td>
+                        <td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td>
+                    </tr>`;
+            });
         }
-        function loadKitDetails() {
-            const val = document.getElementById('kitSelect').value;
-            if(!val.includes("|")) return;
-            const [d, i] = val.split("|");
-            const item = standardDB[d][i];
-            document.getElementById('builderArea').classList.remove('hidden');
-            document.getElementById('itemName').value = item.name;
-            document.getElementById('itemUnit').value = item.unit;
-            currentResources = JSON.parse(JSON.stringify(item.resources));
-            unitModeSnapshot = null;
-            switchPricingMode('UNIT', false);
-            renderAllLists();
-            updateCalculations();
-        }
-        function createNewItem() {
-            document.getElementById('builderArea').classList.remove('hidden');
-            document.getElementById('itemName').value = "New Item";
-            document.getElementById('itemUnit').value = "ea";
-            currentResources = [{n:"New Resource", u:"ea", q:1, c:0, t:"Mat"}];
-            unitModeSnapshot = null;
-            switchPricingMode('UNIT');
-            renderAllLists();
-            updateCalculations();
-        }
-        window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
-        window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
+
         window.addRes = (t) => { currentResources.push({n:"New", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
-
-        function switchPricingMode(targetMode) {
-            const btnU = document.getElementById('btnModeUnit');
-            const btnT = document.getElementById('btnModeTime');
-            const unitInput = document.getElementById('itemUnit');
-            if(targetMode === 'TIME') {
-                btnT.classList.replace('text-slate-400', 'bg-blue-600'); btnT.classList.add('text-white', 'shadow-md');
-                btnU.classList.replace('bg-white', 'text-slate-400'); btnU.classList.remove('text-blue-700', 'shadow-sm');
-                unitModeSnapshot = { resources: JSON.parse(JSON.stringify(currentResources)), unit: unitInput.value };
-                unitInput.value = 'hr';
-                currentResources.forEach(r => { if(r.t !== 'Mat') r.q = 1; });
-            } else {
-                btnU.classList.replace('text-slate-400', 'bg-white'); btnU.classList.add('text-blue-700', 'shadow-sm');
-                btnT.classList.replace('bg-blue-600', 'text-slate-400'); btnT.classList.remove('text-white', 'shadow-md');
-                if(unitModeSnapshot) {
-                    currentResources = JSON.parse(JSON.stringify(unitModeSnapshot.resources));
-                    unitInput.value = unitModeSnapshot.unit;
-                }
-            }
-            renderAllLists();
-            updateCalculations();
-        }
+        window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
+        window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
 
         function updateCalculations() {
             let cost = 0;
@@ -473,78 +417,218 @@
             return price;
         }
 
+        function createNewItem() {
+            document.getElementById('itemName').value = "New Item";
+            document.getElementById('itemUnit').value = "ea";
+            currentResources = [{n:"Labor", u:"hr", q:1, c:45, t:"Lab"}];
+            renderAllLists();
+            updateCalculations();
+            document.getElementById('masterDbSelect').value = "";
+        }
+
+        function switchPricingMode(mode) {
+             renderAllLists();
+        }
+
+        // --- 2. ADD TO QUOTE & UPDATE DB LOGIC ---
         function addToQuote() {
-            let qtyVal = parseFloat(document.getElementById('qtyInput').value);
-            if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0) { qtyVal = 1; document.getElementById('qtyInput').value = 1; }
-            const rate = updateCalculations();
-            
-            // MAPEO CORRECTO PARA VALUATIONS
+            let qty = parseFloat(document.getElementById('qtyInput').value) || 1;
+            let name = document.getElementById('itemName').value;
+            let unit = document.getElementById('itemUnit').value;
+            let rate = updateCalculations();
+
+            // Lógica de Inteligencia (Aprender/Actualizar)
+            if(document.getElementById('updateDbCheck').checked) {
+                // Verificar si existe por nombre
+                const existingItem = masterItems.find(i => i.name.toLowerCase() === name.toLowerCase());
+                
+                const itemData = {
+                    name: name,
+                    unit: unit,
+                    rate: rate,
+                    resources: currentResources,
+                    lastUpdated: Date.now()
+                };
+
+                if(existingItem) {
+                    // UPDATE
+                    if(confirm(`Item "${name}" already exists in Master DB. Update it with these new resources/price?`)) {
+                        db.collection('master_library').doc(existingItem.id).update(itemData).then(() => {
+                            console.log("Updated DB");
+                            loadMasterLibrary();
+                        });
+                    }
+                } else {
+                    // CREATE
+                    if(confirm(`Save "${name}" as a NEW item to Master DB?`)) {
+                        db.collection('master_library').add(itemData).then(() => {
+                            console.log("Added to DB");
+                            loadMasterLibrary();
+                        });
+                    }
+                }
+            }
+
+            // Agregar a la lista local
             quoteItems.push({
-                desc: document.getElementById('itemName').value, // IMPORTANTE: desc (antes name)
-                name: document.getElementById('itemName').value, 
-                unit: document.getElementById('itemUnit').value,
-                qty: qtyVal,
+                desc: name,
+                name: name,
+                unit: unit,
+                qty: qty,
                 rate: rate,
-                total: qtyVal * rate,
+                total: qty * rate,
                 resources: JSON.parse(JSON.stringify(currentResources))
             });
             renderQuote();
-            if(window.innerWidth < 1024) document.getElementById('printSection').scrollIntoView({ behavior: 'smooth' });
         }
 
         function renderQuote() {
             const tbody = document.getElementById('quoteTable');
             tbody.innerHTML = "";
             let sub = 0;
-            if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
             
-            const isLocked = projectStatus === 'Active' || projectStatus === 'Completed';
+            if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
 
             quoteItems.forEach((item, i) => {
-                // Soportar ambos formatos (desc y name)
-                const displayName = item.desc || item.name;
-                
                 item.total = item.qty * item.rate;
                 sub += item.total;
-                
-                const deleteBtn = isLocked ? '' : `<button onclick="delQuoteItem(${i})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-trash"></i></button>`;
-                const disabled = isLocked ? 'disabled' : '';
-
                 tbody.innerHTML += `
                     <tr class="border-b border-slate-100 group hover:bg-slate-50 transition">
-                        <td class="p-3 font-bold text-slate-700">${displayName}</td>
+                        <td class="p-3 font-bold text-slate-700">${item.desc}</td>
                         <td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td>
-                        <td class="p-3 text-center">
-                            <input type="number" value="${item.qty}" ${disabled} onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print">
-                            <span class="hidden print-only">${item.qty}</span>
-                        </td>
+                        <td class="p-3 text-center"><input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print"><span class="hidden print-only">${item.qty}</span></td>
                         <td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         <td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                        <td class="p-3 text-right no-print">${deleteBtn}</td>
+                        <td class="p-3 text-right no-print"><button onclick="quoteItems.splice(${i},1);renderQuote()" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td>
                     </tr>
                 `;
             });
 
             const total = sub * 1.15;
-            document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('totalDisplay').innerText = "$" + total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            
+            document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            document.getElementById('totalDisplay').innerText = "$" + total.toLocaleString('en-NZ', {minimumFractionDigits: 2});
             document.getElementById('contractTotal').innerText = "$" + total.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
-        function updateQuoteQty(index, newVal) {
-            const val = parseFloat(newVal);
-            if (val > 0) { quoteItems[index].qty = val; renderQuote(); }
-        }
-        window.delQuoteItem = (i) => { quoteItems.splice(i,1); renderQuote(); };
+        function updateQuoteQty(i, v) { quoteItems[i].qty = parseFloat(v)||0; renderQuote(); }
 
+        // --- 3. PRINT LOGIC (APU TRANSPARENCY) ---
         function printQuote() {
+            const includeAPU = document.getElementById('printApuCheck').checked;
+            const printSec = document.getElementById('printSection');
+            
+            if(includeAPU) {
+                printSec.classList.add('print-apu-visible');
+                printSec.classList.remove('print-apu-hidden');
+                generateAPUAppendix(); // Build HTML for APUs
+            } else {
+                printSec.classList.add('print-apu-hidden');
+                printSec.classList.remove('print-apu-visible');
+            }
+            
             if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
             window.print();
         }
 
-        function generateLegalContract() {
+        function generateAPUAppendix() {
+            const container = document.getElementById('apuContent');
+            container.innerHTML = "";
+            
+            quoteItems.forEach((item, index) => {
+                let html = `
+                    <div class="border border-slate-200 rounded-lg p-6 bg-slate-50 avoid-break">
+                        <div class="flex justify-between border-b border-slate-300 pb-2 mb-4">
+                            <h3 class="font-bold text-lg text-slate-800">${index + 1}. ${item.desc}</h3>
+                            <div class="text-right">
+                                <span class="block text-[10px] uppercase font-bold text-slate-500">Unit Rate</span>
+                                <span class="font-mono font-bold text-lg">$${item.rate.toFixed(2)} / ${item.unit}</span>
+                            </div>
+                        </div>
+                        <table class="w-full text-xs text-slate-600 mb-2">
+                            <thead class="font-bold uppercase bg-slate-200">
+                                <tr><th class="p-2 text-left">Resource</th><th class="p-2 text-center">Type</th><th class="p-2 text-center">Yield</th><th class="p-2 text-right">Cost</th></tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                item.resources.forEach(res => {
+                    const typeMap = { 'Lab': 'Labor', 'Plant': 'Plant', 'Mat': 'Material' };
+                    html += `
+                        <tr class="border-b border-slate-200">
+                            <td class="p-2">${res.n}</td>
+                            <td class="p-2 text-center">${typeMap[res.t]}</td>
+                            <td class="p-2 text-center">${res.q} ${res.u}</td>
+                            <td class="p-2 text-right">$${res.c}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table></div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // --- SAVING PROJECT ---
+        function saveProject() {
+            const client = document.getElementById('clientName').value;
+            if(!quoteItems.length) return alert("Quote is empty.");
+            if(!client) return alert("Enter Client Name.");
+            
+            const cleanItems = quoteItems.map(item => ({
+                desc: item.desc, 
+                name: item.name,
+                unit: item.unit,
+                qty: item.qty,
+                rate: item.rate,
+                total: item.total,
+                resources: item.resources
+            }));
+
+            let totalRev = 0; cleanItems.forEach(i => totalRev += i.total);
+
+            const pData = {
+                name: client + " - Project",
+                client: client,
+                address: document.getElementById('clientAddress').value,
+                phone: document.getElementById('clientPhone').value,
+                email: document.getElementById('clientEmail').value,
+                total: totalRev,
+                items: cleanItems,
+                schedule: cleanItems,
+                status: "Pending",
+                updatedAt: Date.now()
+            };
+
+            if(currentProjectId) {
+                db.collection('projects').doc(currentProjectId).update(pData).then(()=>alert("Saved!"));
+            } else {
+                pData.createdAt = Date.now();
+                db.collection('projects').add(pData).then(doc => {
+                    localStorage.setItem('civilmate_current_project_id', doc.id);
+                    currentProjectId = doc.id;
+                    alert("Saved New Project!");
+                });
+            }
+        }
+        
+        function loadProjectFromDB(id) {
+            db.collection('projects').doc(id).get().then(doc => {
+                if(doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('clientName').value = data.client||"";
+                    document.getElementById('clientAddress').value = data.address||"";
+                    document.getElementById('clientPhone').value = data.phone||"";
+                    document.getElementById('clientEmail').value = data.email||"";
+                    quoteItems = data.schedule || data.items || [];
+                    projectStatus = data.status || "Pending";
+                    renderQuote();
+                    if(projectStatus === 'Active' || projectStatus === 'Completed') lockProjectUI();
+                }
+            });
+        }
+        
+        function generateLegalContract() { 
             document.getElementById('contractDate').innerText = new Date().toLocaleDateString('en-NZ');
             document.getElementById('contractClientName').innerText = document.getElementById('clientName').value || "Client Name";
             document.getElementById('contractClientAddr').innerText = document.getElementById('clientAddress').value || "Address";
@@ -569,77 +653,6 @@
                 inp.disabled = true;
                 inp.classList.add('text-slate-600', 'bg-transparent');
                 inp.classList.remove('border-dashed');
-            });
-        }
-
-        function saveProject() {
-            const client = document.getElementById('clientName').value;
-            if(!quoteItems.length) return alert("Quote is empty.");
-            if(!client) return alert("Enter Client Name.");
-
-            // NORMALIZAR ITEMS (ASEGURAR QUE 'DESC' EXISTA)
-            // Esto es vital para que Valuations funcione
-            const cleanItems = quoteItems.map(item => ({
-                desc: item.desc || item.name, // Normaliza el nombre del item
-                unit: item.unit,
-                qty: item.qty,
-                rate: item.rate,
-                total: item.qty * item.rate,
-                resources: item.resources || []
-            }));
-
-            let totalRev = 0;
-            cleanItems.forEach(i => totalRev += i.total);
-
-            const pData = {
-                name: client + " - Project",
-                client: client,
-                address: document.getElementById('clientAddress').value,
-                phone: document.getElementById('clientPhone').value,
-                email: document.getElementById('clientEmail').value,
-                total: totalRev,
-                profit: totalRev * 0.18, 
-                items: cleanItems,
-                schedule: cleanItems, // GUARDAMOS DOBLE PARA COMPATIBILIDAD
-                status: "Pending",
-                updatedAt: Date.now()
-            };
-
-            if(currentProjectId) {
-                db.collection('projects').doc(currentProjectId).update(pData).then(() => {
-                    alert("✅ Contract Updated Successfully!");
-                    window.location.href = 'dashboard.html';
-                });
-            } else {
-                pData.createdAt = Date.now();
-                db.collection('projects').add(pData).then((doc) => {
-                    localStorage.setItem('civilmate_current_project_id', doc.id);
-                    currentProjectId = doc.id;
-                    alert("✅ New Contract Saved!");
-                    window.location.href = 'dashboard.html';
-                });
-            }
-        }
-
-        function loadProjectFromDB(id) {
-            db.collection('projects').doc(id).get().then(doc => {
-                if(doc.exists) {
-                    const data = doc.data();
-                    document.getElementById('clientName').value = data.client || "";
-                    document.getElementById('clientAddress').value = data.address || "";
-                    document.getElementById('clientPhone').value = data.phone || "";
-                    document.getElementById('clientEmail').value = data.email || "";
-                    
-                    // Cargar items (usar schedule o items)
-                    quoteItems = data.schedule || data.items || [];
-                    
-                    projectStatus = data.status || "Pending";
-                    renderQuote();
-
-                    if(projectStatus === 'Active' || projectStatus === 'Completed') {
-                        lockProjectUI();
-                    }
-                }
             });
         }
     </script>
