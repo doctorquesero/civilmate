@@ -79,7 +79,7 @@
 
         <div class="flex-1 flex flex-col justify-center space-y-5">
 
-            <a href="hs_menu.html" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer no-underline border border-red-400/30">
+            <a href="site_safety.html" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer no-underline border border-red-400/30">
                 <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
                     <i class="fas fa-shield-alt text-3xl text-white"></i>
                 </div>
@@ -99,7 +99,7 @@
                 </div>
             </a>
 
-            <div id="btnContracts" onclick="handleProtectedClick('dashboard.html')" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-blue-400/30 relative overflow-hidden">
+            <div id="btnContracts" onclick="handleProtectedClick('Dashboard.html')" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-blue-400/30 relative overflow-hidden">
                 <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
                     <i class="fas fa-file-signature text-3xl text-white"></i>
                 </div>
@@ -114,7 +114,7 @@
                 </div>
             </div>
 
-            <div id="btnValuations" onclick="handleProtectedClick('dashboard.html')" class="w-full bg-gradient-to-r from-slate-700 to-slate-600 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-slate-500/30 relative overflow-hidden">
+            <div id="btnValuations" onclick="handleProtectedClick('Dashboard.html')" class="w-full bg-gradient-to-r from-slate-700 to-slate-600 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-slate-500/30 relative overflow-hidden">
                 <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
                     <i class="fas fa-calculator text-3xl text-white"></i>
                 </div>
@@ -136,14 +136,12 @@
     <script>
         let currentUserRole = null; 
 
-        // 1. Mostrar Input de PIN
         function showPinInput() {
             document.getElementById('roleSelection').classList.add('hidden');
             document.getElementById('pinArea').classList.remove('hidden');
             document.getElementById('pinInput').focus();
         }
 
-        // 2. Cancelar PIN
         function cancelPin() {
             document.getElementById('roleSelection').classList.remove('hidden');
             document.getElementById('pinArea').classList.add('hidden');
@@ -151,7 +149,6 @@
             document.getElementById('pinInput').value = '';
         }
 
-        // 3. Verificar PIN
         function verifyPin() {
             const pin = document.getElementById('pinInput').value;
             if (pin === '2025') {
@@ -163,7 +160,6 @@
             }
         }
 
-        // 4. Lógica de Login
         function selectRole(role) {
             currentUserRole = role;
             document.getElementById('loginScreen').classList.add('hidden');
@@ -186,7 +182,6 @@
             }
         }
 
-        // 5. Manejar Clics en Botones Protegidos
         function handleProtectedClick(url) {
             if (currentUserRole === 'ENGINEER') {
                 alert("⛔ ACCESS DENIED\n\nYou do not have permission to view Financial Data.\nThis attempt has been logged.");
