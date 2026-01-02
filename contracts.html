@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V11.6 - CivilMate NZ</title>
+    <title>Contract & Estimator V12.0 - CivilMate NZ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -12,7 +12,7 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* CONTRACT MODE LOCKS */
+        /* CONTRACT LOCKS */
         .contract-mode #builderPanel { display: none !important; }
         .contract-mode #printSection { width: 100% !important; max-width: 1000px; margin: 0 auto; background: transparent; }
         .contract-mode .company-input { pointer-events: none; border: none; }
@@ -35,10 +35,10 @@
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
 
-        /* MODE SWITCHER BUTTONS */
-        .mode-btn { transition: all 0.2s; border: 1px solid #cbd5e1; }
+        /* MODE BUTTONS */
+        .mode-btn { transition: all 0.2s; border: 1px solid #cbd5e1; cursor: pointer; }
         .mode-active { background-color: #2563eb; color: white; border-color: #2563eb; }
-        .mode-inactive { background-color: white; color: #64748b; cursor: pointer; }
+        .mode-inactive { background-color: white; color: #64748b; }
         .mode-inactive:hover { background-color: #f1f5f9; }
 
         @media print {
@@ -62,7 +62,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-invoice"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V11.6 (Fixed Add Button)</p>
+                <p class="text-[10px] text-slate-500">Estimator V12.0 (Math Fix)</p>
             </div>
             <div id="projectStatusBadge"></div> 
         </div>
@@ -87,11 +87,11 @@
 
             <div id="builderArea" class="flex-1 flex flex-col p-6 pb-24">
                 
-                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">2. Select Pricing Mode (Auto-Recalc)</label>
+                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">2. Select Pricing Mode</label>
                 <div class="flex gap-0 rounded-lg overflow-hidden shadow-sm border border-slate-300 mb-6">
-                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active bg-blue-600 text-white">📊 Unit Rate</button>
-                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500 hover:bg-slate-50">⏱️ Hourly</button>
-                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500 hover:bg-slate-50">🌎 Lump Sum</button>
+                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active bg-blue-600 text-white">📊 Unit Rate (m3/m2)</button>
+                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500">⏱️ Hourly (Charge-up)</button>
+                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500">🌎 Lump Sum (Global)</button>
                 </div>
 
                 <div class="flex gap-4 mb-6 items-end">
@@ -113,15 +113,21 @@
                             <input type="checkbox" id="updateDbCheck" class="w-4 h-4 text-green-500 rounded cursor-pointer">
                             <div><label for="updateDbCheck" class="text-[10px] font-bold text-green-400 uppercase cursor-pointer block">Update Master DB</label><p class="text-[9px] text-slate-400">Save changes to library.</p></div>
                         </div>
-                        <div class="text-right"><span class="block text-slate-400 font-bold uppercase text-[9px]">Margin %</span><input type="number" id="marginInput" value="18" onchange="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 text-xs"></div>
+                        <div class="text-right"><span class="block text-slate-400 font-bold uppercase text-[9px]">Margin %</span><input type="number" id="marginInput" value="18" oninput="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 font-bold text-center outline-none text-yellow-400 focus:border-yellow-400 text-xs"></div>
                     </div>
                     <div class="flex items-center justify-between gap-4">
                         <div class="flex gap-4 text-xs">
                             <div><span class="block text-slate-400 font-bold uppercase text-[9px]">Unit Rate</span><span class="font-mono text-green-400 text-xl font-bold leading-none" id="finalRateDisplay">$0.00</span></div>
-                            <div class="border-l border-slate-700 pl-4"><span class="block text-slate-400 font-bold uppercase text-[9px]">Total (Rate x Qty)</span><span class="font-mono text-yellow-400 text-xl font-bold leading-none" id="totalLineValueDisplay">$0.00</span></div>
+                            <div class="border-l border-slate-700 pl-4">
+                                <span class="block text-slate-400 font-bold uppercase text-[9px]">Total Value (Rate x Qty)</span>
+                                <span class="font-mono text-yellow-400 text-xl font-bold leading-none" id="totalLineValueDisplay">$0.00</span>
+                            </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3"><label class="text-[9px] font-bold text-slate-400 uppercase mr-2">Qty:</label><input type="number" id="qtyInput" oninput="updateCalculations()" class="w-16 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1"></div>
+                            <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
+                                <label class="text-[9px] font-bold text-slate-400 uppercase mr-2">Qty:</label>
+                                <input type="number" id="qtyInput" oninput="updateCalculations()" class="w-16 bg-transparent font-bold text-center outline-none text-white text-lg" placeholder="1" value="1">
+                            </div>
                             <button onclick="addToQuote()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded font-bold shadow-lg transition flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add to Quote</button>
                         </div>
                     </div>
@@ -134,7 +140,7 @@
                 <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
                     <div>
                         <h2 id="docTitle" class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
-                        <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#EST-001</span></p>
+                        <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2026-001</span></p>
                     </div>
                     <div class="w-1/2 text-right">
                         <input type="text" id="myCompany" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
@@ -204,6 +210,7 @@
             renderAllLists();
             seedMasterDatabase(); 
             if(currentProjectId) loadProjectFromDB(currentProjectId);
+            updateCalculations();
         }
 
         function loadProjectFromDB(id) { 
@@ -401,12 +408,15 @@
             // 2. Logic Update
             if (mode === 'hour') {
                 document.getElementById('itemUnit').value = 'hr';
+                document.getElementById('qtyInput').readOnly = false;
             } else if (mode === 'lump') {
                 document.getElementById('itemUnit').value = 'LS';
-                document.getElementById('qtyInput').value = 1; // Force Qty 1 for Lump Sum
+                document.getElementById('qtyInput').value = 1; 
+                document.getElementById('qtyInput').readOnly = true; // Lump Sum is always 1 qty
             } else {
                 const current = document.getElementById('itemUnit').value;
                 if (current === 'hr' || current === 'LS') document.getElementById('itemUnit').value = 'm3';
+                document.getElementById('qtyInput').readOnly = false;
             }
             updateCalculations(); // TRIGGER RECALC
         }
@@ -469,10 +479,11 @@
             const qty = parseFloat(document.getElementById('qtyInput').value) || 0;
             const totalLineValue = price * qty;
             
-            document.getElementById('rawCostDisplay').innerText = "$" + cost.toFixed(2);
-            document.getElementById('finalRateDisplay').innerText = "$" + price.toFixed(2);
+            document.getElementById('rawCostDisplay').innerText = "$" + cost.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            document.getElementById('finalRateDisplay').innerText = "$" + price.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            document.getElementById('totalLineValueDisplay').innerText = "$" + totalLineValue.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
-            return price;
+            return { price: price, total: totalLineValue };
         }
 
         function createNewItem() {
@@ -487,8 +498,11 @@
             let qty = parseFloat(document.getElementById('qtyInput').value) || 1;
             let name = document.getElementById('itemName').value;
             let unit = document.getElementById('itemUnit').value;
-            let rate = updateCalculations();
-            let total = rate * qty;
+            
+            // Recalculate everything fresh
+            let calc = updateCalculations();
+            let rate = calc.price;
+            let total = calc.total;
             
             if(document.getElementById('updateDbCheck').checked) {
                 const itemData = { name: name, unit: unit, rate: rate, resources: currentResources, lastUpdated: Date.now(), cat: "User Custom" };
@@ -515,7 +529,7 @@
             const tbody = document.getElementById('quoteTable'); tbody.innerHTML = ""; let sub = 0;
             if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
             quoteItems.forEach((item, i) => {
-                item.total = item.qty * item.rate; sub += item.total;
+                sub += item.total;
                 tbody.innerHTML += `<tr class="border-b border-slate-100 group hover:bg-slate-50 transition"><td class="p-3 font-bold text-slate-700">${item.desc}</td><td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td><td class="p-3 text-center"><input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print"><span class="hidden print-only">${item.qty}</span></td><td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right no-print header-action delete-btn"><button onclick="quoteItems.splice(${i},1);renderQuote()" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
             });
             document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2});
@@ -525,7 +539,12 @@
             document.getElementById('contractTotalVal').innerText = "$" + (sub*1.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
         }
 
-        function updateQuoteQty(i, v) { quoteItems[i].qty = parseFloat(v)||0; renderQuote(); }
+        function updateQuoteQty(i, v) { 
+            let q = parseFloat(v)||0;
+            quoteItems[i].qty = q;
+            quoteItems[i].total = q * quoteItems[i].rate;
+            renderQuote(); 
+        }
         
         function printQuote() {
             const includeAPU = document.getElementById('printApuCheck').checked;
