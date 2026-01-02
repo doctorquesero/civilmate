@@ -11,7 +11,7 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
         .locked-input { background-color: #f1f5f9; color: #64748b; border: none; pointer-events: none; }
-        canvas { background-color: white; cursor: crosshair; width: 100%; height: 80px; } /* Ajuste de altura para firmas */
+        canvas { background-color: white; cursor: crosshair; width: 100%; height: 80px; touch-action: none; }
         
         @media print {
             body * { visibility: hidden; }
@@ -22,7 +22,7 @@
             input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
             input[type=number] { -moz-appearance: textfield; }
             .bg-yellow-50 { background-color: transparent !important; border: none !important; }
-            canvas { border: 1px solid #ccc; } /* Borde visible al imprimir */
+            canvas { border: 1px solid #ccc; }
         }
     </style>
 </head>
@@ -49,7 +49,7 @@
                 <p class="text-xs text-slate-500 font-bold mt-1">CCA 2002 COMPLIANT</p>
             </div>
             <div class="text-right">
-                <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Claim No:</span> <span class="font-bold text-xl">1</span></div>
+                <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Claim No:</span> <span class="font-bold text-xl" id="claimNum">...</span></div>
                 <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Date:</span> <span class="font-bold" id="claimDate">...</span></div>
                 <div><span class="font-bold text-slate-400 text-xs uppercase mr-2">Project:</span> <span class="font-bold text-blue-600" id="projName">Loading...</span></div>
             </div>
@@ -99,10 +99,8 @@
                     <th class="py-3 text-center">Unit</th>
                     <th class="py-3 text-center">Contract Qty</th>
                     <th class="py-3 text-right">Rate</th>
-                    
-                    <th class="py-3 text-center bg-slate-100 text-slate-600 border-x border-white">Balance to Complete</th>
-                    
-                    <th class="py-3 text-center w-24">Tracker Qty</th>
+                    <th class="py-3 text-center bg-slate-100 text-slate-600 border-x border-white">Balance</th>
+                    <th class="py-3 text-center w-24">Executed</th>
                     <th class="py-3 text-center w-24 bg-yellow-50 border-x border-yellow-100 text-yellow-700">Total % Done</th>
                     <th class="py-3 text-right pr-2">Claim Value</th>
                 </tr>
@@ -133,9 +131,10 @@
                 
                 <div>
                     <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Claimed By (Contractor):</p>
-                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24">
+                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24 overflow-hidden">
                         <canvas id="sigContractor"></canvas>
-                        <button onclick="clearSig('sigContractor')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
+                        <img id="imgContractor" class="absolute inset-0 w-full h-full object-contain hidden">
+                        <button id="btnClearContractor" onclick="clearSig('sigContractor')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
                     </div>
                     <p class="text-xs font-bold text-slate-700">Authorized Signature</p>
                     <p class="text-[10px] text-slate-400">Date: <span id="signDate"></span></p>
@@ -143,9 +142,10 @@
 
                 <div>
                     <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Certified By (Engineer to Contract):</p>
-                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24">
+                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24 overflow-hidden">
                         <canvas id="sigEngineer"></canvas>
-                        <button onclick="clearSig('sigEngineer')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
+                        <img id="imgEngineer" class="absolute inset-0 w-full h-full object-contain hidden">
+                        <button id="btnClearEngineer" onclick="clearSig('sigEngineer')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
                     </div>
                     <p class="text-xs font-bold text-slate-700">Engineer's Signature / Stamp</p>
                     <p class="text-[10px] text-slate-400">Payment Schedule Issued On: _________</p>
@@ -155,8 +155,7 @@
             
             <div class="bg-slate-50 p-4 rounded text-[9px] text-slate-500 text-justify leading-relaxed border border-slate-200">
                 <p class="font-bold mb-1">NOTICE TO THE PRINCIPAL (PAYER):</p>
-                <p>This is a payment claim under the <strong>Construction Contracts Act 2002</strong>. You must provide a Payment Schedule within 20 working days (or as per contract). Failure to do so may result in liability for the full claimed amount.</p>
-                <p class="mt-2 italic">Ref: NZS 3910 Conditions of Contract - Clause 12.1</p>
+                <p>This is a payment claim under the <strong>Construction Contracts Act 2002</strong>. You must provide a Payment Schedule within 20 working days. Failure to do so may result in liability for the full claimed amount.</p>
             </div>
         </div>
 
@@ -167,13 +166,13 @@
             <button onclick="saveDraft()" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
                 <i class="fas fa-save"></i> Save Draft
             </button>
-            <button onclick="approveClaim()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
+            <button onclick="approveAndLock()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
                 <i class="fas fa-check-circle"></i> SIGN & SUBMIT
             </button>
         </div>
         <div id="lockedControls" class="hidden">
             <div class="bg-red-100 text-red-700 px-6 py-3 rounded-full font-bold border border-red-200 flex items-center gap-2 shadow-lg">
-                <i class="fas fa-lock"></i> CLAIM LOCKED
+                <i class="fas fa-lock"></i> VIEWING HISTORICAL RECORD
             </div>
         </div>
     </div>
@@ -184,11 +183,14 @@
         const db = firebase.firestore();
 
         const pid = localStorage.getItem('civilmate_current_project_id');
+        // CHECK IF VIEWING HISTORY
+        const viewClaimId = localStorage.getItem('civilmate_current_claim_id');
+
         if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
 
         let scheduleData = [];
         let executionMap = {};
-        let isLocked = false;
+        let nextClaimNum = 1;
 
         init();
 
@@ -196,74 +198,96 @@
             document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
             document.getElementById('signDate').innerText = new Date().toLocaleDateString('en-NZ');
             
-            setupCanvas('sigContractor');
-            setupCanvas('sigEngineer');
+            // Init Canvases
+            initCanvas('sigContractor');
+            initCanvas('sigEngineer');
 
-            await checkStatus();
-            await analyzeLogs();
-            loadContractAndBuildTable();
-        }
-
-        async function checkStatus() {
-            const doc = await db.collection('projects').doc(pid).get();
-            if(doc.exists) {
-                const p = doc.data();
-                if(p.currentClaimStatus === 'Approved') {
-                    lockUI(true);
-                    if(p.lastAdvanceRepayment) document.getElementById('advanceInput').value = p.lastAdvanceRepayment;
-                    // Load saved signature if available (Advanced feature for V3, placeholder for now)
-                }
+            // --- MODE SWITCH ---
+            if(viewClaimId) {
+                // VIEW MODE: Load specific historical claim
+                loadHistoricalClaim(viewClaimId);
+            } else {
+                // NEW MODE: Load live data
+                await getNextClaimNumber();
+                await analyzeLogs();
+                loadContractAndBuildTable();
             }
         }
 
-        // --- CANVAS LOGIC ---
-        function setupCanvas(id) {
-            const c = document.getElementById(id);
-            c.width = c.offsetWidth;
-            c.height = c.offsetHeight;
-            const ctx = c.getContext('2d');
-            let d = false;
+        async function getNextClaimNumber() {
+            const snap = await db.collection('claims')
+                .where('projectId', '==', pid)
+                .orderBy('claimNumber', 'desc')
+                .limit(1).get();
             
-            // Mouse & Touch Support
-            const start = (e) => { d=true; ctx.beginPath(); getPos(e, c, ctx); };
-            const move = (e) => { if(d) { getPos(e, c, ctx); ctx.stroke(); if(e.type==='touchmove')e.preventDefault(); } };
-            const end = () => d=false;
-
-            c.addEventListener('mousedown', start); c.addEventListener('mousemove', move); c.addEventListener('mouseup', end);
-            c.addEventListener('touchstart', start, {passive:false}); c.addEventListener('touchmove', move, {passive:false}); c.addEventListener('touchend', end);
+            if(!snap.empty) {
+                nextClaimNum = snap.docs[0].data().claimNumber + 1;
+            }
+            document.getElementById('claimNum').innerText = nextClaimNum;
         }
 
-        function getPos(e, c, ctx) {
-            const r = c.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-            const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-            if(e.type === 'mousedown' || e.type === 'touchstart') ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            ctx.lineWidth = 2; ctx.strokeStyle = '#000';
+        // --- NEW CANVAS LOGIC (Robust V2.3) ---
+        function initCanvas(id) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext("2d");
+            let isDrawing = false;
+
+            function resize() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                ctx.lineWidth = 2; ctx.strokeStyle = "#000";
+            }
+            setTimeout(resize, 200);
+
+            function getTouchPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                return { x, y };
+            }
+
+            // Events
+            const start = (e) => { 
+                if(e.type === 'touchstart') e.preventDefault();
+                isDrawing = true; 
+                ctx.beginPath(); 
+                const p = getTouchPos(e); ctx.moveTo(p.x, p.y); 
+            };
+            const move = (e) => { 
+                if(e.type === 'touchmove') e.preventDefault();
+                if(!isDrawing) return; 
+                const p = getTouchPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); 
+            };
+            const end = (e) => { if(e.type === 'touchend') e.preventDefault(); isDrawing = false; };
+
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('touchstart', start, {passive: false});
+            canvas.addEventListener('mousemove', move); canvas.addEventListener('touchmove', move, {passive: false});
+            canvas.addEventListener('mouseup', end); canvas.addEventListener('touchend', end);
         }
 
         window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
         function isBlank(id) { const c=document.getElementById(id); return c.toDataURL() === document.createElement('canvas').toDataURL(); }
 
-        // --- DATA LOGIC ---
+        // --- DATA LOADING (LIVE) ---
         function analyzeLogs() {
             return db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
                 const logBody = document.getElementById('logsTable');
                 logBody.innerHTML = "";
-                let logs = [];
-                snap.forEach(d => logs.push(d.data()));
-                logs.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                logs.forEach(log => {
-                    const key = (log.itemName || "").trim(); 
-                    if(!executionMap[key]) executionMap[key] = 0;
-                    executionMap[key] += (parseFloat(log.qty) || 0);
-
+                snap.forEach(d => {
+                    const log = d.data();
+                    const key = (log.itemName || "").trim();
+                    // Solo sumar items de trabajo (no safety) para los totales
+                    if(!log.itemName.includes("INDUCTION") && !log.itemName.includes("INCIDENT")) {
+                        if(!executionMap[key]) executionMap[key] = 0;
+                        executionMap[key] += (parseFloat(log.qty) || 0);
+                    }
+                    // Mostrar log en tabla
                     logBody.innerHTML += `
                         <tr class="border-b border-slate-50 last:border-0">
                             <td class="p-2 font-bold text-slate-700">${log.date}</td>
                             <td class="p-2">${log.itemName}</td>
                             <td class="p-2 text-right font-mono font-bold text-blue-600">${log.qty} ${log.unit}</td>
-                            <td class="p-2 italic text-slate-400 text-[10px] truncate max-w-[150px]">${log.notes || '-'}</td>
+                            <td class="p-2 italic text-slate-400 text-[10px]">${log.notes || '-'}</td>
                         </tr>`;
                 });
             });
@@ -275,55 +299,71 @@
                     const p = doc.data();
                     document.getElementById('projName').innerText = p.name;
                     scheduleData = p.schedule || p.items || [];
-                    
-                    const tbody = document.getElementById('linesTable');
-                    tbody.innerHTML = "";
-                    
-                    if(scheduleData.length > 0) {
-                        scheduleData.forEach((item) => {
-                            const key = (item.desc || item.name || "").trim();
-                            const executedQty = executionMap[key] || 0;
-                            const remaining = item.qty - executedQty;
-                            const isOverRun = remaining < 0;
-                            
-                            let remHTML = `<span class="font-bold text-slate-600">${remaining.toLocaleString()}</span>`;
-                            if(isOverRun) remHTML = `<span class="font-bold text-red-600 blink"><i class="fas fa-exclamation-triangle"></i> ${remaining.toLocaleString()}</span>`;
-
-                            let suggestedPercent = 0;
-                            if(item.qty > 0) suggestedPercent = (executedQty / item.qty) * 100;
-                            suggestedPercent = Math.round(suggestedPercent * 100) / 100;
-
-                            const inputClass = isLocked ? "locked-input" : "bg-transparent border-b border-yellow-300 focus:border-blue-500";
-                            const readOnly = isLocked ? "readonly" : "";
-
-                            tbody.innerHTML += `
-                                <tr class="hover:bg-slate-50 transition text-xs">
-                                    <td class="py-3 pl-2 font-bold text-slate-700">${item.desc || item.name}</td>
-                                    <td class="py-3 text-center text-slate-500">${item.unit}</td>
-                                    <td class="py-3 text-center font-mono">${item.qty}</td>
-                                    <td class="py-3 text-right font-mono">$${item.rate}</td>
-                                    <td class="py-3 text-center bg-slate-100 border-x border-white text-xs">${remHTML}</td>
-                                    <td class="py-3 text-center font-bold text-blue-600">${executedQty}</td>
-                                    <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
-                                        <input type="number" min="0" step="1" value="${suggestedPercent}" ${readOnly}
-                                            onchange="calcRow(this, ${item.qty}, ${item.rate})"
-                                            class="w-16 text-center font-bold text-slate-900 text-sm outline-none ${inputClass}"> %
-                                    </td>
-                                    <td class="py-3 text-right pr-2 font-bold font-mono text-slate-800 row-total">$0.00</td>
-                                </tr>
-                            `;
-                            
-                            setTimeout(() => {
-                                const inputs = document.querySelectorAll('#linesTable input');
-                                const lastInput = inputs[inputs.length - 1];
-                                if(lastInput) calcRow(lastInput, item.qty, item.rate);
-                            }, 200);
-                        });
-                    }
+                    renderTable(false); // False = Editable (calculated)
                 }
             });
         }
 
+        function renderTable(isReadOnly, savedItems) {
+            const tbody = document.getElementById('linesTable');
+            tbody.innerHTML = "";
+            
+            // Use saved items if viewing history, else live schedule
+            const items = savedItems || scheduleData;
+
+            if(items.length > 0) {
+                items.forEach((item) => {
+                    // Logic depends on mode
+                    let executedQty = 0;
+                    let suggestedPercent = 0;
+                    let claimValue = 0;
+
+                    if(isReadOnly) {
+                        // VIEW MODE: Use stored snapshot values
+                        executedQty = item.executedQty;
+                        suggestedPercent = item.percent;
+                        claimValue = item.claimValue;
+                    } else {
+                        // LIVE MODE: Calculate
+                        const key = (item.desc || item.name || "").trim();
+                        executedQty = executionMap[key] || 0;
+                        if(item.qty > 0) suggestedPercent = (executedQty / item.qty) * 100;
+                        suggestedPercent = Math.round(suggestedPercent * 100) / 100;
+                        claimValue = (item.qty * item.rate) * (suggestedPercent / 100);
+                    }
+
+                    const remaining = item.qty - executedQty;
+                    let remHTML = `<span class="font-bold text-slate-600">${remaining.toLocaleString()}</span>`;
+                    if(remaining < 0) remHTML = `<span class="font-bold text-red-600 blink">${remaining.toLocaleString()}</span>`;
+
+                    const inputClass = isReadOnly ? "locked-input" : "bg-transparent border-b border-yellow-300 focus:border-blue-500";
+                    const readOnlyAttr = isReadOnly ? "readonly" : "";
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition text-xs item-row" 
+                            data-desc="${item.desc||item.name}" data-unit="${item.unit}" 
+                            data-qty="${item.qty}" data-rate="${item.rate}">
+                            
+                            <td class="py-3 pl-2 font-bold text-slate-700">${item.desc || item.name}</td>
+                            <td class="py-3 text-center text-slate-500">${item.unit}</td>
+                            <td class="py-3 text-center font-mono">${item.qty}</td>
+                            <td class="py-3 text-right font-mono">$${item.rate}</td>
+                            <td class="py-3 text-center bg-slate-100 border-x border-white text-xs">${remHTML}</td>
+                            <td class="py-3 text-center font-bold text-blue-600">${executedQty}</td>
+                            <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
+                                <input type="number" min="0" step="1" value="${suggestedPercent}" ${readOnlyAttr}
+                                    onchange="calcRow(this, ${item.qty}, ${item.rate})"
+                                    class="w-16 text-center font-bold text-slate-900 text-sm outline-none ${inputClass} percent-input"> %
+                            </td>
+                            <td class="py-3 text-right pr-2 font-bold font-mono text-slate-800 row-total">${fmtMoney(claimValue)}</td>
+                        </tr>
+                    `;
+                });
+                if(!isReadOnly) recalcTotal(); // Calculate initial totals
+            }
+        }
+
+        // --- CALCULATION LOGIC ---
         function calcRow(input, qty, rate) {
             const percent = parseFloat(input.value) || 0;
             const rowTotal = (qty * rate) * (percent / 100);
@@ -351,29 +391,105 @@
             document.getElementById('sumTotal').innerText = fmtMoney(total);
         }
 
-        function approveClaim() {
-            if(isBlank('sigContractor')) return alert("Contractor must sign the claim before submitting.");
-            if(!confirm("⚠️ Submit this Claim? This will lock the values.")) return;
+        // --- APPROVE & WRITE HISTORY (V3.0 LOGIC) ---
+        function approveAndLock() {
+            if(isBlank('sigContractor')) return alert("Contractor must sign before submitting.");
+            if(!confirm("⚠️ Submit Claim #" + nextClaimNum + "?\n\nThis will create a permanent financial record.")) return;
 
-            const advRepayment = parseFloat(document.getElementById('advanceInput').value) || 0;
+            // 1. Gather Data Snapshot
+            const grossVal = parseFloat(document.getElementById('sumGross').innerText.replace(/[^0-9.-]+/g,""));
+            const netVal = parseFloat(document.getElementById('sumTotal').innerText.replace(/[^0-9.-]+/g,""));
+            
+            // Snapshot of line items so history doesn't change
+            const itemsSnapshot = [];
+            document.querySelectorAll('.item-row').forEach(row => {
+                itemsSnapshot.push({
+                    desc: row.dataset.desc,
+                    unit: row.dataset.unit,
+                    qty: parseFloat(row.dataset.qty),
+                    rate: parseFloat(row.dataset.rate),
+                    executedQty: parseFloat(row.children[5].innerText), // Col 6
+                    percent: parseFloat(row.querySelector('.percent-input').value),
+                    claimValue: parseFloat(row.querySelector('.row-total').innerText.replace(/[^0-9.-]+/g,""))
+                });
+            });
 
-            db.collection('projects').doc(pid).update({
-                currentClaimStatus: 'Approved',
-                lastClaimDate: new Date().toISOString(),
-                lastAdvanceRepayment: advRepayment
-            }).then(() => {
-                alert("✅ CLAIM SUBMITTED.\nGenerating PDF...");
+            const claimRecord = {
+                projectId: pid,
+                claimNumber: nextClaimNum,
+                date: Date.now(),
+                status: 'Submitted', // Initially submitted
+                grossTotal: grossVal,
+                netPayable: netVal,
+                advanceRepayment: parseFloat(document.getElementById('advanceInput').value) || 0,
+                signatures: {
+                    contractor: document.getElementById('sigContractor').toDataURL(),
+                    engineer: document.getElementById('sigEngineer').toDataURL()
+                },
+                items: itemsSnapshot
+            };
+
+            // 2. Batch Update (Write History + Update Project)
+            const batch = db.batch();
+            const claimRef = db.collection('claims').doc();
+            const projectRef = db.collection('projects').doc(pid);
+
+            batch.set(claimRef, claimRecord);
+            batch.update(projectRef, {
+                totalClaimedGross: grossVal, // Update Dashboard progress bar
+                lastClaimDate: Date.now()
+            });
+
+            batch.commit().then(() => {
+                alert("✅ Claim #" + nextClaimNum + " Saved & Submitted!");
                 lockUI(true);
                 window.print();
+                window.location.href = 'project_hub.html'; // Return to hub to see update
+            }).catch(e => alert("Error: " + e.message));
+        }
+
+        // --- LOAD HISTORICAL CLAIM (VIEW MODE) ---
+        function loadHistoricalClaim(claimId) {
+            lockUI(true); // Lock everything immediately
+            
+            db.collection('claims').doc(claimId).get().then(doc => {
+                if(!doc.exists) return alert("Claim not found.");
+                const c = doc.data();
+
+                // Fill Header
+                document.getElementById('claimNum').innerText = c.claimNumber;
+                document.getElementById('claimDate').innerText = new Date(c.date).toLocaleDateString('en-NZ');
+                
+                // Fill Sums
+                document.getElementById('sumGross').innerText = fmtMoney(c.grossTotal);
+                document.getElementById('sumNet').innerText = fmtMoney(c.netPayable / 1.15); // Approx reverse
+                document.getElementById('sumTotal').innerText = fmtMoney(c.netPayable);
+                document.getElementById('advanceInput').value = c.advanceRepayment || 0;
+
+                // Fill Signatures (Hide Canvas, Show Image)
+                if(c.signatures) {
+                    showSigImage('sigContractor', 'imgContractor', 'btnClearContractor', c.signatures.contractor);
+                    showSigImage('sigEngineer', 'imgEngineer', 'btnClearEngineer', c.signatures.engineer);
+                }
+
+                // Render Table with Snapshot Data
+                // Need project name first
+                db.collection('projects').doc(pid).get().then(pDoc => {
+                    document.getElementById('projName').innerText = pDoc.data().name;
+                    renderTable(true, c.items); // True = Read Only
+                });
             });
         }
 
-        function saveDraft() {
-            alert("Draft Saved locally.");
+        function showSigImage(canvasId, imgId, btnId, dataUrl) {
+            document.getElementById(canvasId).classList.add('hidden');
+            document.getElementById(btnId).classList.add('hidden');
+            const img = document.getElementById(imgId);
+            img.src = dataUrl;
+            img.classList.remove('hidden');
         }
 
         function lockUI(locked) {
-            isLocked = locked;
             const inputs = document.querySelectorAll('input');
             const draftBtns = document.getElementById('draftControls');
             const lockBadge = document.getElementById('lockedControls');
@@ -384,12 +500,13 @@
                 draftBtns.classList.add('hidden');
                 lockBadge.classList.remove('hidden');
                 statusBadge.classList.remove('hidden');
-                statusBadge.innerHTML = '<i class="fas fa-lock"></i> LOCKED';
-                statusBadge.classList.add('bg-red-100', 'text-red-600');
+                statusBadge.innerHTML = '<i class="fas fa-lock"></i> RECORD LOCKED';
+                statusBadge.classList.add('bg-gray-100', 'text-gray-600');
                 document.getElementById('advanceInput').disabled = true;
             }
         }
 
+        function saveDraft() { alert("Draft Saved locally."); }
         function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
     </script>
 </body>
