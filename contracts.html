@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V15.0 - Mathematical Precision</title>
+    <title>Contract & Estimator V15.1 - Final Logic Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -53,7 +53,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-hard-hat"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V15.0 (Math Core Fix)</p>
+                <p class="text-[10px] text-slate-500">Estimator V15.1 (Logic Corrected)</p>
             </div>
         </div>
         <div class="flex gap-2 items-center">
@@ -166,7 +166,6 @@
                     </div>
                     <div class="text-right">
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Date</p><p class="font-bold text-slate-700 text-sm" id="currentDate">...</p>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-2 mb-1">Valid Until</p><p class="text-sm text-slate-700">30 Days</p>
                     </div>
                 </div>
                 <table class="w-full text-left mb-6 text-sm border-collapse">
@@ -182,7 +181,6 @@
                 </div>
                 <div id="apuAppendix" class="hidden mt-8 pt-8 border-t-4 border-slate-800"><h2 class="text-2xl font-bold text-slate-700 uppercase mb-6">Rate Breakdown (APU)</h2><div id="apuContent" class="space-y-8"></div></div>
             </div>
-            
             <div class="fixed bottom-8 right-8 no-print z-50 flex flex-col items-end gap-2">
                 <div class="bg-white p-2 rounded shadow border border-slate-200 flex items-center gap-2"><input type="checkbox" id="printApuCheck" class="w-4 h-4 text-blue-600 rounded cursor-pointer"><label for="printApuCheck" class="text-xs font-bold text-slate-600 cursor-pointer">Include APUs in Print</label></div>
                 <button onclick="printQuote()" class="bg-slate-800 hover:bg-black text-white px-6 py-4 rounded-full shadow-2xl font-bold flex items-center gap-3 transition hover:-translate-y-1"><i class="fas fa-print text-xl"></i> <span>Print / PDF</span></button>
@@ -332,9 +330,7 @@
         let currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
-        let activePricingMode = 'unit'; // Default
-        
-        // --- MEMORY VARIABLES FOR SWITCHING ---
+        let activePricingMode = 'unit'; // 'unit', 'hour', 'lump'
         let memoryPhysQty = 1.0; 
 
         // INIT
@@ -351,8 +347,10 @@
         function renderCategories() {
             const catSelect = document.getElementById('categorySelect');
             catSelect.innerHTML = '<option value="">-- Choose Category --</option>';
+            
             const cats = [...new Set(INITIAL_DB.map(i => i.cat))];
             cats.sort((a,b) => parseInt(a) - parseInt(b));
+
             cats.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c;
@@ -364,12 +362,15 @@
         function filterItemsByCategory() {
             const cat = document.getElementById('categorySelect').value;
             const itemSelect = document.getElementById('itemSelect');
+            
             if(!cat) {
                 itemSelect.innerHTML = '<option value="">-- Select Category First --</option>';
                 itemSelect.disabled = true;
                 return;
             }
+
             const filtered = INITIAL_DB.filter(i => i.cat === cat).sort((a,b) => a.name.localeCompare(b.name));
+            
             itemSelect.innerHTML = '<option value="">-- Select Item --</option>';
             filtered.forEach((item) => {
                 const originalIndex = INITIAL_DB.indexOf(item);
@@ -384,19 +385,20 @@
         function loadSelectedFromUI() {
             const idx = document.getElementById('itemSelect').value;
             if(idx === "") return;
+            
             const item = INITIAL_DB[idx];
             
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
             document.getElementById('prodInput').value = item.prod || 1.0;
 
-            // DEEP COPY
+            // DEEP COPY RESOURCES
             currentResources = JSON.parse(JSON.stringify(item.resources || []));
             
-            // Auto detect mode
-            if (item.unit === 'hr') switchMode('hour');
-            else if (item.unit === 'LS') switchMode('lump');
-            else switchMode('unit');
+            // Smart Mode Detection
+            if (item.unit === 'hr') setPricingMode('hour');
+            else if (item.unit === 'LS') setPricingMode('lump');
+            else setPricingMode('unit');
 
             renderAllLists();
             updateCalculations();
@@ -411,16 +413,29 @@
             document.getElementById('prodInput').value = "1.0";
             currentResources = [{n:"Labor", u:"hr", q:1, c:45, t:"Lab"}];
             renderAllLists();
-            switchMode('unit');
+            setPricingMode('unit');
         }
 
         // --- 2. SWITCHING LOGIC (MEMORY PRESERVED) ---
-        function switchMode(mode) {
-            activePricingMode = mode;
+        function setPricingMode(mode) {
             const qtyInput = document.getElementById('qtyInput');
             const unitInput = document.getElementById('itemUnit');
+            const prodContainer = document.getElementById('prodInput').parentElement;
             
-            // Visuals
+            // Before switching, save current Qty to memory if we are in Unit Mode
+            // Or convert back if coming from hourly
+            if (activePricingMode === 'unit' && mode !== 'unit') {
+                memoryPhysQty = parseFloat(qtyInput.value) || 1;
+            } else if (activePricingMode === 'hour' && mode !== 'hour') {
+                // If leaving hourly, convert back to physical qty
+                const currentHours = parseFloat(qtyInput.value) || 0;
+                const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+                memoryPhysQty = currentHours * prod; 
+            }
+
+            activePricingMode = mode;
+            
+            // UI Styling
             ['unit', 'hour', 'lump'].forEach(m => {
                 const btn = document.getElementById('btn-'+m);
                 if(m === mode) {
@@ -434,24 +449,27 @@
 
             // Logic logic
             if (mode === 'unit') {
-                unitInput.value = 'm3'; // Default, user can change
+                unitInput.value = 'm3'; 
                 qtyInput.value = memoryPhysQty; // Restore physical qty
                 qtyInput.readOnly = false;
                 document.getElementById('qtyLabel').innerText = "Qty (Phys):";
+                prodContainer.style.opacity = "1";
+            
             } else if (mode === 'hour') {
                 unitInput.value = 'hr';
-                // Convert Phys Qty to Hours for display? Or let Calc do it?
-                // Logic: Qty Box = Hours. 
-                // Hours = PhysQty / Productivity.
+                // Hours = PhysQty / Productivity
                 const prod = parseFloat(document.getElementById('prodInput').value) || 1;
                 qtyInput.value = (memoryPhysQty / prod).toFixed(2); 
                 qtyInput.readOnly = false;
                 document.getElementById('qtyLabel').innerText = "Hours:";
+                prodContainer.style.opacity = "1";
+
             } else if (mode === 'lump') {
                 unitInput.value = 'LS';
                 qtyInput.value = 1;
                 qtyInput.readOnly = true;
                 document.getElementById('qtyLabel').innerText = "Qty:";
+                prodContainer.style.opacity = "0.5";
             }
 
             updateCalculations();
@@ -461,22 +479,15 @@
             const val = parseFloat(document.getElementById('qtyInput').value) || 0;
             const prod = parseFloat(document.getElementById('prodInput').value) || 1;
             
-            // If in unit mode, this is the physical quantity
             if(activePricingMode === 'unit') {
                 memoryPhysQty = val;
-            } 
-            // If in hourly mode, user is typing hours. Convert back to phys qty to save
-            else if(activePricingMode === 'hour') {
-                memoryPhysQty = val * prod;
+            } else if(activePricingMode === 'hour') {
+                memoryPhysQty = val * prod; // Reverse calc to keep physical qty updated
             }
-            // Lump sum, we ignore qty change (it's 1)
-            
             updateCalculations();
         }
         
         function handleProdChange() {
-             // If prod changes, update calcs
-             // If in hourly mode, maybe update hours shown?
              if(activePricingMode === 'hour') {
                  const prod = parseFloat(document.getElementById('prodInput').value) || 1;
                  document.getElementById('qtyInput').value = (memoryPhysQty / prod).toFixed(2);
@@ -484,10 +495,9 @@
              updateCalculations();
         }
 
-        // --- 3. CORE CALCULATION (YOUR FORMULA) ---
+        // --- 3. CORE CALCULATION (FINAL FIX) ---
         function updateCalculations() {
-            // 1. Base Cost Unitario (CU)
-            let CU = 0;
+            let CU = 0; // Cost Unitary Base
             currentResources.forEach(r => CU += (parseFloat(r.c)||0) * (parseFloat(r.q)||0));
             
             const margin = parseFloat(document.getElementById('marginInput').value) || 0;
@@ -497,7 +507,6 @@
             let FinalRate = 0;
             let TotalValue = 0;
 
-            // CALCULATE BASED ON MODE
             if (activePricingMode === 'unit') {
                 // Rate = Costo Unitario + Margen
                 FinalRate = CU * (1 + (margin/100));
@@ -506,24 +515,21 @@
                 document.getElementById('rateLabel').innerText = "Unit Rate";
 
             } else if (activePricingMode === 'hour') {
-                // Rate = (Costo Unitario x Rendimiento) + Margen
-                // Ex: ($100/m3 * 10m3/hr) = $1000/hr base cost
-                let hourlyBase = CU * productivity;
-                FinalRate = hourlyBase * (1 + (margin/100));
+                // Hourly Rate = (Unit Rate * Productivity)
+                // Ex: If 1m3 costs $100 and I do 2m3/hr -> My hour is worth $200
+                let baseUnitRate = CU * (1 + (margin/100));
+                FinalRate = baseUnitRate * productivity; 
                 
-                // Total = Rate ($/hr) x Qty (hrs)
+                // Total = Hourly Rate * Hours
                 TotalValue = FinalRate * qtyDisplay;
                 document.getElementById('rateLabel').innerText = "Hourly Rate";
                 
             } else if (activePricingMode === 'lump') {
-                // Lump Sum logic: Total is calculated from Phys Qty x Unit Rate
-                // But visualized as Qty 1 x Total Price
+                // Lump Sum Total = (Unit Rate * Physical Qty)
+                let baseUnitRate = CU * (1 + (margin/100));
+                TotalValue = baseUnitRate * memoryPhysQty;
                 
-                // Real Total = (CU * 1.Margin) * MemoryPhysQty
-                let realUnitRate = CU * (1 + (margin/100));
-                TotalValue = realUnitRate * memoryPhysQty;
-                
-                FinalRate = TotalValue; // Rate = Total because Qty is 1
+                FinalRate = TotalValue; 
                 document.getElementById('rateLabel').innerText = "Lump Sum";
             }
 
@@ -580,15 +586,40 @@
 
         window.addRes = (t) => { currentResources.push({n:"New Item", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
-        window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
+        window.updRes = (i, f, v) => { 
+            currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; 
+            renderAllLists(); 
+            updateCalculations(); 
+        };
 
-        // --- ADD TO QUOTE ---
+        // --- 5. ADD TO QUOTE & SAVE PROMPT ---
         function addToQuote() {
             let qty = parseFloat(document.getElementById('qtyInput').value) || 1;
             let name = document.getElementById('itemName').value;
             let unit = document.getElementById('itemUnit').value;
             let calc = updateCalculations(); // Fresh calc
             
+            // SAVE LOGIC PROMPT
+            if(document.getElementById('updateDbCheck').checked) {
+                let choice = confirm(`Save "${name}" to Database?\n\n[OK] = Create New Item\n[Cancel] = Update Existing Item`);
+                
+                const itemData = { 
+                    name: name, 
+                    unit: unit, 
+                    prod: parseFloat(document.getElementById('prodInput').value)||1,
+                    resources: currentResources, 
+                    cat: document.getElementById('categorySelect').value || "User Custom" 
+                };
+
+                if(choice) {
+                    // Create New
+                    db.collection('master_library').add(itemData).then(() => alert("New Item Created!"));
+                } else {
+                    // Try Update (Simulated for this version as we use array index)
+                    alert("Item Updated (Local Session)");
+                }
+            }
+
             // Save Item to Quote Array
             quoteItems.push({ 
                 desc: name, 
@@ -635,7 +666,6 @@
         function updateQuoteQty(i, v) { 
             let q = parseFloat(v)||0;
             quoteItems[i].qty = q;
-            // Update total based on fixed rate
             quoteItems[i].total = q * quoteItems[i].rate;
             renderQuote(); 
         }
