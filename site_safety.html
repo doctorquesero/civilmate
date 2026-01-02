@@ -67,6 +67,11 @@
             </div>
 
             <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Induction Date</label>
+                <input type="date" id="indDate" class="input-dark mt-1">
+            </div>
+
+            <div>
                 <label class="text-[10px] font-bold text-slate-500 uppercase">Worker Details</label>
                 <input type="text" id="indName" class="input-dark mt-1" placeholder="Full Name">
                 <input type="text" id="indCompany" class="input-dark mt-2" placeholder="Company / Trade">
@@ -96,12 +101,23 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <select id="incType" class="input-dark">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Date</label>
+                    <input type="date" id="incDate" class="input-dark mt-1">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Time</label>
+                    <input type="time" id="incTime" class="input-dark mt-1">
+                </div>
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Type</label>
+                <select id="incType" class="input-dark mt-1">
                     <option value="Near Miss">Near Miss</option>
                     <option value="Injury">Injury</option>
                     <option value="Property">Property Damage</option>
                 </select>
-                <input type="time" id="incTime" class="input-dark">
             </div>
 
             <textarea id="incDesc" class="input-dark h-24" placeholder="Describe what happened..."></textarea>
@@ -137,6 +153,17 @@
             <div class="bg-orange-900/20 border-l-4 border-orange-600 p-4 rounded">
                 <h3 class="font-bold text-orange-500 text-sm uppercase">Hazard Identification</h3>
                 <p class="text-xs text-slate-400">Spot it. Report it. Fix it.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Date Found</label>
+                    <input type="date" id="hazDate" class="input-dark mt-1">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase">Time Found</label>
+                    <input type="time" id="hazTime" class="input-dark mt-1">
+                </div>
             </div>
 
             <input type="text" id="hazLoc" class="input-dark" placeholder="Specific Location (e.g. Gate 2)">
@@ -200,7 +227,19 @@
                 setupCanvas('cvsIncident');
                 setupCanvas('cvsHazard');
             }, 500);
-            document.getElementById('incTime').value = new Date().toTimeString().substring(0,5);
+            
+            // PRE-FILL DATE AND TIME
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toTimeString().substring(0,5);
+
+            document.getElementById('indDate').value = dateStr;
+            
+            document.getElementById('incDate').value = dateStr;
+            document.getElementById('incTime').value = timeStr;
+            
+            document.getElementById('hazDate').value = dateStr;
+            document.getElementById('hazTime').value = timeStr;
         }
 
         function switchTab(tab) {
@@ -238,6 +277,21 @@
                 const opt = sel.options[sel.selectedIndex];
                 document.getElementById('indSiteAddr').value = opt.getAttribute('data-addr') || "Address not available";
             }
+        }
+
+        // --- HELPER: LOG TO SITE DIARY (INTEGRATION) ---
+        function logToSiteDiary(type, desc, qty, unit) {
+            if(!currentPid) return;
+            db.collection('site_logs').add({
+                projectId: currentPid,
+                date: new Date().toLocaleDateString('en-NZ'), // Logging date
+                itemName: type + ": " + desc,
+                qty: qty || 1,
+                unit: unit || "Event",
+                weather: "Auto-Logged", // Placeholder
+                notes: "Generated from Safety Hub",
+                timestamp: Date.now()
+            });
         }
 
         // --- CANVAS LOGIC ---
@@ -315,28 +369,37 @@
             if(!currentPid) return alert("Select Site.");
             const name = document.getElementById('indName').value;
             const company = document.getElementById('indCompany').value;
-            if(!name || !company) return alert("Fill details.");
+            const date = document.getElementById('indDate').value;
+            if(!name || !company || !date) return alert("Fill details.");
             if(!document.getElementById('c1').checked || !document.getElementById('c2').checked || !document.getElementById('c3').checked) return alert("Accept all declarations.");
             if(isBlank('cvsInduction')) return alert("Sign required.");
 
             db.collection('inductions').add({
                 pid: currentPid, siteName: document.getElementById('projectSelect').options[document.getElementById('projectSelect').selectedIndex].text,
-                name, company, sig: document.getElementById('cvsInduction').toDataURL(), ts: Date.now()
-            }).then(() => { alert("Induction Saved!"); location.reload(); });
+                date, name, company, sig: document.getElementById('cvsInduction').toDataURL(), ts: Date.now()
+            }).then(() => { 
+                logToSiteDiary("Induction", name + " (" + company + ")", 1, "Person");
+                alert("Induction Saved!"); location.reload(); 
+            });
         }
 
         function saveIncident() {
             if(!currentPid) return alert("Select Site.");
             const desc = document.getElementById('incDesc').value;
             const rep = document.getElementById('incReporter').value;
-            if(!desc || !rep) return alert("Desc & Reporter Name required.");
+            const type = document.getElementById('incType').value;
+            const date = document.getElementById('incDate').value;
+            if(!desc || !rep || !date) return alert("Details required.");
             if(isBlank('cvsIncident')) return alert("Sign required.");
 
             db.collection('incidents').add({
-                pid: currentPid, type: document.getElementById('incType').value,
+                pid: currentPid, type, date,
                 time: document.getElementById('incTime').value, desc, reporter: rep,
                 sig: document.getElementById('cvsIncident').toDataURL(), photos: photos.incident, ts: Date.now()
-            }).then(() => { alert("Incident Reported!"); location.reload(); });
+            }).then(() => { 
+                logToSiteDiary("Incident", type, 1, "Report");
+                alert("Incident Reported!"); location.reload(); 
+            });
         }
 
         function saveHazard() {
@@ -344,13 +407,19 @@
             const loc = document.getElementById('hazLoc').value;
             const risk = document.getElementById('hazRisk').value;
             const rep = document.getElementById('hazReporter').value;
-            if(!loc || !risk || !rep) return alert("Location, Risk & Name required.");
+            const date = document.getElementById('hazDate').value;
+            if(!loc || !risk || !rep || !date) return alert("Details required.");
             if(isBlank('cvsHazard')) return alert("Sign required.");
 
             db.collection('hazards').add({
-                pid: currentPid, loc, risk, desc: document.getElementById('hazDesc').value, reporter: rep,
+                pid: currentPid, loc, risk, date,
+                time: document.getElementById('hazTime').value,
+                desc: document.getElementById('hazDesc').value, reporter: rep,
                 sig: document.getElementById('cvsHazard').toDataURL(), photos: photos.hazard, ts: Date.now()
-            }).then(() => { alert("Hazard Alert Sent!"); location.reload(); });
+            }).then(() => { 
+                logToSiteDiary("Hazard", risk + " Risk at " + loc, 1, "Report");
+                alert("Hazard Alert Sent!"); location.reload(); 
+            });
         }
     </script>
 </body>
