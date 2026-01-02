@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V11.0 - CivilMate NZ</title>
+    <title>Contract & Estimator V11.1 - CivilMate NZ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -12,7 +12,7 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* CONTRACT LOCKS */
+        /* CONTRACT MODE LOCKS */
         .contract-mode #builderPanel { display: none !important; }
         .contract-mode #printSection { width: 100% !important; max-width: 1000px; margin: 0 auto; background: transparent; }
         .contract-mode .company-input { pointer-events: none; border: none; }
@@ -62,7 +62,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-invoice"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V11.0 (Multi-Mode Pricing)</p>
+                <p class="text-[10px] text-slate-500">Estimator V11.1 (Full NZ Database)</p>
             </div>
             <div id="projectStatusBadge"></div> 
         </div>
@@ -76,7 +76,7 @@
     <div class="flex flex-1 overflow-hidden">
         <div id="builderPanel" class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
             <div class="p-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
-                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">1. Select from Database (140+ Items)</label>
+                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">1. Select from Database (142 Items)</label>
                 <div class="flex gap-2">
                     <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
                         <option value="">-- Load Standard Analysis --</option>
@@ -89,9 +89,9 @@
                 
                 <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">2. Select Pricing Mode</label>
                 <div class="flex gap-0 rounded-lg overflow-hidden shadow-sm border border-slate-300 mb-6">
-                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active">📊 Unit Rate (m3/m2)</button>
-                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive">⏱️ Hourly (Charge-up)</button>
-                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive">🌎 Lump Sum (Global)</button>
+                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active bg-blue-600 text-white">📊 Unit Rate (m3/m2)</button>
+                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500 hover:bg-slate-50">⏱️ Hourly (Charge-up)</button>
+                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500 hover:bg-slate-50">🌎 Lump Sum (Global)</button>
                 </div>
 
                 <div class="flex gap-4 mb-6 items-end">
@@ -134,7 +134,7 @@
                 <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
                     <div>
                         <h2 id="docTitle" class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
-                        <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2026-001</span></p>
+                        <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#EST-001</span></p>
                     </div>
                     <div class="w-1/2 text-right">
                         <input type="text" id="myCompany" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
@@ -206,6 +206,7 @@
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
+        // --- LOAD PROJECT & DETECT STATUS ---
         function loadProjectFromDB(id) { 
             db.collection('projects').doc(id).get().then(doc => { 
                 if(doc.exists) { 
@@ -231,7 +232,7 @@
             document.querySelector('#printSection').classList.add('w-full');
         }
 
-        // --- FULL DATABASE SEEDING (142 ITEMS) ---
+        // --- FULL DATABASE SEEDING (142 ITEMS - NZ RATES 2026) ---
         function seedMasterDatabase() {
             db.collection('master_library').limit(1).get().then(snap => {
                 let needsSeeding = snap.empty;
@@ -425,31 +426,31 @@
             });
         }
 
-        // --- MODE SWITCHER LOGIC ---
+        // --- MODE SWITCHER LOGIC (RESTAURADA Y CORREGIDA) ---
         function setPricingMode(mode) {
+            // Update UI Buttons
             ['unit', 'hour', 'lump'].forEach(m => {
                 const btn = document.getElementById('btn-'+m);
                 if (m === mode) {
-                    btn.classList.remove('mode-inactive');
-                    btn.classList.add('mode-active');
+                    btn.className = "flex-1 py-2 text-xs font-bold mode-active bg-blue-600 text-white border border-blue-600";
                 } else {
-                    btn.classList.remove('mode-active');
-                    btn.classList.add('mode-inactive');
+                    btn.className = "flex-1 py-2 text-xs font-bold mode-inactive bg-white text-slate-500 hover:bg-slate-50 border border-slate-300";
                 }
             });
 
+            // Update Unit Field logic
             if (mode === 'hour') {
                 document.getElementById('itemUnit').value = 'hr';
             } else if (mode === 'lump') {
                 document.getElementById('itemUnit').value = 'LS';
-                document.getElementById('qtyInput').value = 1;
+                document.getElementById('qtyInput').value = 1; // Force Qty 1 for Lump Sum
             } else {
-                // Unit mode: keep current or default to m3
+                // If switching back to unit, default to m3 if currently something generic
                 if (document.getElementById('itemUnit').value === 'hr' || document.getElementById('itemUnit').value === 'LS') {
                     document.getElementById('itemUnit').value = 'm3';
                 }
             }
-            updateCalculations();
+            updateCalculations(); // Trigger recalc
         }
 
         // --- BUILDER LOGIC ---
@@ -552,7 +553,6 @@
 
         function updateQuoteQty(i, v) { quoteItems[i].qty = parseFloat(v)||0; renderQuote(); }
         
-        // ... (Rest of print/save functions remain identical to your standard) ...
         function printQuote() {
             const includeAPU = document.getElementById('printApuCheck').checked;
             const printSec = document.getElementById('printSection');
