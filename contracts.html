@@ -2,15 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V6.5 - CivilMate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Master - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
     <style>
-        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
+        
+        /* CONTRACT MODE STYLES (LOCKED) */
+        .contract-mode #builderPanel { display: none !important; }
+        .contract-mode #printSection { width: 100% !important; max-width: 1000px; margin: 0 auto; background: transparent; }
+        .contract-mode .company-input { pointer-events: none; border: none; }
+        .contract-mode .header-action { display: none; }
+        .contract-mode .quote-qty-input { pointer-events: none; background: transparent; border: none; font-weight: bold; text-align: center; }
+        .contract-mode #btnSave { display: none; }
+        .contract-mode .delete-btn { display: none; }
         
         /* UI TABLES */
         .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
@@ -26,39 +34,32 @@
         input[type=number] { -moz-appearance: textfield; }
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
-        .locked-area { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
 
-        /* PRINT STYLES */
         @media print {
             body * { visibility: hidden; }
             #printSection, #printSection * { visibility: visible; }
             #printSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; background: white; }
-            .print-apu-hidden #apuAppendix { display: none !important; }
-            .print-apu-visible #apuAppendix { display: block !important; page-break-before: always; }
-            #legalContractModal.show-print * { visibility: visible; }
-            #legalContractModal.show-print { position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 9999; display: block !important; }
             .no-print { display: none !important; }
             input { border: none !important; background: transparent !important; padding: 0 !important; }
             .quote-qty-input { background: transparent !important; border: none !important; text-align: center; }
-            -webkit-print-color-adjust: exact; print-color-adjust: exact;
         }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden relative">
 
-    <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
+    <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm no-print">
         <div class="flex items-center gap-3">
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-invoice"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V6.5 (Categorized DB)</p>
+                <p class="text-[10px] text-slate-500">Estimator & Contract Manager</p>
             </div>
             <div id="projectStatusBadge"></div> 
         </div>
         <div class="flex gap-2 items-center">
-            <button id="btnLegal" onclick="generateLegalContract()" class="hidden px-3 py-1.5 text-xs font-bold text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded transition flex items-center gap-2"><i class="fas fa-gavel"></i> Legal Contract</button>
-            <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border"><i class="fas fa-arrow-left mr-1"></i> dashboard</button>
+            <button onclick="window.location.href='project_hub.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border"><i class="fas fa-arrow-left mr-1"></i> Back</button>
             <button id="btnSave" onclick="saveProject()" class="px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2"><i class="fas fa-save"></i> Save Changes</button>
+            <button onclick="window.print()" class="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded shadow"><i class="fas fa-print"></i> Print</button>
         </div>
     </header>
 
@@ -89,7 +90,9 @@
                         <input type="text" id="itemUnit" class="w-full text-center text-xl font-bold text-slate-600 border-b-2 border-slate-200 focus:border-blue-600 outline-none pb-1 transition" placeholder="m3">
                     </div>
                 </div>
-                <div class="space-y-6" id="resourcesContainer"></div> <div class="absolute bottom-0 left-0 w-full bg-slate-900 text-white p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] z-30">
+                <div class="space-y-6" id="resourcesContainer"></div> 
+                
+                <div class="absolute bottom-0 left-0 w-full bg-slate-900 text-white p-4 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] z-30">
                     <div class="flex items-center justify-between gap-4 mb-3 border-b border-slate-700 pb-3">
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="updateDbCheck" class="w-4 h-4 text-green-500 rounded cursor-pointer">
@@ -111,31 +114,48 @@
             </div>
         </div>
 
-        <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto relative" id="printSection">
+        <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto relative transition-all duration-300" id="printSection">
             <div class="bg-white min-h-[29.7cm] w-full max-w-[21cm] mx-auto my-8 shadow-2xl p-12 flex flex-col relative" id="a4Page">
+                
                 <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
-                    <div><h2 id="docTitle" class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2><p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#2026-001</span></p></div>
+                    <div>
+                        <h2 id="docTitle" class="text-4xl font-bold text-slate-800 uppercase tracking-widest">Quotation</h2>
+                        <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span id="quoteRefDisplay">#EST-001</span></p>
+                    </div>
                     <div class="w-1/2 text-right">
-                        <input type="text" id="myCompany" value="My Construction Co." class="company-input font-bold text-xl text-slate-800">
-                        <input type="text" id="myAddress" value="123 Builder Lane, Auckland" class="company-input text-xs text-slate-500">
-                        <input type="text" id="myPhone" value="Ph: 0800 123 456" class="company-input text-xs text-slate-500">
+                        <h3 class="font-bold text-xl text-slate-800">My Construction Co.</h3>
+                        <p class="text-xs text-slate-500">123 Builder Lane, Auckland</p>
+                        <p class="text-xs text-slate-500">Ph: 0800 123 456</p>
                     </div>
                 </div>
+
                 <div class="bg-yellow-50/50 border border-yellow-100 rounded-lg p-5 mb-8 grid grid-cols-2 gap-8 no-print-bg">
                     <div>
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Prepared For</p>
-                        <input type="text" id="clientName" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400 mb-1" placeholder="Enter Client Name">
-                        <input type="text" id="clientAddress" class="w-full text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none mb-1 placeholder-slate-400" placeholder="Enter Address">
+                        <input type="text" id="clientName" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none placeholder-slate-400 mb-1" placeholder="Client Name">
+                        <input type="text" id="clientAddress" class="w-full text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none mb-1 placeholder-slate-400" placeholder="Address">
                     </div>
                     <div class="text-right">
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Date</p><p class="font-bold text-slate-700 text-sm" id="currentDate">...</p>
-                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-3 mb-1">Valid Until</p><p class="text-sm text-slate-700">30 Days</p>
                     </div>
                 </div>
+
                 <table class="w-full text-left mb-6 text-sm border-collapse">
-                    <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]"><tr><th class="p-3 w-5/12 text-left">Description</th><th class="p-3 text-center w-1/12">Unit</th><th class="p-3 text-center w-1/12">Qty</th><th class="p-3 text-right w-2/12">Rate</th><th class="p-3 text-right w-2/12">Amount</th><th class="p-3 w-1/12 no-print header-action"></th></tr></thead>
-                    <tbody id="quoteTable" class="text-slate-700"><tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr></tbody>
+                    <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
+                        <tr>
+                            <th class="p-3 w-5/12 text-left">Description</th>
+                            <th class="p-3 text-center w-1/12">Unit</th>
+                            <th class="p-3 text-center w-1/12">Qty</th>
+                            <th class="p-3 text-right w-2/12">Rate</th>
+                            <th class="p-3 text-right w-2/12">Amount</th>
+                            <th class="p-3 w-1/12 no-print header-action"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="quoteTable" class="text-slate-700">
+                        <tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>
+                    </tbody>
                 </table>
+
                 <div class="flex justify-end mt-auto mb-10">
                     <div class="w-1/2 space-y-2">
                         <div class="flex justify-between text-xs text-slate-500"><span>Subtotal (Ex GST)</span><span id="subtotalDisplay" class="font-mono">$0.00</span></div>
@@ -143,23 +163,7 @@
                         <div class="flex justify-between text-2xl font-bold text-slate-800 pt-2"><span>TOTAL (NZD)</span><span id="totalDisplay" class="font-mono">$0.00</span></div>
                     </div>
                 </div>
-                <div id="apuAppendix" class="hidden mt-8 pt-8 border-t-4 border-slate-800"><h2 class="text-2xl font-bold text-slate-700 uppercase mb-6">Appendix: Rate Analysis Breakdown</h2><div id="apuContent" class="space-y-8"></div></div>
-            </div>
-            <div class="fixed bottom-8 right-8 no-print z-50 flex flex-col items-end gap-2">
-                <div class="bg-white p-2 rounded shadow border border-slate-200 flex items-center gap-2"><input type="checkbox" id="printApuCheck" class="w-4 h-4 text-blue-600 rounded cursor-pointer"><label for="printApuCheck" class="text-xs font-bold text-slate-600 cursor-pointer">Include APUs</label></div>
-                <button onclick="printQuote()" class="bg-slate-800 hover:bg-black text-white px-6 py-4 rounded-full shadow-2xl font-bold flex items-center gap-3 transition transform hover:-translate-y-1"><i class="fas fa-print text-xl"></i> <span>Download / Print</span></button>
-            </div>
-        </div>
-    </div>
 
-    <div id="legalContractModal" class="fixed inset-0 bg-white z-[9999] hidden overflow-y-auto">
-        <div class="max-w-[21cm] mx-auto p-12 bg-white min-h-screen">
-            <div class="no-print flex justify-between items-center mb-8 border-b pb-4"><h2 class="text-xl font-bold text-slate-800">Construction Contract</h2><div class="flex gap-2"><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Print</button><button onclick="document.getElementById('legalContractModal').classList.add('hidden')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold hover:bg-slate-300">Close</button></div></div>
-            <div class="font-serif text-slate-800 leading-relaxed text-sm">
-                <div class="text-center mb-10"><h1 class="text-3xl font-bold uppercase tracking-widest border-b-2 border-black pb-2 inline-block">Short Form Agreement</h1></div>
-                <div class="mb-8"><p class="mb-4"><strong>DATE:</strong> <span id="contractDate"></span></p><div class="grid grid-cols-2 gap-8"><div><p class="font-bold uppercase text-xs text-slate-500">CLIENT</p><p class="text-lg font-bold" id="contractClientName">...</p><p id="contractClientAddr">...</p></div><div><p class="font-bold uppercase text-xs text-slate-500">CONTRACTOR</p><p class="text-lg font-bold" id="contractMyCompany">...</p><p id="contractMyAddr">...</p></div></div></div>
-                <div class="mb-8"><h3 class="font-bold uppercase border-b border-slate-300 mb-2">Terms</h3><p>Work completed as per Schedule. Payment as per CCA 2002. Total Price: <strong id="contractTotal"></strong></p></div>
-                <div class="mt-16 grid grid-cols-2 gap-16"><div><div class="border-b border-black h-8"></div><p class="text-xs uppercase mt-1 font-bold">Client Signature</p></div><div><div class="border-b border-black h-8"></div><p class="text-xs uppercase mt-1 font-bold">Contractor Signature</p></div></div>
             </div>
         </div>
     </div>
@@ -178,136 +182,58 @@
         init();
 
         function init() {
-            seedMasterDatabase(); 
             renderAllLists();
+            loadMasterLibrary(); // Load DB for builder
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
-        // --- DATABASE SEEDING WITH CATEGORIES (NZ REAL RATES) ---
-        function seedMasterDatabase() {
-            // Check if DB is empty or needs update (we check if 'category' field exists on first item)
-            db.collection('master_library').limit(1).get().then(snap => {
-                let needsSeeding = snap.empty;
-                if (!snap.empty && !snap.docs[0].data().category) {
-                    console.log("Old DB detected. Clearing for Categorized V2 update...");
-                    // Just overwrite, simplistic approach for demo
-                    needsSeeding = true; 
-                }
+        // --- LOAD PROJECT & DETECT STATUS ---
+        function loadProjectFromDB(id) {
+            db.collection('projects').doc(id).get().then(doc => {
+                if(doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('clientName').value = data.client || "";
+                    document.getElementById('clientAddress').value = data.address || "";
+                    quoteItems = data.schedule || [];
+                    
+                    renderQuote();
 
-                if (needsSeeding) {
-                    console.log("Seeding Categorized Master Database...");
-                    const seedItems = [
-                        // Preliminary & General (P&G)
-                        { cat: "Preliminary & General (P&G)", name: "Plans & Specifications", unit: "LS", resources: [{n:"Architect Fees", t:"Mat", u:"LS", q:1, c:3500}] },
-                        { cat: "Preliminary & General (P&G)", name: "Council Consents", unit: "LS", resources: [{n:"BCA Fees", t:"Mat", u:"LS", q:1, c:4500}] },
-                        { cat: "Preliminary & General (P&G)", name: "Surveyor", unit: "LS", resources: [{n:"Site Survey", t:"Mat", u:"LS", q:1, c:1800}] },
-                        { cat: "Preliminary & General (P&G)", name: "Site Security / Fencing", unit: "week", resources: [{n:"Fencing Hire", t:"Plant", u:"week", q:1, c:85}] },
-                        { cat: "Preliminary & General (P&G)", name: "Skip Bin / Waste", unit: "load", resources: [{n:"Skip 9m3", t:"Mat", u:"load", q:1, c:350}] },
-                        
-                        // Excavation & Earthworks
-                        { cat: "Excavation & Earthworks", name: "Bulk Excavation", unit: "m3", resources: [{n:"Excavator 14T", t:"Plant", u:"hr", q:0.05, c:135}, {n:"Operator", t:"Lab", u:"hr", q:0.05, c:55}, {n:"Truck 6W", t:"Plant", u:"hr", q:0.08, c:110}] },
-                        { cat: "Excavation & Earthworks", name: "Site Cut / Clear", unit: "m2", resources: [{n:"Bobcat", t:"Plant", u:"hr", q:0.05, c:95}, {n:"Operator", t:"Lab", u:"hr", q:0.05, c:50}] },
-                        { cat: "Excavation & Earthworks", name: "Hardfill Backfill", unit: "m3", resources: [{n:"GAP40", t:"Mat", u:"m3", q:1.1, c:45}, {n:"Roller", t:"Plant", u:"hr", q:0.1, c:90}] },
-
-                        // Concrete
-                        { cat: "Concrete", name: "Footings (Standard)", unit: "m3", resources: [{n:"Concrete 25MPa", t:"Mat", u:"m3", q:1.05, c:260}, {n:"Pump", t:"Plant", u:"m3", q:1, c:45}, {n:"Placers", t:"Lab", u:"hr", q:2, c:50}] },
-                        { cat: "Concrete", name: "Slab on Grade", unit: "m2", resources: [{n:"Concrete 25MPa", t:"Mat", u:"m3", q:0.11, c:260}, {n:"Mesh SE62", t:"Mat", u:"m2", q:1, c:12}, {n:"Placers", t:"Lab", u:"m2", q:1, c:45}] },
-                        { cat: "Concrete", name: "Rebar / Reinforcing", unit: "kg", resources: [{n:"D12/D16 Steel", t:"Mat", u:"kg", q:1.05, c:3.50}, {n:"Steel Fixer", t:"Lab", u:"hr", q:0.05, c:60}] },
-
-                        // Masonry & Paving
-                        { cat: "Masonry & Paving", name: "Brick Veneer", unit: "m2", resources: [{n:"70 Series Brick", t:"Mat", u:"m2", q:50, c:1.80}, {n:"Bricklayer", t:"Lab", u:"hr", q:1.5, c:75}, {n:"Mortar", t:"Mat", u:"sum", q:1, c:8}] },
-                        { cat: "Masonry & Paving", name: "Pavers (Exterior)", unit: "m2", resources: [{n:"Concrete Pavers", t:"Mat", u:"m2", q:1, c:55}, {n:"Sand Base", t:"Mat", u:"m2", q:1, c:10}, {n:"Layer", t:"Lab", u:"m2", q:1, c:60}] },
-
-                        // Rough Framing
-                        { cat: "Rough Framing", name: "Wall Framing 90x45", unit: "m2", resources: [{n:"SG8 Timber", t:"Mat", u:"m", q:4.5, c:6.50}, {n:"Carpenter", t:"Lab", u:"hr", q:1.2, c:65}] },
-                        { cat: "Rough Framing", name: "Roof Trusses", unit: "m2", resources: [{n:"Truss Package", t:"Mat", u:"m2", q:1, c:65}, {n:"Crane", t:"Plant", u:"hr", q:0.1, c:250}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:65}] },
-                        { cat: "Rough Framing", name: "Floor Joists", unit: "m2", resources: [{n:"I-Joists", t:"Mat", u:"m", q:2.5, c:18}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:65}] },
-
-                        // Exterior
-                        { cat: "Exterior", name: "Weatherboard Cladding", unit: "m2", resources: [{n:"Bevelback W/B", t:"Mat", u:"m", q:7, c:12}, {n:"Carpenter", t:"Lab", u:"hr", q:1.5, c:65}, {n:"Paint", t:"Mat", u:"m2", q:1, c:15}] },
-                        { cat: "Exterior", name: "Roofing (Longrun)", unit: "m2", resources: [{n:"Colorsteel Endura", t:"Mat", u:"m2", q:1.1, c:35}, {n:"Roofer", t:"Lab", u:"hr", q:0.8, c:70}] },
-                        { cat: "Exterior", name: "Spouting / Downpipes", unit: "m", resources: [{n:"Marley PVC", t:"Mat", u:"m", q:1, c:22}, {n:"Labor", t:"Lab", u:"hr", q:0.4, c:60}] },
-
-                        // Windows & Doors
-                        { cat: "Windows & Exterior Doors", name: "Alum Windows (Dbl Glazed)", unit: "m2", resources: [{n:"Window Unit", t:"Mat", u:"m2", q:1, c:450}, {n:"Install", t:"Lab", u:"m2", q:1, c:65}] },
-                        { cat: "Windows & Exterior Doors", name: "Entry Door", unit: "ea", resources: [{n:"Door & Frame", t:"Mat", u:"ea", q:1, c:1200}, {n:"Install", t:"Lab", u:"hr", q:3, c:65}] },
-
-                        // Plumbing
-                        { cat: "Plumbing", name: "Pre-pipe / Rough-in", unit: "point", resources: [{n:"Piping", t:"Mat", u:"sum", q:1, c:150}, {n:"Plumber", t:"Lab", u:"hr", q:3, c:85}] },
-                        { cat: "Plumbing", name: "Hot Water Cylinder", unit: "ea", resources: [{n:"180L Mains Pressure", t:"Mat", u:"ea", q:1, c:1400}, {n:"Plumber", t:"Lab", u:"hr", q:4, c:85}] },
-                        { cat: "Plumbing", name: "Toilet Suite", unit: "ea", resources: [{n:"Toilet", t:"Mat", u:"ea", q:1, c:450}, {n:"Install", t:"Lab", u:"hr", q:2, c:85}] },
-                        { cat: "Plumbing", name: "Shower Install", unit: "ea", resources: [{n:"Acrylic Shower", t:"Mat", u:"ea", q:1, c:900}, {n:"Install", t:"Lab", u:"hr", q:4, c:85}] },
-
-                        // Electrical
-                        { cat: "Electrical", name: "Pre-wire / Rough-in", unit: "point", resources: [{n:"Cable", t:"Mat", u:"sum", q:1, c:45}, {n:"Electrician", t:"Lab", u:"hr", q:1.5, c:80}] },
-                        { cat: "Electrical", name: "Switchboard Upgrade", unit: "ea", resources: [{n:"Board 60 Way", t:"Mat", u:"ea", q:1, c:850}, {n:"Electrician", t:"Lab", u:"hr", q:6, c:80}] },
-                        { cat: "Electrical", name: "LED Downlights", unit: "ea", resources: [{n:"Light Fitting", t:"Mat", u:"ea", q:1, c:35}, {n:"Install", t:"Lab", u:"hr", q:0.5, c:80}] },
-
-                        // HVAC
-                        { cat: "HVAC", name: "Heat Pump (High Wall)", unit: "ea", resources: [{n:"Fujitsu 6kW", t:"Mat", u:"ea", q:1, c:1800}, {n:"Install", t:"Lab", u:"hr", q:4, c:85}] },
-                        { cat: "HVAC", name: "Ducted System", unit: "LS", resources: [{n:"Ducted Unit 10kW", t:"Mat", u:"ea", q:1, c:4500}, {n:"Ducting", t:"Mat", u:"sum", q:1, c:1500}, {n:"Install Team", t:"Lab", u:"hr", q:16, c:160}] },
-
-                        // Insulation
-                        { cat: "Insulation & Air-sealing", name: "Wall Insulation R2.6", unit: "m2", resources: [{n:"Pink Batts", t:"Mat", u:"m2", q:1.05, c:18}, {n:"Install", t:"Lab", u:"hr", q:0.2, c:45}] },
-                        { cat: "Insulation & Air-sealing", name: "Ceiling Insulation R4.0", unit: "m2", resources: [{n:"Pink Batts", t:"Mat", u:"m2", q:1.05, c:22}, {n:"Install", t:"Lab", u:"hr", q:0.2, c:45}] },
-
-                        // GIB & Plaster
-                        { cat: "GIB & Plaster", name: "Gib Fixing (Walls)", unit: "m2", resources: [{n:"Gib 10mm", t:"Mat", u:"m2", q:1.05, c:12}, {n:"Fixer", t:"Lab", u:"hr", q:0.3, c:60}] },
-                        { cat: "GIB & Plaster", name: "Stopping (Level 4)", unit: "m2", resources: [{n:"Compound/Tape", t:"Mat", u:"m2", q:1, c:5}, {n:"Stopper", t:"Lab", u:"hr", q:0.4, c:65}] },
-
-                        // Interior Finish
-                        { cat: "Interior Finish", name: "Interior Painting", unit: "m2", resources: [{n:"Paint System", t:"Mat", u:"m2", q:1, c:12}, {n:"Painter", t:"Lab", u:"hr", q:0.6, c:55}] },
-                        { cat: "Interior Finish", name: "Carpet", unit: "m2", resources: [{n:"Wool Carpet+Ulay", t:"Mat", u:"m2", q:1.05, c:65}, {n:"Layer", t:"Lab", u:"m2", q:1, c:25}] },
-                        { cat: "Interior Finish", name: "Tiling", unit: "m2", resources: [{n:"Tiles", t:"Mat", u:"m2", q:1.05, c:60}, {n:"Tiler", t:"Lab", u:"hr", q:1.2, c:75}] },
-                        { cat: "Interior Finish", name: "Skirtings", unit: "m", resources: [{n:"60mm Skirting", t:"Mat", u:"m", q:1.05, c:8}, {n:"Carpenter", t:"Lab", u:"hr", q:0.3, c:65}] },
-
-                        // Kitchen & Bath
-                        { cat: "Kitchen, Bath & Laundry", name: "Kitchen Joinery", unit: "LS", resources: [{n:"Cabinetry", t:"Mat", u:"LS", q:1, c:12000}, {n:"Installer", t:"Lab", u:"hr", q:8, c:70}] },
-                        { cat: "Kitchen, Bath & Laundry", name: "Stone Benchtop", unit: "m", resources: [{n:"Eng. Stone", t:"Mat", u:"m", q:1, c:900}, {n:"Install", t:"Lab", u:"m", q:1, c:150}] },
-
-                        // Water/Sewer
-                        { cat: "Utilities (Water/Sewer)", name: "Septic Tank System", unit: "LS", resources: [{n:"Tank System", t:"Mat", u:"LS", q:1, c:12000}, {n:"Drainlayer", t:"Lab", u:"hr", q:16, c:90}] },
-                        { cat: "Utilities (Water/Sewer)", name: "Stormwater Drain", unit: "m", resources: [{n:"100mm PVC", t:"Mat", u:"m", q:1, c:25}, {n:"Drainlayer", t:"Lab", u:"hr", q:0.5, c:90}] },
-
-                        // Porches & Decks
-                        { cat: "Porches, Decks & Landscaping", name: "Timber Decking", unit: "m2", resources: [{n:"Kwila/Pine", t:"Mat", u:"m2", q:1.1, c:120}, {n:"Subframe", t:"Mat", u:"m2", q:1, c:45}, {n:"Carpenter", t:"Lab", u:"hr", q:2, c:65}] },
-                        { cat: "Porches, Decks & Landscaping", name: "Retaining Wall", unit: "m2", resources: [{n:"Poles/Timber", t:"Mat", u:"m2", q:1, c:150}, {n:"Labor", t:"Lab", u:"hr", q:2, c:60}] },
-                    ];
-
-                    let batch = db.batch();
-                    seedItems.forEach(item => {
-                        let cost = 0;
-                        item.resources.forEach(r => cost += (r.c * r.q));
-                        item.rate = cost * 1.18; 
-                        let ref = db.collection('master_library').doc();
-                        batch.set(ref, item);
-                    });
-                    batch.commit().then(() => { console.log("DB Re-Seeded with Categories."); loadMasterLibrary(); });
+                    // === CONTRACT MODE CHECK ===
+                    if (data.status === 'Active' || data.status === 'Completed') {
+                        activateContractMode();
+                    }
                 }
             });
         }
 
-        // --- LOAD WITH OPTGROUPS (CATEGORIZED DROPDOWN) ---
+        function activateContractMode() {
+            document.body.classList.add('contract-mode'); // Apply CSS locks
+            document.getElementById('docTitle').innerText = "MASTER CONTRACT SCHEDULE";
+            document.getElementById('quoteRefDisplay').innerText = "NZS 3910 AGREEMENT";
+            
+            // Lock Inputs
+            document.getElementById('clientName').readOnly = true;
+            document.getElementById('clientAddress').readOnly = true;
+        }
+
+        // --- BUILDER & MASTER DB LOGIC ---
         function loadMasterLibrary() {
             db.collection('master_library').orderBy('name').get().then(snap => {
                 masterItems = [];
                 const select = document.getElementById('masterDbSelect');
                 select.innerHTML = '<option value="">-- Select Category & Item --</option>';
-                
-                // Group by Category
                 let grouped = {};
+                
                 snap.forEach(doc => {
                     const item = doc.data();
                     item.id = doc.id;
                     masterItems.push(item);
-                    const cat = item.cat || "Uncategorized"; // Default if missing
+                    const cat = item.cat || "Uncategorized";
                     if(!grouped[cat]) grouped[cat] = [];
                     grouped[cat].push(item);
                 });
 
-                // Render Optgroups
-                const sortedCats = Object.keys(grouped).sort();
-                sortedCats.forEach(cat => {
+                Object.keys(grouped).sort().forEach(cat => {
                     let html = `<optgroup label="${cat}">`;
                     grouped[cat].forEach(item => {
                         html += `<option value="${item.id}">${item.name} (${item.unit}) - $${(item.rate||0).toFixed(2)}</option>`;
@@ -315,12 +241,10 @@
                     html += `</optgroup>`;
                     select.innerHTML += html;
                 });
-                
                 select.innerHTML += '<option value="new">+ Create New Item (Custom)</option>';
             });
         }
 
-        // --- STANDARD FUNCTIONS (UNCHANGED) ---
         function loadFromMaster() {
             const id = document.getElementById('masterDbSelect').value;
             if (id === 'new' || id === "") { createNewItem(); return; }
@@ -380,7 +304,6 @@
 
             if(document.getElementById('updateDbCheck').checked) {
                 const existingItem = masterItems.find(i => i.name.toLowerCase() === name.toLowerCase());
-                // IMPORTANT: When saving NEW, we ask for category or default to 'User Custom'
                 const itemData = { name: name, unit: unit, rate: rate, resources: currentResources, lastUpdated: Date.now(), cat: existingItem ? existingItem.cat : "User Custom" };
                 if(existingItem) {
                     if(confirm(`Update "${name}" in Master DB?`)) db.collection('master_library').doc(existingItem.id).update(itemData).then(loadMasterLibrary);
@@ -395,47 +318,58 @@
         function renderQuote() {
             const tbody = document.getElementById('quoteTable'); tbody.innerHTML = ""; let sub = 0;
             if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
+            
             quoteItems.forEach((item, i) => {
                 item.total = item.qty * item.rate; sub += item.total;
-                tbody.innerHTML += `<tr class="border-b border-slate-100 group hover:bg-slate-50 transition"><td class="p-3 font-bold text-slate-700">${item.desc}</td><td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td><td class="p-3 text-center"><input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print"><span class="hidden print-only">${item.qty}</span></td><td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right no-print"><button onclick="quoteItems.splice(${i},1);renderQuote()" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
+                
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 group hover:bg-slate-50 transition">
+                        <td class="p-3 font-bold text-slate-700">${item.desc}</td>
+                        <td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td>
+                        <td class="p-3 text-center"><input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input"></td>
+                        <td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3 text-right header-action delete-btn"><button onclick="quoteItems.splice(${i},1);renderQuote()" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
             });
             document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2});
             document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
             document.getElementById('totalDisplay').innerText = "$" + (sub*1.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
-            document.getElementById('contractTotal').innerText = "$" + (sub*1.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
         }
 
         function updateQuoteQty(i, v) { quoteItems[i].qty = parseFloat(v)||0; renderQuote(); }
-        function printQuote() {
-            const includeAPU = document.getElementById('printApuCheck').checked;
-            const printSec = document.getElementById('printSection');
-            includeAPU ? printSec.classList.add('print-apu-visible') : printSec.classList.remove('print-apu-visible');
-            if(!document.getElementById('clientName').value) return alert("Please enter Client Name.");
-            window.print();
-        }
-        function generateAPUAppendix() {
-            const container = document.getElementById('apuContent'); container.innerHTML = "";
-            quoteItems.forEach((item, index) => {
-                let html = `<div class="border border-slate-200 rounded-lg p-6 bg-slate-50 avoid-break"><div class="flex justify-between border-b border-slate-300 pb-2 mb-4"><h3 class="font-bold text-lg text-slate-800">${index + 1}. ${item.desc}</h3><div class="text-right"><span class="block text-[10px] uppercase font-bold text-slate-500">Unit Rate</span><span class="font-mono font-bold text-lg">$${item.rate.toFixed(2)} / ${item.unit}</span></div></div><table class="w-full text-xs text-slate-600 mb-2"><thead class="font-bold uppercase bg-slate-200"><tr><th class="p-2 text-left">Resource</th><th class="p-2 text-center">Type</th><th class="p-2 text-center">Yield</th><th class="p-2 text-right">Cost</th></tr></thead><tbody>`;
-                item.resources.forEach(res => {
-                    const typeMap = { 'Lab': 'Labor', 'Plant': 'Plant', 'Mat': 'Material' };
-                    html += `<tr class="border-b border-slate-200"><td class="p-2">${res.n}</td><td class="p-2 text-center">${typeMap[res.t]}</td><td class="p-2 text-center">${res.q} ${res.u}</td><td class="p-2 text-right">$${res.c}</td></tr>`;
-                });
-                container.innerHTML += html + `</tbody></table></div>`;
-            });
-        }
-        function saveProject() { /* Same logic as V6, omitted for brevity but fully functional in full copy */ 
+
+        function saveProject() {
             const client = document.getElementById('clientName').value;
             if(!quoteItems.length) return alert("Quote is empty.");
-            const cleanItems = quoteItems.map(item => ({ desc: item.desc, name: item.name, unit: item.unit, qty: item.qty, rate: item.rate, total: item.total, resources: item.resources }));
-            let totalRev = 0; cleanItems.forEach(i => totalRev += i.total);
-            const pData = { name: client + " - Project", client: client, address: document.getElementById('clientAddress').value, items: cleanItems, schedule: cleanItems, status: "Pending", updatedAt: Date.now() };
-            if(currentProjectId) { db.collection('projects').doc(currentProjectId).update(pData).then(()=>alert("Saved!")); } 
-            else { pData.createdAt = Date.now(); db.collection('projects').add(pData).then(doc => { localStorage.setItem('civilmate_current_project_id', doc.id); currentProjectId = doc.id; alert("Saved New Project!"); }); }
+            
+            // Clean resources before saving to make DB lighter
+            const cleanItems = quoteItems.map(item => ({ 
+                desc: item.desc, name: item.name, unit: item.unit, qty: item.qty, rate: item.rate, total: item.total, 
+                resources: item.resources // Keep for history/variations
+            }));
+            
+            const pData = { 
+                name: client + " - Project", 
+                client: client, 
+                address: document.getElementById('clientAddress').value, 
+                items: cleanItems, 
+                schedule: cleanItems, 
+                status: "Pending", 
+                updatedAt: Date.now() 
+            };
+
+            if(currentProjectId) { 
+                db.collection('projects').doc(currentProjectId).update(pData).then(()=>alert("Saved!")); 
+            } else { 
+                pData.createdAt = Date.now(); 
+                db.collection('projects').add(pData).then(doc => { 
+                    localStorage.setItem('civilmate_current_project_id', doc.id); 
+                    currentProjectId = doc.id; 
+                    alert("Saved New Project!"); 
+                }); 
+            }
         }
-        function loadProjectFromDB(id) { db.collection('projects').doc(id).get().then(doc => { if(doc.exists) { const data = doc.data(); document.getElementById('clientName').value = data.client||""; quoteItems = data.schedule || []; renderQuote(); }}); }
-        function generateLegalContract() { document.getElementById('contractDate').innerText = new Date().toLocaleDateString('en-NZ'); document.getElementById('contractClientName').innerText = document.getElementById('clientName').value; document.getElementById('contractMyCompany').innerText = document.getElementById('myCompany').value; document.getElementById('legalContractModal').classList.remove('hidden'); document.getElementById('legalContractModal').classList.add('show-print'); }
-        function switchPricingMode(mode) { renderAllLists(); }
     </script>
 </body>
 </html>
