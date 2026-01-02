@@ -89,7 +89,7 @@
         </div>
 
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Site Control</h2>
+            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Site Control & Safety</h2>
             
             <div onclick="openLink('tracker.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-amber-400 cursor-pointer transition group flex items-center gap-4">
                 <div class="bg-amber-50 w-10 h-10 rounded flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition">
@@ -97,7 +97,27 @@
                 </div>
                 <div>
                     <h3 class="font-bold text-slate-700">Site Diary Report</h3>
-                    <p class="text-xs text-slate-400">Generate PDF Logs & Weather</p>
+                    <p class="text-xs text-slate-400">Daily Logs & Photos</p>
+                </div>
+            </div>
+
+            <div onclick="openLink('site_safety.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-red-400 cursor-pointer transition group flex items-center gap-4">
+                <div class="bg-red-50 w-10 h-10 rounded flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-700">Health & Safety Hub</h3>
+                    <p class="text-xs text-slate-400">Inductions, Hazards & Incidents</p>
+                </div>
+            </div>
+
+            <div onclick="openLink('toolbox.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
+                <div class="bg-blue-50 w-10 h-10 rounded flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-700">Toolbox Talk</h3>
+                    <p class="text-xs text-slate-400">Morning Briefings Record</p>
                 </div>
             </div>
 
@@ -127,7 +147,6 @@
                 document.getElementById('projName').innerText = p.name;
                 document.getElementById('clientName').innerText = p.client || 'Client N/A';
 
-                // --- LOGICA DE CÁLCULO DE VOs vs CONTRATO ORIGINAL ---
                 const schedule = p.schedule || p.items || [];
                 let originalSum = 0;
                 let variationsSum = 0;
@@ -145,13 +164,9 @@
 
                 const revisedSum = originalSum + variationsSum;
                 
-                // ACTUALIZAR KPIs
                 document.getElementById('kpiOriginal').innerText = fmtMoney(originalSum);
                 document.getElementById('kpiVariations').innerText = fmtMoney(variationsSum);
                 document.getElementById('kpiRevised').innerText = fmtMoney(revisedSum);
-                
-                // Nota: Total Claimed se leerá cuando guardemos valuaciones en la V2. 
-                // Por ahora muestra 0 o lo que haya en la BD.
                 document.getElementById('kpiClaimed').innerText = fmtMoney(p.totalClaimedGross || 0);
             }
         });
@@ -168,10 +183,8 @@
                 let logs = [];
                 snap.forEach(doc => logs.push(doc.data()));
                 
-                // Ordenar por fecha (más reciente primero)
                 logs.sort((a, b) => b.timestamp - a.timestamp);
                 
-                // Mostrar solo los 3 primeros
                 logs.slice(0, 3).forEach(log => {
                     div.innerHTML += `<div class="border-b border-slate-200 pb-1 mb-1 last:border-0">
                         <span class="font-bold text-slate-600">${log.date}:</span> ${log.itemName} 
