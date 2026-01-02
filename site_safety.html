@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>H&S Master Suite - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; touch-action: manipulation; }
+        
+        /* NAVIGATION */
+        .nav-btn { padding: 10px; font-size: 11px; font-weight: bold; color: #94a3b8; border-bottom: 2px solid transparent; width: 33.33%; text-align: center; transition: 0.2s; text-transform: uppercase; }
+        .nav-btn.active { color: #facc15; border-bottom-color: #facc15; background: #1e293b; }
+        .nav-icon { display: block; font-size: 18px; margin-bottom: 4px; }
+
+        /* INPUTS */
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px; width: 100%; padding: 12px; outline: none; font-size: 14px; }
+        .input-dark:focus { border-color: #3b82f6; }
+        
+        /* SIGNATURE */
+        canvas { background-color: white; border-radius: 8px; cursor: crosshair; touch-action: none; width: 100%; }
+        
+        /* PHOTOS */
+        .photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+        .photo-thumb { position: relative; height: 70px; border-radius: 6px; overflow: hidden; border: 1px solid #475569; }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-del { position: absolute; top: 0; right: 0; background: rgba(220, 38, 38, 0.9); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 10px; }
+    </style>
+</head>
+<body class="max-w-lg mx-auto min-h-screen flex flex-col pb-24">
+
+    <div class="bg-slate-900 p-4 sticky top-0 z-50 shadow-lg border-b border-slate-800">
+        <div class="flex justify-between items-center mb-3">
+            <div>
+                <h1 class="text-xl font-bold text-yellow-500"><i class="fas fa-shield-alt mr-2"></i>Site Safety</h1>
+                <p class="text-[10px] text-slate-400">HSWA 2015 Compliance</p>
+            </div>
+            <button onclick="window.location.href='project_hub.html'" class="bg-slate-800 text-xs px-3 py-1 rounded border border-slate-700 hover:bg-slate-700">Exit</button>
+        </div>
+        <select id="projectSelect" onchange="changeProject()" class="w-full bg-slate-800 p-2 rounded border border-slate-600 font-bold text-sm text-white outline-none">
+            <option value="">-- Select Active Site --</option>
+        </select>
+    </div>
+
+    <div class="flex bg-slate-900 sticky top-[85px] z-40 border-b border-slate-800">
+        <button onclick="switchTab('induction')" id="tabInduction" class="nav-btn active">
+            <i class="fas fa-user-check nav-icon"></i>Induction
+        </button>
+        <button onclick="switchTab('incident')" id="tabIncident" class="nav-btn">
+            <i class="fas fa-car-crash nav-icon"></i>Incident
+        </button>
+        <button onclick="switchTab('hazard')" id="tabHazard" class="nav-btn">
+            <i class="fas fa-exclamation-circle nav-icon"></i>Hazard
+        </button>
+    </div>
+
+    <div class="p-4 flex-1">
+
+        <div id="viewInduction" class="space-y-5">
+            <div class="bg-yellow-900/20 border-l-4 border-yellow-500 p-4 rounded">
+                <h3 class="font-bold text-yellow-500 text-sm uppercase">Site Induction</h3>
+                <p class="text-xs text-slate-400">By signing, you confirm you understand the site hazards.</p>
+                <input type="text" id="indSiteAddr" class="input-dark mt-2 text-xs text-slate-400 bg-slate-900" readonly placeholder="Site Address (Auto-filled)">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Worker Details</label>
+                <input type="text" id="indName" class="input-dark mt-1" placeholder="Full Name">
+                <input type="text" id="indCompany" class="input-dark mt-2" placeholder="Company / Trade">
+            </div>
+
+            <div class="space-y-3 p-3 bg-slate-800 rounded border border-slate-700">
+                <label class="flex items-center gap-3 text-sm"><input type="checkbox" id="c1" class="w-5 h-5 accent-yellow-500"> I have appropriate PPE.</label>
+                <label class="flex items-center gap-3 text-sm"><input type="checkbox" id="c2" class="w-5 h-5 accent-yellow-500"> I have read the Hazard Board.</label>
+                <label class="flex items-center gap-3 text-sm"><input type="checkbox" id="c3" class="w-5 h-5 accent-yellow-500"> I am fit for work.</label>
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Digital Signature</label>
+                <div class="relative rounded overflow-hidden mt-1 border border-slate-600 bg-white">
+                    <canvas id="cvsInduction" height="120"></canvas>
+                    <button onclick="clearSig('cvsInduction')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded">Clear</button>
+                </div>
+            </div>
+
+            <button onclick="saveInduction()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 rounded-lg shadow-lg">Submit Induction</button>
+        </div>
+
+        <div id="viewIncident" class="hidden space-y-5">
+            <div class="bg-red-900/20 border-l-4 border-red-600 p-4 rounded">
+                <h3 class="font-bold text-red-500 text-sm uppercase">Report Incident</h3>
+                <p class="text-xs text-slate-400">All accidents/near misses must be reported.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <select id="incType" class="input-dark">
+                    <option value="Near Miss">Near Miss</option>
+                    <option value="Injury">Injury</option>
+                    <option value="Property">Property Damage</option>
+                </select>
+                <input type="time" id="incTime" class="input-dark">
+            </div>
+
+            <textarea id="incDesc" class="input-dark h-24" placeholder="Describe what happened..."></textarea>
+
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Evidence</label>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <label class="bg-slate-800 border border-slate-600 rounded py-3 flex flex-col items-center justify-center cursor-pointer">
+                        <i class="fas fa-camera text-blue-400"></i><span class="text-[9px]">Camera</span>
+                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhoto(event, 'incident')">
+                    </label>
+                    <label class="bg-slate-800 border border-slate-600 rounded py-3 flex flex-col items-center justify-center cursor-pointer">
+                        <i class="fas fa-images text-blue-400"></i><span class="text-[9px]">Gallery</span>
+                        <input type="file" accept="image/*" multiple class="hidden" onchange="handlePhoto(event, 'incident')">
+                    </label>
+                </div>
+                <div id="gridIncident" class="photo-grid"></div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Reported By</label>
+                <input type="text" id="incReporter" class="input-dark mt-1 mb-2" placeholder="Your Name">
+                <div class="relative rounded overflow-hidden border border-slate-600 bg-white">
+                    <canvas id="cvsIncident" height="120"></canvas>
+                    <button onclick="clearSig('cvsIncident')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded">Clear</button>
+                </div>
+            </div>
+
+            <button onclick="saveIncident()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg shadow-lg">Report Incident</button>
+        </div>
+
+        <div id="viewHazard" class="hidden space-y-5">
+            <div class="bg-orange-900/20 border-l-4 border-orange-600 p-4 rounded">
+                <h3 class="font-bold text-orange-500 text-sm uppercase">Hazard Identification</h3>
+                <p class="text-xs text-slate-400">Spot it. Report it. Fix it.</p>
+            </div>
+
+            <input type="text" id="hazLoc" class="input-dark" placeholder="Specific Location (e.g. Gate 2)">
+            
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Risk Level</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setRisk('Low')" id="rLow" class="p-2 rounded border border-slate-600 text-xs font-bold text-green-500 hover:bg-green-900/30">LOW</button>
+                    <button onclick="setRisk('Med')" id="rMed" class="p-2 rounded border border-slate-600 text-xs font-bold text-orange-500 hover:bg-orange-900/30">MED</button>
+                    <button onclick="setRisk('High')" id="rHigh" class="p-2 rounded border border-slate-600 text-xs font-bold text-red-500 hover:bg-red-900/30">HIGH</button>
+                </div>
+                <input type="hidden" id="hazRisk">
+            </div>
+
+            <textarea id="hazDesc" class="input-dark h-20" placeholder="Describe the hazard..."></textarea>
+
+            <div>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Photos</label>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <label class="bg-slate-800 border border-slate-600 rounded py-3 flex flex-col items-center justify-center cursor-pointer">
+                        <i class="fas fa-camera text-blue-400"></i><span class="text-[9px]">Camera</span>
+                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhoto(event, 'hazard')">
+                    </label>
+                    <label class="bg-slate-800 border border-slate-600 rounded py-3 flex flex-col items-center justify-center cursor-pointer">
+                        <i class="fas fa-images text-blue-400"></i><span class="text-[9px]">Gallery</span>
+                        <input type="file" accept="image/*" multiple class="hidden" onchange="handlePhoto(event, 'hazard')">
+                    </label>
+                </div>
+                <div id="gridHazard" class="photo-grid"></div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-800">
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Identified By</label>
+                <input type="text" id="hazReporter" class="input-dark mt-1 mb-2" placeholder="Your Name">
+                <div class="relative rounded overflow-hidden border border-slate-600 bg-white">
+                    <canvas id="cvsHazard" height="120"></canvas>
+                    <button onclick="clearSig('cvsHazard')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded">Clear</button>
+                </div>
+            </div>
+
+            <button onclick="saveHazard()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg shadow-lg">Broadcast Alert</button>
+        </div>
+
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentPid = localStorage.getItem('civilmate_current_project_id');
+        let photos = { incident: [], hazard: [] };
+
+        // INIT
+        init();
+
+        function init() {
+            loadProjects();
+            setTimeout(() => {
+                setupCanvas('cvsInduction');
+                setupCanvas('cvsIncident');
+                setupCanvas('cvsHazard');
+            }, 500);
+            document.getElementById('incTime').value = new Date().toTimeString().substring(0,5);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            ['viewInduction', 'viewIncident', 'viewHazard'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+        }
+
+        // --- PROJECT LOGIC ---
+        function loadProjects() {
+            const sel = document.getElementById('projectSelect');
+            db.collection('projects').where('status', 'in', ['Active', 'Pending']).get().then(snap => {
+                sel.innerHTML = '<option value="">-- Select Active Site --</option>';
+                snap.forEach(doc => {
+                    const p = doc.data();
+                    const selected = doc.id === currentPid ? 'selected' : '';
+                    sel.innerHTML += `<option value="${doc.id}" data-addr="${p.address||''}" ${selected}>${p.name}</option>`;
+                });
+                if(currentPid) updateSiteInfo();
+            });
+        }
+
+        function changeProject() {
+            const sel = document.getElementById('projectSelect');
+            currentPid = sel.value;
+            localStorage.setItem('civilmate_current_project_id', currentPid);
+            updateSiteInfo();
+        }
+
+        function updateSiteInfo() {
+            const sel = document.getElementById('projectSelect');
+            if(sel.selectedIndex > 0) {
+                const opt = sel.options[sel.selectedIndex];
+                document.getElementById('indSiteAddr').value = opt.getAttribute('data-addr') || "Address not available";
+            }
+        }
+
+        // --- CANVAS LOGIC ---
+        function setupCanvas(id) {
+            const canvas = document.getElementById(id);
+            if(!canvas) return;
+            canvas.width = canvas.parentElement.offsetWidth;
+            const ctx = canvas.getContext('2d');
+            let drawing = false;
+
+            const start = (e) => { drawing = true; ctx.beginPath(); getPos(e, canvas, ctx); };
+            const move = (e) => { if(drawing) { getPos(e, canvas, ctx); ctx.stroke(); if(e.type==='touchmove')e.preventDefault(); } };
+            const end = () => drawing = false;
+
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('touchstart', start, {passive:false}); canvas.addEventListener('touchmove', move, {passive:false}); canvas.addEventListener('touchend', end);
+        }
+
+        function getPos(e, canvas, ctx) {
+            const r = canvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+            if(e.type === 'mousedown' || e.type === 'touchstart') ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
+        }
+
+        window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+        function isBlank(id) { const c=document.getElementById(id); return c.toDataURL() === document.createElement('canvas').toDataURL(); }
+
+        // --- PHOTOS ---
+        function handlePhoto(e, type) {
+            const files = e.target.files;
+            if(!files.length) return;
+            if(photos[type].length + files.length > 5) return alert("Max 5 photos.");
+            
+            Array.from(files).forEach(f => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const c = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if(w>800) { h*=800/w; w=800; }
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(img,0,0,w,h);
+                        photos[type].push(c.toDataURL('image/jpeg', 0.6));
+                        renderGrid(type);
+                    }
+                    img.src = ev.target.result;
+                }
+                reader.readAsDataURL(f);
+            });
+            e.target.value = '';
+        }
+
+        function renderGrid(type) {
+            const grid = document.getElementById(type === 'incident' ? 'gridIncident' : 'gridHazard');
+            grid.innerHTML = "";
+            photos[type].forEach((src, i) => {
+                grid.innerHTML += `<div class="photo-thumb"><img src="${src}"><div class="photo-del" onclick="delPhoto('${type}',${i})"><i class="fas fa-times"></i></div></div>`;
+            });
+        }
+        window.delPhoto = (t, i) => { photos[t].splice(i,1); renderGrid(t); }
+
+        function setRisk(lvl) {
+            document.getElementById('hazRisk').value = lvl;
+            ['rLow','rMed','rHigh'].forEach(id => document.getElementById(id).style.border = '1px solid #475569');
+            const map = { 'Low':'rLow', 'Med':'rMed', 'High':'rHigh' };
+            document.getElementById(map[lvl]).style.border = '2px solid white';
+        }
+
+        // --- SUBMIT FUNCTIONS ---
+        function saveInduction() {
+            if(!currentPid) return alert("Select Site.");
+            const name = document.getElementById('indName').value;
+            const company = document.getElementById('indCompany').value;
+            if(!name || !company) return alert("Fill details.");
+            if(!document.getElementById('c1').checked || !document.getElementById('c2').checked || !document.getElementById('c3').checked) return alert("Accept all declarations.");
+            if(isBlank('cvsInduction')) return alert("Sign required.");
+
+            db.collection('inductions').add({
+                pid: currentPid, siteName: document.getElementById('projectSelect').options[document.getElementById('projectSelect').selectedIndex].text,
+                name, company, sig: document.getElementById('cvsInduction').toDataURL(), ts: Date.now()
+            }).then(() => { alert("Induction Saved!"); location.reload(); });
+        }
+
+        function saveIncident() {
+            if(!currentPid) return alert("Select Site.");
+            const desc = document.getElementById('incDesc').value;
+            const rep = document.getElementById('incReporter').value;
+            if(!desc || !rep) return alert("Desc & Reporter Name required.");
+            if(isBlank('cvsIncident')) return alert("Sign required.");
+
+            db.collection('incidents').add({
+                pid: currentPid, type: document.getElementById('incType').value,
+                time: document.getElementById('incTime').value, desc, reporter: rep,
+                sig: document.getElementById('cvsIncident').toDataURL(), photos: photos.incident, ts: Date.now()
+            }).then(() => { alert("Incident Reported!"); location.reload(); });
+        }
+
+        function saveHazard() {
+            if(!currentPid) return alert("Select Site.");
+            const loc = document.getElementById('hazLoc').value;
+            const risk = document.getElementById('hazRisk').value;
+            const rep = document.getElementById('hazReporter').value;
+            if(!loc || !risk || !rep) return alert("Location, Risk & Name required.");
+            if(isBlank('cvsHazard')) return alert("Sign required.");
+
+            db.collection('hazards').add({
+                pid: currentPid, loc, risk, desc: document.getElementById('hazDesc').value, reporter: rep,
+                sig: document.getElementById('cvsHazard').toDataURL(), photos: photos.hazard, ts: Date.now()
+            }).then(() => { alert("Hazard Alert Sent!"); location.reload(); });
+        }
+    </script>
+</body>
+</html>
