@@ -11,6 +11,7 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
         .locked-input { background-color: #f1f5f9; color: #64748b; border: none; pointer-events: none; }
+        canvas { background-color: white; cursor: crosshair; width: 100%; height: 80px; } /* Ajuste de altura para firmas */
         
         @media print {
             body * { visibility: hidden; }
@@ -21,6 +22,7 @@
             input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
             input[type=number] { -moz-appearance: textfield; }
             .bg-yellow-50 { background-color: transparent !important; border: none !important; }
+            canvas { border: 1px solid #ccc; } /* Borde visible al imprimir */
         }
     </style>
 </head>
@@ -126,23 +128,31 @@
             </table>
         </div>
 
-        <div class="mt-12 pt-6 border-t-2 border-slate-800">
+        <div class="mt-12 pt-6 border-t-2 border-slate-800 avoid-break">
             <div class="grid grid-cols-2 gap-12 mb-8">
+                
                 <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4">Claimed By (Contractor):</p>
-                    <div class="h-12 border-b border-slate-300 mb-1 relative">
-                        <div id="digitalSig" class="hidden absolute bottom-2 left-0 text-blue-800 font-serif italic text-lg">Digitally Signed by CivilMate</div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Claimed By (Contractor):</p>
+                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24">
+                        <canvas id="sigContractor"></canvas>
+                        <button onclick="clearSig('sigContractor')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
                     </div>
                     <p class="text-xs font-bold text-slate-700">Authorized Signature</p>
                     <p class="text-[10px] text-slate-400">Date: <span id="signDate"></span></p>
                 </div>
+
                 <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-4">Certified By (Engineer to Contract):</p>
-                    <div class="h-12 border-b border-slate-300 mb-1"></div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Certified By (Engineer to Contract):</p>
+                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24">
+                        <canvas id="sigEngineer"></canvas>
+                        <button onclick="clearSig('sigEngineer')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
+                    </div>
                     <p class="text-xs font-bold text-slate-700">Engineer's Signature / Stamp</p>
                     <p class="text-[10px] text-slate-400">Payment Schedule Issued On: _________</p>
                 </div>
+
             </div>
+            
             <div class="bg-slate-50 p-4 rounded text-[9px] text-slate-500 text-justify leading-relaxed border border-slate-200">
                 <p class="font-bold mb-1">NOTICE TO THE PRINCIPAL (PAYER):</p>
                 <p>This is a payment claim under the <strong>Construction Contracts Act 2002</strong>. You must provide a Payment Schedule within 20 working days (or as per contract). Failure to do so may result in liability for the full claimed amount.</p>
@@ -158,12 +168,12 @@
                 <i class="fas fa-save"></i> Save Draft
             </button>
             <button onclick="approveClaim()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
-                <i class="fas fa-check-circle"></i> APPROVE & LOCK
+                <i class="fas fa-check-circle"></i> SIGN & SUBMIT
             </button>
         </div>
         <div id="lockedControls" class="hidden">
             <div class="bg-red-100 text-red-700 px-6 py-3 rounded-full font-bold border border-red-200 flex items-center gap-2 shadow-lg">
-                <i class="fas fa-lock"></i> CLAIM APPROVED & LOCKED
+                <i class="fas fa-lock"></i> CLAIM LOCKED
             </div>
         </div>
     </div>
@@ -186,10 +196,10 @@
             document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
             document.getElementById('signDate').innerText = new Date().toLocaleDateString('en-NZ');
             
-            // 1. CHEQUEAR SI YA ESTÁ APROBADO (BLOQUEO)
-            await checkStatus();
+            setupCanvas('sigContractor');
+            setupCanvas('sigEngineer');
 
-            // 2. ANALIZAR LOGS Y CONTRATO
+            await checkStatus();
             await analyzeLogs();
             loadContractAndBuildTable();
         }
@@ -198,15 +208,43 @@
             const doc = await db.collection('projects').doc(pid).get();
             if(doc.exists) {
                 const p = doc.data();
-                // Si el campo 'currentClaimStatus' es 'Approved', bloqueamos
                 if(p.currentClaimStatus === 'Approved') {
                     lockUI(true);
-                    // Cargar valor de amortización guardado si existe
                     if(p.lastAdvanceRepayment) document.getElementById('advanceInput').value = p.lastAdvanceRepayment;
+                    // Load saved signature if available (Advanced feature for V3, placeholder for now)
                 }
             }
         }
 
+        // --- CANVAS LOGIC ---
+        function setupCanvas(id) {
+            const c = document.getElementById(id);
+            c.width = c.offsetWidth;
+            c.height = c.offsetHeight;
+            const ctx = c.getContext('2d');
+            let d = false;
+            
+            // Mouse & Touch Support
+            const start = (e) => { d=true; ctx.beginPath(); getPos(e, c, ctx); };
+            const move = (e) => { if(d) { getPos(e, c, ctx); ctx.stroke(); if(e.type==='touchmove')e.preventDefault(); } };
+            const end = () => d=false;
+
+            c.addEventListener('mousedown', start); c.addEventListener('mousemove', move); c.addEventListener('mouseup', end);
+            c.addEventListener('touchstart', start, {passive:false}); c.addEventListener('touchmove', move, {passive:false}); c.addEventListener('touchend', end);
+        }
+
+        function getPos(e, c, ctx) {
+            const r = c.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+            if(e.type === 'mousedown' || e.type === 'touchstart') ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            ctx.lineWidth = 2; ctx.strokeStyle = '#000';
+        }
+
+        window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+        function isBlank(id) { const c=document.getElementById(id); return c.toDataURL() === document.createElement('canvas').toDataURL(); }
+
+        // --- DATA LOGIC ---
         function analyzeLogs() {
             return db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
                 const logBody = document.getElementById('logsTable');
@@ -245,21 +283,16 @@
                         scheduleData.forEach((item) => {
                             const key = (item.desc || item.name || "").trim();
                             const executedQty = executionMap[key] || 0;
-                            
-                            // CALCULO REMANENTE
                             const remaining = item.qty - executedQty;
                             const isOverRun = remaining < 0;
                             
-                            // FORMATO REMANENTE
                             let remHTML = `<span class="font-bold text-slate-600">${remaining.toLocaleString()}</span>`;
                             if(isOverRun) remHTML = `<span class="font-bold text-red-600 blink"><i class="fas fa-exclamation-triangle"></i> ${remaining.toLocaleString()}</span>`;
 
-                            // CALCULO %
                             let suggestedPercent = 0;
                             if(item.qty > 0) suggestedPercent = (executedQty / item.qty) * 100;
                             suggestedPercent = Math.round(suggestedPercent * 100) / 100;
 
-                            // SI ESTÁ BLOQUEADO, USAR CLASE LOCKED
                             const inputClass = isLocked ? "locked-input" : "bg-transparent border-b border-yellow-300 focus:border-blue-500";
                             const readOnly = isLocked ? "readonly" : "";
 
@@ -269,22 +302,17 @@
                                     <td class="py-3 text-center text-slate-500">${item.unit}</td>
                                     <td class="py-3 text-center font-mono">${item.qty}</td>
                                     <td class="py-3 text-right font-mono">$${item.rate}</td>
-                                    
                                     <td class="py-3 text-center bg-slate-100 border-x border-white text-xs">${remHTML}</td>
-
                                     <td class="py-3 text-center font-bold text-blue-600">${executedQty}</td>
-
                                     <td class="py-3 text-center bg-yellow-50 border-x border-yellow-100">
                                         <input type="number" min="0" step="1" value="${suggestedPercent}" ${readOnly}
                                             onchange="calcRow(this, ${item.qty}, ${item.rate})"
                                             class="w-16 text-center font-bold text-slate-900 text-sm outline-none ${inputClass}"> %
                                     </td>
-                                    
                                     <td class="py-3 text-right pr-2 font-bold font-mono text-slate-800 row-total">$0.00</td>
                                 </tr>
                             `;
                             
-                            // Auto-calcular inicial
                             setTimeout(() => {
                                 const inputs = document.querySelectorAll('#linesTable input');
                                 const lastInput = inputs[inputs.length - 1];
@@ -311,10 +339,7 @@
             });
 
             const retention = totalGross * 0.10;
-            
-            // DEDUCCION DE ANTICIPO MANUAL
             const advRepayment = parseFloat(document.getElementById('advanceInput').value) || 0;
-
             const net = totalGross - retention - advRepayment;
             const gst = net * 0.15;
             const total = net + gst;
@@ -327,24 +352,24 @@
         }
 
         function approveClaim() {
-            if(!confirm("⚠️ ARE YOU SURE?\n\nApproving this claim will LOCK all values legally.\nYou cannot edit this anymore unless unlocked by Admin.")) return;
+            if(isBlank('sigContractor')) return alert("Contractor must sign the claim before submitting.");
+            if(!confirm("⚠️ Submit this Claim? This will lock the values.")) return;
 
             const advRepayment = parseFloat(document.getElementById('advanceInput').value) || 0;
 
-            // GUARDAR ESTADO 'APPROVED' EN FIREBASE
             db.collection('projects').doc(pid).update({
                 currentClaimStatus: 'Approved',
                 lastClaimDate: new Date().toISOString(),
                 lastAdvanceRepayment: advRepayment
             }).then(() => {
-                alert("✅ CLAIM APPROVED & LOCKED.\nGenerating PDF...");
+                alert("✅ CLAIM SUBMITTED.\nGenerating PDF...");
                 lockUI(true);
                 window.print();
             });
         }
 
         function saveDraft() {
-            alert("Draft Saved locally (Firebase Auto-sync active).");
+            alert("Draft Saved locally.");
         }
 
         function lockUI(locked) {
@@ -353,7 +378,6 @@
             const draftBtns = document.getElementById('draftControls');
             const lockBadge = document.getElementById('lockedControls');
             const statusBadge = document.getElementById('statusBadge');
-            const digiSig = document.getElementById('digitalSig');
 
             if(locked) {
                 inputs.forEach(i => i.classList.add('locked-input'));
@@ -362,8 +386,6 @@
                 statusBadge.classList.remove('hidden');
                 statusBadge.innerHTML = '<i class="fas fa-lock"></i> LOCKED';
                 statusBadge.classList.add('bg-red-100', 'text-red-600');
-                digiSig.classList.remove('hidden'); // Mostrar firma
-                // Bloquear amortización también
                 document.getElementById('advanceInput').disabled = true;
             }
         }
