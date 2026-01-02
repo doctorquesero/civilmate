@@ -140,7 +140,6 @@
 
         if(!pid) { alert("No project selected."); window.location.href='dashboard.html'; }
 
-        // LOAD DATA
         db.collection('projects').doc(pid).onSnapshot(doc => {
             if(doc.exists) {
                 const p = doc.data();
