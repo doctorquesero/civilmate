@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V10.0 - CivilMate NZ</title>
+    <title>Contract & Estimator V11.0 - CivilMate NZ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -12,7 +12,7 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* CONTRACT MODE LOCKS */
+        /* CONTRACT LOCKS */
         .contract-mode #builderPanel { display: none !important; }
         .contract-mode #printSection { width: 100% !important; max-width: 1000px; margin: 0 auto; background: transparent; }
         .contract-mode .company-input { pointer-events: none; border: none; }
@@ -21,7 +21,7 @@
         .contract-mode #btnSave { display: none; }
         .contract-mode #docTitle { color: #1e293b; letter-spacing: 2px; text-decoration: underline; text-decoration-color: #2563eb; }
         
-        /* UI TABLES - FIXED LAYOUT */
+        /* UI TABLES */
         .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
         .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .res-table th { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
@@ -32,9 +32,14 @@
         
         .quote-qty-input { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; font-size: 11px; padding: 2px 0; height: 24px; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
         .company-input { text-align: right; background: transparent; border: 1px dashed transparent; width: 100%; outline: none; transition: 0.2s; cursor: pointer; }
         .company-input:hover, .company-input:focus { border-color: #cbd5e1; background: #fffbeb; }
+
+        /* MODE SWITCHER BUTTONS */
+        .mode-btn { transition: all 0.2s; border: 1px solid #cbd5e1; }
+        .mode-active { background-color: #2563eb; color: white; border-color: #2563eb; }
+        .mode-inactive { background-color: white; color: #64748b; }
+        .mode-inactive:hover { background-color: #f1f5f9; }
 
         @media print {
             body * { visibility: hidden; }
@@ -57,7 +62,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-invoice"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator & Contracts Manager (NZ Database)</p>
+                <p class="text-[10px] text-slate-500">Estimator V11.0 (Multi-Mode Pricing)</p>
             </div>
             <div id="projectStatusBadge"></div> 
         </div>
@@ -71,20 +76,24 @@
     <div class="flex flex-1 overflow-hidden">
         <div id="builderPanel" class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(0,0,0,0.05)]">
             <div class="p-4 border-b border-slate-100 bg-slate-50/80 sticky top-0 z-20 backdrop-blur-md">
+                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">1. Select from Database (140+ Items)</label>
                 <div class="flex gap-2">
-                    <div class="w-2/3">
-                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Select Item from Database</label>
-                        <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
-                            <option value="">-- Select Category & Item --</option>
-                        </select>
-                    </div>
-                    <div class="w-1/3 flex items-end">
-                        <button onclick="createNewItem()" class="w-full py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md flex justify-center items-center gap-2"><i class="fas fa-eraser"></i> Clear / New</button>
-                    </div>
+                    <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-blue-500 outline-none cursor-pointer shadow-sm">
+                        <option value="">-- Load Standard Analysis --</option>
+                    </select>
+                    <button onclick="createNewItem()" class="w-24 py-2 bg-slate-800 text-white text-xs font-bold rounded hover:bg-slate-900 transition shadow-md"><i class="fas fa-eraser"></i> Reset</button>
                 </div>
             </div>
 
             <div id="builderArea" class="flex-1 flex flex-col p-6 pb-24">
+                
+                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">2. Select Pricing Mode</label>
+                <div class="flex gap-0 rounded-lg overflow-hidden shadow-sm border border-slate-300 mb-6">
+                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active">📊 Unit Rate (m3/m2)</button>
+                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive">⏱️ Hourly (Charge-up)</button>
+                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive">🌎 Lump Sum (Global)</button>
+                </div>
+
                 <div class="flex gap-4 mb-6 items-end">
                     <div class="flex-1">
                         <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Description</label>
@@ -187,12 +196,13 @@
         let quoteItems = [];
         let masterItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+        let activePricingMode = 'unit'; // Default
 
         init();
 
         function init() {
             renderAllLists();
-            loadMasterLibrary();
+            seedMasterDatabase(); 
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
@@ -221,12 +231,11 @@
             document.querySelector('#printSection').classList.add('w-full');
         }
 
-        // --- FULL DATABASE SEEDING (142 ITEMS - NZ RATES 2026) ---
+        // --- FULL DATABASE SEEDING (142 ITEMS) ---
         function seedMasterDatabase() {
             db.collection('master_library').limit(1).get().then(snap => {
                 let needsSeeding = snap.empty;
                 if (!snap.empty && !snap.docs[0].data().category) needsSeeding = true; 
-                // Always check if we have the full set
                 if (!snap.empty && snap.size < 50) needsSeeding = true;
 
                 if (needsSeeding) {
@@ -379,7 +388,7 @@
                     seedItems.forEach(item => {
                         let cost = 0;
                         item.resources.forEach(r => cost += (r.c * r.q));
-                        item.rate = cost * 1.18; // 18% Margin
+                        item.rate = cost * 1.18; // Default 18% Margin
                         let ref = db.collection('master_library').doc();
                         batch.set(ref, item);
                     });
@@ -403,10 +412,10 @@
                     const cat = item.cat || "Uncategorized";
                     if(!grouped[cat]) grouped[cat] = []; grouped[cat].push(item);
                 });
-                // Sort categories alphanumerically (1., 2., 3...)
+                // Sort categories naturally (1., 2., 3...)
                 Object.keys(grouped).sort((a,b) => parseInt(a) - parseInt(b)).forEach(cat => {
                     let html = `<optgroup label="${cat}">`;
-                    // Sort items inside
+                    // Sort items alphabetically inside category
                     grouped[cat].sort((a,b) => a.name.localeCompare(b.name)).forEach(item => { 
                         html += `<option value="${item.id}">${item.name} (${item.unit}) - $${(item.rate||0).toFixed(2)}</option>`; 
                     });
@@ -416,7 +425,34 @@
             });
         }
 
-        // --- BUILDER LOGIC (REINSTATED) ---
+        // --- MODE SWITCHER LOGIC ---
+        function setPricingMode(mode) {
+            ['unit', 'hour', 'lump'].forEach(m => {
+                const btn = document.getElementById('btn-'+m);
+                if (m === mode) {
+                    btn.classList.remove('mode-inactive');
+                    btn.classList.add('mode-active');
+                } else {
+                    btn.classList.remove('mode-active');
+                    btn.classList.add('mode-inactive');
+                }
+            });
+
+            if (mode === 'hour') {
+                document.getElementById('itemUnit').value = 'hr';
+            } else if (mode === 'lump') {
+                document.getElementById('itemUnit').value = 'LS';
+                document.getElementById('qtyInput').value = 1;
+            } else {
+                // Unit mode: keep current or default to m3
+                if (document.getElementById('itemUnit').value === 'hr' || document.getElementById('itemUnit').value === 'LS') {
+                    document.getElementById('itemUnit').value = 'm3';
+                }
+            }
+            updateCalculations();
+        }
+
+        // --- BUILDER LOGIC ---
         function loadFromMaster() {
             const id = document.getElementById('masterDbSelect').value;
             if (id === 'new' || id === "") { createNewItem(); return; }
@@ -425,7 +461,14 @@
                 document.getElementById('itemName').value = item.name;
                 document.getElementById('itemUnit').value = item.unit;
                 currentResources = JSON.parse(JSON.stringify(item.resources || []));
-                renderAllLists(); updateCalculations();
+                
+                // Auto-detect mode based on unit
+                if(item.unit === 'hr') setPricingMode('hour');
+                else if(item.unit === 'LS') setPricingMode('lump');
+                else setPricingMode('unit');
+
+                renderAllLists();
+                updateCalculations();
             }
         }
 
@@ -470,7 +513,9 @@
         function createNewItem() {
             document.getElementById('itemName').value = "New Item"; document.getElementById('itemUnit').value = "ea";
             currentResources = [{n:"Labor", u:"hr", q:1, c:45, t:"Lab"}];
-            renderAllLists(); updateCalculations(); document.getElementById('masterDbSelect').value = "";
+            renderAllLists(); 
+            setPricingMode('unit'); // Reset mode
+            document.getElementById('masterDbSelect').value = "";
         }
 
         function addToQuote() {
@@ -480,11 +525,13 @@
             let rate = updateCalculations();
             
             if(document.getElementById('updateDbCheck').checked) {
-                const existingItem = masterItems.find(i => i.name.toLowerCase() === name.toLowerCase());
-                const itemData = { name: name, unit: unit, rate: rate, resources: currentResources, lastUpdated: Date.now(), cat: existingItem ? existingItem.cat : "User Custom" };
-                if(existingItem) { if(confirm(`Update "${name}" in Master DB?`)) db.collection('master_library').doc(existingItem.id).update(itemData).then(loadMasterLibrary); } 
-                else { if(confirm(`Save "${name}" to Master DB?`)) db.collection('master_library').add(itemData).then(loadMasterLibrary); }
+                const itemData = { name: name, unit: unit, rate: rate, resources: currentResources, lastUpdated: Date.now(), cat: "User Custom" };
+                db.collection('master_library').add(itemData).then(() => {
+                    console.log("Saved to DB");
+                    loadMasterLibrary();
+                });
             }
+            
             quoteItems.push({ desc: name, name: name, unit: unit, qty: qty, rate: rate, total: qty * rate, resources: JSON.parse(JSON.stringify(currentResources)) });
             renderQuote();
         }
@@ -494,7 +541,7 @@
             if(quoteItems.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
             quoteItems.forEach((item, i) => {
                 item.total = item.qty * item.rate; sub += item.total;
-                tbody.innerHTML += `<tr class="border-b border-slate-100 group hover:bg-slate-50 transition"><td class="p-3 font-bold text-slate-700">${item.desc}</td><td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td><td class="p-3 text-center"><input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print"><span class="hidden print-only">${item.qty}</span></td><td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right no-print header-action"><button onclick="quoteItems.splice(${i},1);renderQuote()" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
+                tbody.innerHTML += `<tr class="border-b border-slate-100 group hover:bg-slate-50 transition"><td class="p-3 font-bold text-slate-700">${item.desc}</td><td class="p-3 text-center text-xs text-slate-500 font-bold bg-slate-50 rounded">${item.unit}</td><td class="p-3 text-center"><input type="number" value="${item.qty}" onchange="updateQuoteQty(${i}, this.value)" class="quote-qty-input no-print"><span class="hidden print-only">${item.qty}</span></td><td class="p-3 text-right text-xs font-mono text-slate-500">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right text-xs font-mono font-bold text-slate-800">$${item.total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-3 text-right no-print header-action delete-btn"><button onclick="quoteItems.splice(${i},1);renderQuote()" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
             });
             document.getElementById('subtotalDisplay').innerText = "$" + sub.toLocaleString('en-NZ', {minimumFractionDigits: 2});
             document.getElementById('gstDisplay').innerText = "$" + (sub*0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
@@ -504,6 +551,8 @@
         }
 
         function updateQuoteQty(i, v) { quoteItems[i].qty = parseFloat(v)||0; renderQuote(); }
+        
+        // ... (Rest of print/save functions remain identical to your standard) ...
         function printQuote() {
             const includeAPU = document.getElementById('printApuCheck').checked;
             const printSec = document.getElementById('printSection');
@@ -530,7 +579,6 @@
             else { pData.createdAt = Date.now(); db.collection('projects').add(pData).then(doc => { localStorage.setItem('civilmate_current_project_id', doc.id); currentProjectId = doc.id; alert("Saved New Project!"); }); }
         }
         function generateLegalContract() { document.getElementById('contractDate').innerText = new Date().toLocaleDateString('en-NZ'); document.getElementById('contractClientName').innerText = document.getElementById('clientName').value; document.getElementById('contractMyCompany').innerText = document.getElementById('myCompany').value; document.getElementById('contractTotalVal').innerText = document.getElementById('contractTotal').innerText; document.getElementById('legalContractModal').classList.remove('hidden'); document.getElementById('legalContractModal').classList.add('show-print'); }
-        function switchPricingMode(mode) { renderAllLists(); }
     </script>
 </body>
 </html>
