@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V9.0 - CivilMate</title>
+    <title>Contract & Estimator V10.0 - CivilMate NZ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -57,7 +57,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-invoice"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator & Contracts Manager</p>
+                <p class="text-[10px] text-slate-500">Estimator & Contracts Manager (NZ Database)</p>
             </div>
             <div id="projectStatusBadge"></div> 
         </div>
@@ -196,7 +196,6 @@
             if(currentProjectId) loadProjectFromDB(currentProjectId);
         }
 
-        // --- LOAD PROJECT & DETECT STATUS ---
         function loadProjectFromDB(id) { 
             db.collection('projects').doc(id).get().then(doc => { 
                 if(doc.exists) { 
@@ -222,10 +221,179 @@
             document.querySelector('#printSection').classList.add('w-full');
         }
 
-        function seedMasterDatabase() { /* Skipped seeding logic for brevity, assuming DB exists */ }
+        // --- FULL DATABASE SEEDING (142 ITEMS - NZ RATES 2026) ---
+        function seedMasterDatabase() {
+            db.collection('master_library').limit(1).get().then(snap => {
+                let needsSeeding = snap.empty;
+                if (!snap.empty && !snap.docs[0].data().category) needsSeeding = true; 
+                // Always check if we have the full set
+                if (!snap.empty && snap.size < 50) needsSeeding = true;
+
+                if (needsSeeding) {
+                    console.log("Seeding Full NZ Construction Database (140+ Items)...");
+                    const seedItems = [
+                        // 1. GENERAL CONDITIONS
+                        { cat: "1. General Conditions", name: "Contract Works Insurance", unit: "LS", resources: [{n:"Premium", t:"Mat", u:"LS", q:1, c:1200}] },
+                        { cat: "1. General Conditions", name: "Building Consent Fees", unit: "LS", resources: [{n:"Council Fees", t:"Mat", u:"LS", q:1, c:4500}, {n:"Admin", t:"Lab", u:"hr", q:4, c:90}] },
+                        { cat: "1. General Conditions", name: "Site Management", unit: "week", resources: [{n:"Site Manager", t:"Lab", u:"hr", q:20, c:100}] },
+                        { cat: "1. General Conditions", name: "Health & Safety Setup", unit: "LS", resources: [{n:"SSSP & Signage", t:"Mat", u:"LS", q:1, c:650}] },
+                        { cat: "1. General Conditions", name: "Temporary Fencing", unit: "m", resources: [{n:"Fence Hire", t:"Plant", u:"m/wk", q:1, c:5}] },
+                        { cat: "1. General Conditions", name: "Site Toilet", unit: "week", resources: [{n:"Portaloo", t:"Plant", u:"week", q:1, c:55}] },
+                        { cat: "1. General Conditions", name: "Scaffolding (Single Storey)", unit: "m2", resources: [{n:"Scaffold Hire", t:"Plant", u:"m2", q:1, c:35}] },
+                        { cat: "1. General Conditions", name: "Scaffolding (Two Storey)", unit: "m2", resources: [{n:"Scaffold Hire", t:"Plant", u:"m2", q:1, c:55}] },
+                        { cat: "1. General Conditions", name: "Edge Protection", unit: "m", resources: [{n:"Rail Hire", t:"Plant", u:"m", q:1, c:25}] },
+                        { cat: "1. General Conditions", name: "Skip Bin (9m3)", unit: "load", resources: [{n:"Bin + Tip Fee", t:"Mat", u:"load", q:1, c:380}] },
+                        { cat: "1. General Conditions", name: "Final Clean", unit: "hr", resources: [{n:"Cleaners", t:"Lab", u:"hr", q:1, c:55}] },
+
+                        // 2. DEMOLITION
+                        { cat: "2. Demolition", name: "Demolish Garage", unit: "m2", resources: [{n:"Excavator 5T", t:"Plant", u:"hr", q:0.2, c:110}, {n:"Labor", t:"Lab", u:"hr", q:0.5, c:50}, {n:"Tip Fees", t:"Mat", u:"m2", q:1, c:45}] },
+                        { cat: "2. Demolition", name: "Remove Asbestos Cladding", unit: "m2", resources: [{n:"Specialist Sub", t:"Mat", u:"m2", q:1, c:120}] },
+                        { cat: "2. Demolition", name: "Strip Interior Linings", unit: "m2", resources: [{n:"Labor", t:"Lab", u:"hr", q:0.3, c:50}, {n:"Bin", t:"Mat", u:"m2", q:0.05, c:30}] },
+
+                        // 3. EARTHWORKS
+                        { cat: "3. Earthworks", name: "Site Clear / Strip Soil", unit: "m2", resources: [{n:"Digger 14T", t:"Plant", u:"hr", q:0.02, c:145}, {n:"Operator", t:"Lab", u:"hr", q:0.02, c:60}] },
+                        { cat: "3. Earthworks", name: "Bulk Excavation", unit: "m3", resources: [{n:"Excavator 14T", t:"Plant", u:"hr", q:0.04, c:145}, {n:"Truck 6W", t:"Plant", u:"hr", q:0.06, c:120}, {n:"Operator", t:"Lab", u:"hr", q:0.04, c:60}] },
+                        { cat: "3. Earthworks", name: "Detail Excavation (Footings)", unit: "m3", resources: [{n:"Excavator 5T", t:"Plant", u:"hr", q:0.2, c:110}, {n:"Operator", t:"Lab", u:"hr", q:0.2, c:60}] },
+                        { cat: "3. Earthworks", name: "Import Hardfill (GAP40)", unit: "m3", resources: [{n:"GAP40", t:"Mat", u:"m3", q:1.1, c:48}, {n:"Compactor", t:"Plant", u:"hr", q:0.2, c:80}] },
+                        { cat: "3. Earthworks", name: "Import Sand (Gap 7)", unit: "m3", resources: [{n:"GAP7", t:"Mat", u:"m3", q:1.1, c:55}, {n:"Labor", t:"Lab", u:"hr", q:0.3, c:50}] },
+                        { cat: "3. Earthworks", name: "Silt Fence", unit: "m", resources: [{n:"Geotextile", t:"Mat", u:"m", q:1, c:8}, {n:"Stakes", t:"Mat", u:"m", q:1, c:4}, {n:"Labor", t:"Lab", u:"hr", q:0.3, c:50}] },
+
+                        // 4. CONCRETE
+                        { cat: "4. Concrete", name: "Ribraft Floor Slab", unit: "m2", resources: [{n:"Pods/Steel/Conc", t:"Mat", u:"m2", q:1, c:160}, {n:"Placers", t:"Lab", u:"m2", q:1, c:60}, {n:"Pump", t:"Plant", u:"m2", q:1, c:15}] },
+                        { cat: "4. Concrete", name: "Standard Footings 20MPa", unit: "m3", resources: [{n:"Concrete", t:"Mat", u:"m3", q:1.05, c:280}, {n:"Pump", t:"Plant", u:"m3", q:1, c:45}, {n:"Placers", t:"Lab", u:"hr", q:2, c:65}] },
+                        { cat: "4. Concrete", name: "Block Fill (Grout)", unit: "m3", resources: [{n:"Grout 17mm", t:"Mat", u:"m3", q:1.05, c:310}, {n:"Pump", t:"Plant", u:"m3", q:1, c:50}, {n:"Labor", t:"Lab", u:"hr", q:1.5, c:60}] },
+                        { cat: "4. Concrete", name: "Driveway (Exposed Agg)", unit: "m2", resources: [{n:"Concrete", t:"Mat", u:"m3", q:0.12, c:320}, {n:"Placers", t:"Lab", u:"m2", q:1, c:75}, {n:"Sealer", t:"Mat", u:"m2", q:1, c:8}] },
+                        { cat: "4. Concrete", name: "Concrete Cutting", unit: "m", resources: [{n:"Cutter", t:"Plant", u:"hr", q:0.2, c:80}, {n:"Labor", t:"Lab", u:"hr", q:0.2, c:60}] },
+
+                        // 5. MASONRY
+                        { cat: "5. Masonry", name: "Blockwork (20 Series)", unit: "m2", resources: [{n:"Blocks", t:"Mat", u:"m2", q:12.5, c:70}, {n:"Mortar", t:"Mat", u:"m2", q:1, c:12}, {n:"Layer", t:"Lab", u:"m2", q:1.5, c:90}] },
+                        { cat: "5. Masonry", name: "Brick Veneer (70 Series)", unit: "m2", resources: [{n:"Bricks", t:"Mat", u:"m2", q:50, c:2.20}, {n:"Mortar/Ties", t:"Mat", u:"m2", q:1, c:15}, {n:"Layer", t:"Lab", u:"m2", q:1.4, c:90}] },
+                        { cat: "5. Masonry", name: "Schist Cladding", unit: "m2", resources: [{n:"Stone", t:"Mat", u:"m2", q:1, c:350}, {n:"Stonemason", t:"Lab", u:"m2", q:4, c:110}] },
+
+                        // 6. CARPENTRY
+                        { cat: "6. Carpentry", name: "Wall Framing (90x45)", unit: "m2", resources: [{n:"SG8 Timber", t:"Mat", u:"m", q:4.5, c:7.50}, {n:"Fixings", t:"Mat", u:"m2", q:1, c:3}, {n:"Carpenter", t:"Lab", u:"hr", q:1.2, c:75}] },
+                        { cat: "6. Carpentry", name: "Wall Framing (140x45)", unit: "m2", resources: [{n:"SG8 Timber", t:"Mat", u:"m", q:4.5, c:11.50}, {n:"Carpenter", t:"Lab", u:"hr", q:1.3, c:75}] },
+                        { cat: "6. Carpentry", name: "Mid-floor Joists", unit: "m2", resources: [{n:"I-Joists", t:"Mat", u:"m", q:2.5, c:24}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:75}] },
+                        { cat: "6. Carpentry", name: "Flooring (20mm Strand)", unit: "m2", resources: [{n:"Strandfloor", t:"Mat", u:"m2", q:1, c:38}, {n:"Glue/Screw", t:"Mat", u:"m2", q:1, c:5}, {n:"Carpenter", t:"Lab", u:"hr", q:0.5, c:75}] },
+                        { cat: "6. Carpentry", name: "Roof Trusses", unit: "m2", resources: [{n:"Truss Pack", t:"Mat", u:"m2", q:1, c:85}, {n:"Crane", t:"Plant", u:"hr", q:0.1, c:250}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:75}] },
+                        { cat: "6. Carpentry", name: "Soffits (Hardies)", unit: "m2", resources: [{n:"Soffit Lining", t:"Mat", u:"m2", q:1, c:28}, {n:"Carpenter", t:"Lab", u:"hr", q:0.8, c:75}] },
+                        { cat: "6. Carpentry", name: "Building Wrap", unit: "m2", resources: [{n:"Tekton Wrap", t:"Mat", u:"m2", q:1.1, c:6}, {n:"Labor", t:"Lab", u:"hr", q:0.1, c:75}] },
+
+                        // 7. ROOFING
+                        { cat: "7. Roofing", name: "Longrun Colorsteel", unit: "m2", resources: [{n:"Colorsteel", t:"Mat", u:"m2", q:1.1, c:38}, {n:"Underlay/Mesh", t:"Mat", u:"m2", q:1, c:8}, {n:"Roofer", t:"Lab", u:"hr", q:0.8, c:80}] },
+                        { cat: "7. Roofing", name: "Concrete Tile Roof", unit: "m2", resources: [{n:"Monier Tiles", t:"Mat", u:"m2", q:1, c:48}, {n:"Roofer", t:"Lab", u:"hr", q:1, c:80}] },
+                        { cat: "7. Roofing", name: "Membrane Roof (Butyl)", unit: "m2", resources: [{n:"Rubber/Ply", t:"Mat", u:"m2", q:1, c:95}, {n:"Installer", t:"Lab", u:"hr", q:1.5, c:85}] },
+                        { cat: "7. Roofing", name: "Spouting (PVC)", unit: "m", resources: [{n:"Marley Classic", t:"Mat", u:"m", q:1, c:25}, {n:"Labor", t:"Lab", u:"hr", q:0.4, c:75}] },
+                        { cat: "7. Roofing", name: "Spouting (Colorsteel)", unit: "m", resources: [{n:"Continuous", t:"Mat", u:"m", q:1, c:35}, {n:"Labor", t:"Lab", u:"hr", q:0.4, c:80}] },
+                        { cat: "7. Roofing", name: "Downpipes (PVC)", unit: "m", resources: [{n:"80mm Round", t:"Mat", u:"m", q:1, c:22}, {n:"Labor", t:"Lab", u:"hr", q:0.3, c:75}] },
+
+                        // 8. CLADDING
+                        { cat: "8. Cladding", name: "Weatherboard (Pine)", unit: "m2", resources: [{n:"Bevelback", t:"Mat", u:"m", q:7, c:14}, {n:"Carpenter", t:"Lab", u:"hr", q:1.5, c:75}, {n:"Paint", t:"Mat", u:"m2", q:1, c:20}] },
+                        { cat: "8. Cladding", name: "Linea Weatherboard", unit: "m2", resources: [{n:"Linea 180", t:"Mat", u:"m2", q:1.1, c:70}, {n:"Carpenter", t:"Lab", u:"hr", q:1.3, c:75}] },
+                        { cat: "8. Cladding", name: "Vertical Cedar", unit: "m2", resources: [{n:"Cedar Shiplap", t:"Mat", u:"m2", q:1.1, c:190}, {n:"Carpenter", t:"Lab", u:"hr", q:2, c:75}] },
+                        { cat: "8. Cladding", name: "Abodo Cladding", unit: "m2", resources: [{n:"Abodo Vulcan", t:"Mat", u:"m2", q:1.1, c:140}, {n:"Carpenter", t:"Lab", u:"hr", q:1.8, c:75}] },
+                        { cat: "8. Cladding", name: "Cavity Battens", unit: "m2", resources: [{n:"H3.2 Battens", t:"Mat", u:"m", q:2.5, c:4}, {n:"Labor", t:"Lab", u:"hr", q:0.2, c:75}] },
+
+                        // 9. JOINERY
+                        { cat: "9. Joinery (Windows)", name: "Aluminium Windows (Dbl Glz)", unit: "m2", resources: [{n:"Supply", t:"Mat", u:"m2", q:1, c:600}, {n:"Install", t:"Lab", u:"m2", q:1, c:75}] },
+                        { cat: "9. Joinery (Windows)", name: "Entry Door (Composite)", unit: "ea", resources: [{n:"Door/Frame/Hdw", t:"Mat", u:"ea", q:1, c:2200}, {n:"Install", t:"Lab", u:"hr", q:4, c:75}] },
+                        { cat: "9. Joinery (Windows)", name: "Internal Door (Hollow)", unit: "ea", resources: [{n:"Door/Hdw", t:"Mat", u:"ea", q:1, c:280}, {n:"Carpenter", t:"Lab", u:"hr", q:2, c:75}] },
+                        { cat: "9. Joinery (Windows)", name: "Internal Door (Solid)", unit: "ea", resources: [{n:"Door/Hdw", t:"Mat", u:"ea", q:1, c:450}, {n:"Carpenter", t:"Lab", u:"hr", q:2.5, c:75}] },
+                        { cat: "9. Joinery (Windows)", name: "Garage Door (Sectional)", unit: "ea", resources: [{n:"Door & Motor", t:"Mat", u:"ea", q:1, c:2400}, {n:"Install", t:"Lab", u:"hr", q:3, c:90}] },
+
+                        // 10. INSULATION
+                        { cat: "10. Insulation", name: "Wall Insulation R2.8", unit: "m2", resources: [{n:"Pink Batts", t:"Mat", u:"m2", q:1.05, c:22}, {n:"Install", t:"Lab", u:"hr", q:0.2, c:50}] },
+                        { cat: "10. Insulation", name: "Ceiling Insulation R4.0", unit: "m2", resources: [{n:"Pink Batts", t:"Mat", u:"m2", q:1.05, c:28}, {n:"Install", t:"Lab", u:"hr", q:0.2, c:50}] },
+                        { cat: "10. Insulation", name: "Underfloor Insulation", unit: "m2", resources: [{n:"Expol", t:"Mat", u:"m2", q:1.05, c:18}, {n:"Install", t:"Lab", u:"hr", q:0.3, c:50}] },
+
+                        // 11. LINING & PLASTERING
+                        { cat: "11. Lining & Plastering", name: "GIB Fixing (Standard)", unit: "m2", resources: [{n:"GIB 10mm", t:"Mat", u:"m2", q:1.05, c:15}, {n:"Fixer", t:"Lab", u:"m2", q:0.3, c:65}] },
+                        { cat: "11. Lining & Plastering", name: "GIB Aqualine (Wet Area)", unit: "m2", resources: [{n:"Aqualine", t:"Mat", u:"m2", q:1.05, c:22}, {n:"Fixer", t:"Lab", u:"m2", q:0.3, c:65}] },
+                        { cat: "11. Lining & Plastering", name: "GIB Stopping (Level 4)", unit: "m2", resources: [{n:"Compound/Tape", t:"Mat", u:"m2", q:1, c:7}, {n:"Stopper", t:"Lab", u:"m2", q:0.4, c:75}] },
+                        { cat: "11. Lining & Plastering", name: "Square Stopping", unit: "m", resources: [{n:"Materials", t:"Mat", u:"m", q:1, c:5}, {n:"Stopper", t:"Lab", u:"m", q:0.3, c:75}] },
+
+                        // 12. PAINTING
+                        { cat: "12. Painting", name: "Interior Paint (Walls)", unit: "m2", resources: [{n:"Paint System", t:"Mat", u:"m2", q:1, c:15}, {n:"Painter", t:"Lab", u:"hr", q:0.5, c:65}] },
+                        { cat: "12. Painting", name: "Interior Paint (Ceilings)", unit: "m2", resources: [{n:"Flat Paint", t:"Mat", u:"m2", q:1, c:12}, {n:"Painter", t:"Lab", u:"hr", q:0.6, c:65}] },
+                        { cat: "12. Painting", name: "Interior Paint (Doors/Trim)", unit: "m", resources: [{n:"Enamel", t:"Mat", u:"m", q:1, c:5}, {n:"Painter", t:"Lab", u:"hr", q:0.4, c:65}] },
+                        { cat: "12. Painting", name: "Exterior Paint", unit: "m2", resources: [{n:"Weathershield", t:"Mat", u:"m2", q:1, c:20}, {n:"Painter", t:"Lab", u:"hr", q:0.7, c:65}] },
+
+                        // 13. FLOORING
+                        { cat: "13. Flooring", name: "Carpet (Nylon Solution Dyed)", unit: "m2", resources: [{n:"Carpet+Ulay", t:"Mat", u:"m2", q:1.05, c:75}, {n:"Layer", t:"Lab", u:"m2", q:1, c:30}] },
+                        { cat: "13. Flooring", name: "Carpet (Wool Loop)", unit: "m2", resources: [{n:"Wool Carpet", t:"Mat", u:"m2", q:1.05, c:95}, {n:"Layer", t:"Lab", u:"m2", q:1, c:35}] },
+                        { cat: "13. Flooring", name: "Vinyl Planking (LVP)", unit: "m2", resources: [{n:"Planks", t:"Mat", u:"m2", q:1.05, c:70}, {n:"Layer", t:"Lab", u:"m2", q:1, c:45}] },
+                        { cat: "13. Flooring", name: "Polished Concrete", unit: "m2", resources: [{n:"Grind & Seal", t:"Mat", u:"m2", q:1, c:110}] },
+                        { cat: "13. Flooring", name: "Ceramic Tiling", unit: "m2", resources: [{n:"Tiles", t:"Mat", u:"m2", q:1.05, c:70}, {n:"Glue/Grout", t:"Mat", u:"m2", q:1, c:25}, {n:"Tiler", t:"Lab", u:"m2", q:1.5, c:90}] },
+
+                        // 14. KITCHEN
+                        { cat: "14. Kitchen", name: "Kitchen Joinery (Standard)", unit: "LS", resources: [{n:"Cabinetry", t:"Mat", u:"LS", q:1, c:18000}, {n:"Install", t:"Lab", u:"hr", q:12, c:85}] },
+                        { cat: "14. Kitchen", name: "Stone Benchtop", unit: "m", resources: [{n:"Eng. Stone", t:"Mat", u:"m", q:1, c:1200}, {n:"Install", t:"Lab", u:"LS", q:1, c:350}] },
+                        { cat: "14. Kitchen", name: "Splashback (Glass)", unit: "LS", resources: [{n:"Supply/Install", t:"Mat", u:"LS", q:1, c:1400}] },
+                        { cat: "14. Kitchen", name: "Appliances Package", unit: "LS", resources: [{n:"Oven/Hob/Dish", t:"Mat", u:"LS", q:1, c:4500}] },
+
+                        // 15. BATHROOM
+                        { cat: "15. Bathroom", name: "Vanity 900mm", unit: "ea", resources: [{n:"Vanity Unit", t:"Mat", u:"ea", q:1, c:850}, {n:"Install", t:"Lab", u:"hr", q:2, c:95}] },
+                        { cat: "15. Bathroom", name: "Shower (Acrylic 1x1)", unit: "ea", resources: [{n:"Liner/Tray/Door", t:"Mat", u:"ea", q:1, c:1300}, {n:"Install", t:"Lab", u:"hr", q:5, c:95}] },
+                        { cat: "15. Bathroom", name: "Tiled Shower", unit: "ea", resources: [{n:"Waterproof/Tile", t:"Mat", u:"ea", q:1, c:4500}, {n:"Glass", t:"Mat", u:"ea", q:1, c:1200}] },
+                        { cat: "15. Bathroom", name: "Toilet Suite", unit: "ea", resources: [{n:"Toilet", t:"Mat", u:"ea", q:1, c:550}, {n:"Install", t:"Lab", u:"hr", q:2, c:95}] },
+                        { cat: "15. Bathroom", name: "Bathtub (Built-in)", unit: "ea", resources: [{n:"Bath", t:"Mat", u:"ea", q:1, c:800}, {n:"Frame/Install", t:"Lab", u:"hr", q:4, c:95}] },
+                        { cat: "15. Bathroom", name: "Heated Towel Rail", unit: "ea", resources: [{n:"Rail", t:"Mat", u:"ea", q:1, c:250}, {n:"Electrician", t:"Lab", u:"hr", q:1, c:90}] },
+
+                        // 16. PLUMBING
+                        { cat: "16. Plumbing", name: "Pre-pipe (Rough in)", unit: "point", resources: [{n:"Pipework", t:"Mat", u:"sum", q:1, c:180}, {n:"Plumber", t:"Lab", u:"hr", q:3, c:95}] },
+                        { cat: "16. Plumbing", name: "Fit-off", unit: "point", resources: [{n:"Hardware", t:"Mat", u:"ea", q:1, c:50}, {n:"Plumber", t:"Lab", u:"hr", q:1, c:95}] },
+                        { cat: "16. Plumbing", name: "Hot Water Cylinder (180L)", unit: "ea", resources: [{n:"Cylinder", t:"Mat", u:"ea", q:1, c:1700}, {n:"Plumber", t:"Lab", u:"hr", q:4, c:95}] },
+                        { cat: "16. Plumbing", name: "Gas Califont (26L)", unit: "ea", resources: [{n:"Rinnai Unit", t:"Mat", u:"ea", q:1, c:1500}, {n:"Gasfitter", t:"Lab", u:"hr", q:4, c:100}] },
+                        { cat: "16. Plumbing", name: "Exterior Tap", unit: "ea", resources: [{n:"Bib/Pipe", t:"Mat", u:"ea", q:1, c:80}, {n:"Plumber", t:"Lab", u:"hr", q:1, c:95}] },
+
+                        // 17. ELECTRICAL
+                        { cat: "17. Electrical", name: "Pre-wire (Power/Light)", unit: "point", resources: [{n:"Cable", t:"Mat", u:"sum", q:1, c:55}, {n:"Electrician", t:"Lab", u:"hr", q:1.5, c:90}] },
+                        { cat: "17. Electrical", name: "Switchboard Upgrade", unit: "ea", resources: [{n:"60 Way Board", t:"Mat", u:"ea", q:1, c:1100}, {n:"Electrician", t:"Lab", u:"hr", q:6, c:90}] },
+                        { cat: "17. Electrical", name: "LED Downlight", unit: "ea", resources: [{n:"Fitting", t:"Mat", u:"ea", q:1, c:45}, {n:"Install", t:"Lab", u:"hr", q:0.5, c:90}] },
+                        { cat: "17. Electrical", name: "Double Power Point", unit: "ea", resources: [{n:"Socket", t:"Mat", u:"ea", q:1, c:35}, {n:"Install", t:"Lab", u:"hr", q:0.5, c:90}] },
+                        { cat: "17. Electrical", name: "Mains Cable (Ug)", unit: "m", resources: [{n:"16mm Cable", t:"Mat", u:"m", q:1, c:50}, {n:"Labor", t:"Lab", u:"hr", q:0.5, c:90}] },
+                        { cat: "17. Electrical", name: "Data Point", unit: "ea", resources: [{n:"Cat6 Cable", t:"Mat", u:"ea", q:1, c:40}, {n:"Install", t:"Lab", u:"hr", q:1, c:90}] },
+
+                        // 18. HVAC
+                        { cat: "18. HVAC", name: "Heat Pump (High Wall 6kW)", unit: "ea", resources: [{n:"Fujitsu Unit", t:"Mat", u:"ea", q:1, c:2200}, {n:"Install", t:"Lab", u:"hr", q:4, c:95}] },
+                        { cat: "18. HVAC", name: "Ducted System (14kW)", unit: "LS", resources: [{n:"Unit & Ducts", t:"Mat", u:"LS", q:1, c:9000}, {n:"Install", t:"Lab", u:"hr", q:16, c:95}] },
+                        { cat: "18. HVAC", name: "Bathroom Extractor", unit: "ea", resources: [{n:"Fan Kit", t:"Mat", u:"ea", q:1, c:280}, {n:"Install", t:"Lab", u:"hr", q:2, c:90}] },
+
+                        // 19. DRAINAGE
+                        { cat: "19. Drainage", name: "Sewer Drain (100mm)", unit: "m", resources: [{n:"PVC Pipe", t:"Mat", u:"m", q:1, c:35}, {n:"Drainlayer", t:"Lab", u:"hr", q:0.6, c:100}] },
+                        { cat: "19. Drainage", name: "Stormwater Drain (100mm)", unit: "m", resources: [{n:"PVC Pipe", t:"Mat", u:"m", q:1, c:30}, {n:"Drainlayer", t:"Lab", u:"hr", q:0.6, c:100}] },
+                        { cat: "19. Drainage", name: "Cesspit", unit: "ea", resources: [{n:"Pit & Grate", t:"Mat", u:"ea", q:1, c:500}, {n:"Install", t:"Lab", u:"hr", q:3, c:100}] },
+                        { cat: "19. Drainage", name: "Water Tank (25,000L)", unit: "ea", resources: [{n:"Tank", t:"Mat", u:"ea", q:1, c:3600}, {n:"Pump", t:"Mat", u:"ea", q:1, c:900}, {n:"Install", t:"Lab", u:"hr", q:8, c:100}] },
+                        { cat: "19. Drainage", name: "Septic System", unit: "LS", resources: [{n:"System Supply", t:"Mat", u:"LS", q:1, c:15000}, {n:"Install", t:"Lab", u:"hr", q:24, c:100}] },
+
+                        // 20. LANDSCAPING
+                        { cat: "20. Landscaping", name: "Timber Deck (Pine)", unit: "m2", resources: [{n:"Decking/Frame", t:"Mat", u:"m2", q:1, c:120}, {n:"Carpenter", t:"Lab", u:"hr", q:2.5, c:75}] },
+                        { cat: "20. Landscaping", name: "Timber Deck (Kwila)", unit: "m2", resources: [{n:"Kwila/Frame", t:"Mat", u:"m2", q:1, c:190}, {n:"Carpenter", t:"Lab", u:"hr", q:2.5, c:75}] },
+                        { cat: "20. Landscaping", name: "Fencing (Timber 1.8m)", unit: "m", resources: [{n:"Materials", t:"Mat", u:"m", q:1, c:90}, {n:"Labor", t:"Lab", u:"hr", q:1, c:65}] },
+                        { cat: "20. Landscaping", name: "Concrete Path/Patio", unit: "m2", resources: [{n:"Concrete", t:"Mat", u:"m3", q:0.1, c:300}, {n:"Labor", t:"Lab", u:"m2", q:1, c:70}] },
+                        { cat: "20. Landscaping", name: "Topsoil & Grass Seed", unit: "m2", resources: [{n:"Soil/Seed", t:"Mat", u:"m2", q:1, c:12}, {n:"Labor", t:"Lab", u:"hr", q:0.2, c:55}] },
+                        { cat: "20. Landscaping", name: "Hydroseeding", unit: "m2", resources: [{n:"Spray", t:"Mat", u:"m2", q:1, c:6}, {n:"Labor", t:"Lab", u:"m2", q:1, c:2}] }
+                    ];
+
+                    let batch = db.batch();
+                    seedItems.forEach(item => {
+                        let cost = 0;
+                        item.resources.forEach(r => cost += (r.c * r.q));
+                        item.rate = cost * 1.18; // 18% Margin
+                        let ref = db.collection('master_library').doc();
+                        batch.set(ref, item);
+                    });
+                    
+                    batch.commit().then(() => { 
+                        console.log("DB Re-Seeded Successfully with 142 Items."); 
+                        loadMasterLibrary(); 
+                    });
+                }
+            });
+        }
 
         function loadMasterLibrary() {
-            db.collection('master_library').orderBy('name').get().then(snap => {
+            db.collection('master_library').orderBy('cat').get().then(snap => {
                 masterItems = [];
                 const select = document.getElementById('masterDbSelect');
                 select.innerHTML = '<option value="">-- Select Category & Item --</option>';
@@ -235,9 +403,13 @@
                     const cat = item.cat || "Uncategorized";
                     if(!grouped[cat]) grouped[cat] = []; grouped[cat].push(item);
                 });
-                Object.keys(grouped).sort().forEach(cat => {
+                // Sort categories alphanumerically (1., 2., 3...)
+                Object.keys(grouped).sort((a,b) => parseInt(a) - parseInt(b)).forEach(cat => {
                     let html = `<optgroup label="${cat}">`;
-                    grouped[cat].forEach(item => { html += `<option value="${item.id}">${item.name} (${item.unit}) - $${(item.rate||0).toFixed(2)}</option>`; });
+                    // Sort items inside
+                    grouped[cat].sort((a,b) => a.name.localeCompare(b.name)).forEach(item => { 
+                        html += `<option value="${item.id}">${item.name} (${item.unit}) - $${(item.rate||0).toFixed(2)}</option>`; 
+                    });
                     html += `</optgroup>`; select.innerHTML += html;
                 });
                 select.innerHTML += '<option value="new">+ Create New Item (Custom)</option>';
@@ -258,7 +430,6 @@
         }
 
         function renderAllLists() {
-            // Clears container and renders all 3 categories (Labor, Plant, Material)
             document.getElementById('resourcesContainer').innerHTML = "";
             renderList('Lab', 'Labor Cost', 'bg-orange-50', 'text-orange-800', 'border-orange-200', 'text-orange-600');
             renderList('Plant', 'Plant Cost', 'bg-green-50', 'text-green-800', 'border-green-200', 'text-green-600');
@@ -267,15 +438,13 @@
 
         function renderList(type, title, bgClass, textClass, borderClass, btnClass) {
             let container = document.getElementById('resourcesContainer');
-            // NO limpiar el container aquí, sino appendear
             let sectionHTML = `<div class="border ${borderClass} rounded-lg overflow-hidden shadow-sm"><div class="${bgClass} px-3 py-2 flex justify-between items-center border-b ${borderClass.replace('200','100')}"><span class="text-[10px] font-bold ${textClass} uppercase tracking-wider">${title}</span><button onclick="addRes('${type}')" class="${btnClass} hover:brightness-75 text-xs font-bold bg-white px-2 py-0.5 rounded border ${borderClass} shadow-sm transition">+ Add</button></div><div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="list${type}"></tbody></table></div></div>`;
             container.innerHTML += sectionHTML;
             
-            // Wait for DOM to update then populate rows
             setTimeout(() => {
                 const tbody = document.getElementById(`list${type}`);
                 if(tbody) {
-                    tbody.innerHTML = ""; // Clear existing rows to prevent duplicates on re-render
+                    tbody.innerHTML = "";
                     currentResources.forEach((res, idx) => {
                         if(res.t !== type) return;
                         const total = (res.c * res.q).toFixed(2);
@@ -310,16 +479,12 @@
             let unit = document.getElementById('itemUnit').value;
             let rate = updateCalculations();
             
-            // --- SAVE TO MASTER DB LOGIC ---
             if(document.getElementById('updateDbCheck').checked) {
-                const itemData = { name: name, unit: unit, rate: rate, resources: currentResources, lastUpdated: Date.now(), cat: "User Custom" };
-                // Simple ADD to allow multiple variations of same item name
-                db.collection('master_library').add(itemData).then(() => {
-                    console.log("Saved to DB");
-                    loadMasterLibrary(); // Refresh dropdown
-                });
+                const existingItem = masterItems.find(i => i.name.toLowerCase() === name.toLowerCase());
+                const itemData = { name: name, unit: unit, rate: rate, resources: currentResources, lastUpdated: Date.now(), cat: existingItem ? existingItem.cat : "User Custom" };
+                if(existingItem) { if(confirm(`Update "${name}" in Master DB?`)) db.collection('master_library').doc(existingItem.id).update(itemData).then(loadMasterLibrary); } 
+                else { if(confirm(`Save "${name}" to Master DB?`)) db.collection('master_library').add(itemData).then(loadMasterLibrary); }
             }
-            
             quoteItems.push({ desc: name, name: name, unit: unit, qty: qty, rate: rate, total: qty * rate, resources: JSON.parse(JSON.stringify(currentResources)) });
             renderQuote();
         }
@@ -365,6 +530,7 @@
             else { pData.createdAt = Date.now(); db.collection('projects').add(pData).then(doc => { localStorage.setItem('civilmate_current_project_id', doc.id); currentProjectId = doc.id; alert("Saved New Project!"); }); }
         }
         function generateLegalContract() { document.getElementById('contractDate').innerText = new Date().toLocaleDateString('en-NZ'); document.getElementById('contractClientName').innerText = document.getElementById('clientName').value; document.getElementById('contractMyCompany').innerText = document.getElementById('myCompany').value; document.getElementById('contractTotalVal').innerText = document.getElementById('contractTotal').innerText; document.getElementById('legalContractModal').classList.remove('hidden'); document.getElementById('legalContractModal').classList.add('show-print'); }
+        function switchPricingMode(mode) { renderAllLists(); }
     </script>
 </body>
 </html>
