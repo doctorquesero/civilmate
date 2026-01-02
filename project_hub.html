@@ -8,11 +8,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }</style>
 </head>
 <body class="p-6 max-w-[1400px] mx-auto min-h-screen">
 
-    <header class="mb-8">
+    <header class="mb-6">
         <button onclick="window.location.href='dashboard.html'" class="text-sm text-slate-400 hover:text-slate-600 mb-2">
             <i class="fas fa-arrow-left"></i> Back to Command Center
         </button>
@@ -29,7 +30,7 @@
         </div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-blue-600">
             <p class="text-[10px] font-bold text-slate-400 uppercase">Original Contract</p>
             <h3 class="text-2xl font-bold text-slate-700" id="kpiOriginal">$0.00</h3>
@@ -42,91 +43,113 @@
             <p class="text-[10px] font-bold text-slate-400 uppercase">Revised Contract Sum</p>
             <h3 class="text-2xl font-bold text-slate-800" id="kpiRevised">$0.00</h3>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-green-600">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Claimed (Gross)</p>
-            <h3 class="text-2xl font-bold text-green-700" id="kpiClaimed">$0.00</h3>
+        <div class="bg-white p-5 rounded-xl shadow-sm border-t-4 border-green-600 relative overflow-hidden">
+            <div class="relative z-10">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Total Certified (Gross)</p>
+                <h3 class="text-2xl font-bold text-green-700" id="kpiClaimed">$0.00</h3>
+                <p class="text-xs text-green-600 mt-1 font-bold" id="progressTxt">0% Complete</p>
+            </div>
+            <div class="absolute bottom-0 left-0 h-1.5 bg-green-100 w-full">
+                <div id="progressBar" class="h-full bg-green-500 transition-all duration-1000" style="width: 0%"></div>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Contract Administration</h2>
+        <div class="lg:col-span-2 space-y-6">
             
-            <div onclick="openLink('contracts.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
-                <div class="bg-blue-50 w-10 h-10 rounded flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
-                    <i class="fas fa-file-contract"></i>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="font-bold text-slate-700 text-sm uppercase tracking-wider"><i class="fas fa-history mr-2"></i>Payment Claim History</h3>
+                    <button onclick="createNewClaim()" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-2 rounded font-bold shadow transition">
+                        <i class="fas fa-plus mr-1"></i> Create Next Claim
+                    </button>
                 </div>
-                <div>
-                    <h3 class="font-bold text-slate-700">View Master Contract</h3>
-                    <p class="text-xs text-slate-400">Schedule of Rates & Terms</p>
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+                        <tr>
+                            <th class="p-3 w-16 text-center">#</th>
+                            <th class="p-3">Date</th>
+                            <th class="p-3 text-right">Gross Value</th>
+                            <th class="p-3 text-right">Net Payable</th>
+                            <th class="p-3 text-center">Status</th>
+                            <th class="p-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="claimsTable" class="divide-y divide-slate-100">
+                        <tr><td colspan="6" class="p-6 text-center text-slate-400 italic">No claims generated yet. Start getting paid! 💸</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div onclick="openLink('tracker.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-amber-400 cursor-pointer transition group flex items-center gap-4">
+                    <div class="bg-amber-50 w-12 h-12 rounded flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition text-xl">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700">Site Diary</h3>
+                        <p class="text-xs text-slate-400">Daily Logs & Progress</p>
+                    </div>
+                </div>
+
+                <div onclick="openLink('site_safety.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-red-400 cursor-pointer transition group flex items-center gap-4">
+                    <div class="bg-red-50 w-12 h-12 rounded flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition text-xl">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700">Safety Hub</h3>
+                        <p class="text-xs text-slate-400">Inductions & Incidents</p>
+                    </div>
+                </div>
+
+                <div onclick="openLink('toolbox.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
+                    <div class="bg-blue-50 w-12 h-12 rounded flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition text-xl">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700">Toolbox Talk</h3>
+                        <p class="text-xs text-slate-400">Morning Briefings</p>
+                    </div>
                 </div>
             </div>
 
-            <div onclick="openLink('variations.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-purple-400 cursor-pointer transition group flex items-center gap-4">
-                <div class="bg-purple-50 w-10 h-10 rounded flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-700">Variations (VOs)</h3>
-                    <p class="text-xs text-slate-400">Approve/Reject Field Requests</p>
-                </div>
-            </div>
         </div>
 
-        <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Financials (CCA 2002)</h2>
+        <div class="space-y-6">
             
-            <div onclick="openLink('valuations.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-green-400 cursor-pointer transition group flex items-center gap-4">
-                <div class="bg-green-50 w-10 h-10 rounded flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition">
-                    <i class="fas fa-file-invoice-dollar"></i>
+            <div class="space-y-4">
+                <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Administration</h2>
+                
+                <div onclick="openLink('contracts.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
+                    <div class="bg-blue-50 w-10 h-10 rounded flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700">Master Contract</h3>
+                        <p class="text-xs text-slate-400">Rates & Schedule</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="font-bold text-slate-700">Create Payment Claim</h3>
-                    <p class="text-xs text-slate-400">Monthly Progress Valuation</p>
-                </div>
-            </div>
-        </div>
 
-        <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Site Control & Safety</h2>
-            
-            <div onclick="openLink('tracker.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-amber-400 cursor-pointer transition group flex items-center gap-4">
-                <div class="bg-amber-50 w-10 h-10 rounded flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition">
-                    <i class="fas fa-book"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-700">Site Diary Report</h3>
-                    <p class="text-xs text-slate-400">Daily Logs & Photos</p>
-                </div>
-            </div>
-
-            <div onclick="openLink('site_safety.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-red-400 cursor-pointer transition group flex items-center gap-4">
-                <div class="bg-red-50 w-10 h-10 rounded flex items-center justify-center text-red-600 group-hover:bg-red-600 group-hover:text-white transition">
-                    <i class="fas fa-shield-alt"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-700">Health & Safety Hub</h3>
-                    <p class="text-xs text-slate-400">Inductions, Hazards & Incidents</p>
+                <div onclick="openLink('variations.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-purple-400 cursor-pointer transition group flex items-center gap-4">
+                    <div class="bg-purple-50 w-10 h-10 rounded flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-700">Variations (VOs)</h3>
+                        <p class="text-xs text-slate-400">Manage Changes</p>
+                    </div>
                 </div>
             </div>
 
-            <div onclick="openLink('toolbox.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
-                <div class="bg-blue-50 w-10 h-10 rounded flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-700">Toolbox Talk</h3>
-                    <p class="text-xs text-slate-400">Morning Briefings Record</p>
+            <div class="bg-slate-100 p-4 rounded-lg border border-slate-200">
+                <h3 class="font-bold text-slate-500 text-sm mb-3"><i class="fas fa-satellite-dish mr-2"></i>Live Site Activity</h3>
+                <div id="activityFeed" class="text-xs space-y-3 text-slate-400 h-64 overflow-y-auto">
+                    <p><i class="fas fa-spinner fa-spin"></i> Syncing feed...</p>
                 </div>
             </div>
 
-            <div class="bg-slate-100 p-4 rounded-lg border border-slate-200 min-h-[100px]">
-                <h3 class="font-bold text-slate-500 text-sm mb-2">Latest Field Activity</h3>
-                <div id="activityFeed" class="text-xs space-y-2 text-slate-400">
-                    <p><i class="fas fa-spinner fa-spin"></i> Syncing...</p>
-                </div>
-            </div>
         </div>
 
     </div>
@@ -137,15 +160,16 @@
         const db = firebase.firestore();
 
         const pid = localStorage.getItem('civilmate_current_project_id');
-
         if(!pid) { alert("No project selected."); window.location.href='dashboard.html'; }
 
+        // --- LOAD PROJECT DATA ---
         db.collection('projects').doc(pid).onSnapshot(doc => {
             if(doc.exists) {
                 const p = doc.data();
                 document.getElementById('projName').innerText = p.name;
                 document.getElementById('clientName').innerText = p.client || 'Client N/A';
 
+                // Financial Calculations
                 const schedule = p.schedule || p.items || [];
                 let originalSum = 0;
                 let variationsSum = 0;
@@ -153,50 +177,100 @@
                 schedule.forEach(item => {
                     const name = item.desc || item.name || "";
                     const total = (item.qty * item.rate);
-                    
-                    if(name.startsWith("VO#")) {
-                        variationsSum += total;
-                    } else {
-                        originalSum += total;
-                    }
+                    if(name.startsWith("VO#")) variationsSum += total;
+                    else originalSum += total;
                 });
 
                 const revisedSum = originalSum + variationsSum;
+                const totalClaimed = p.totalClaimedGross || 0;
                 
+                // Update KPIs
                 document.getElementById('kpiOriginal').innerText = fmtMoney(originalSum);
                 document.getElementById('kpiVariations').innerText = fmtMoney(variationsSum);
                 document.getElementById('kpiRevised').innerText = fmtMoney(revisedSum);
-                document.getElementById('kpiClaimed').innerText = fmtMoney(p.totalClaimedGross || 0);
+                document.getElementById('kpiClaimed').innerText = fmtMoney(totalClaimed);
+
+                // Update Progress Bar
+                const progress = revisedSum > 0 ? (totalClaimed / revisedSum) * 100 : 0;
+                document.getElementById('progressBar').style.width = `${Math.min(progress, 100)}%`;
+                document.getElementById('progressTxt').innerText = `${progress.toFixed(1)}% Complete`;
             }
         });
 
+        // --- LOAD CLAIMS HISTORY (NEW!) ---
+        // Esto buscará una colección 'claims' que crearemos en el siguiente paso
+        db.collection('claims')
+            .where('projectId', '==', pid)
+            .orderBy('claimNumber', 'desc')
+            .onSnapshot(snap => {
+                const tbody = document.getElementById('claimsTable');
+                if(snap.empty) return; // Keep default message if empty
+                
+                tbody.innerHTML = "";
+                snap.forEach(doc => {
+                    const c = doc.data();
+                    const statusColor = c.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700';
+                    const dateStr = new Date(c.date).toLocaleDateString('en-NZ');
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
+                            <td class="p-3 text-center font-bold text-slate-600">#${c.claimNumber}</td>
+                            <td class="p-3 text-slate-500">${dateStr}</td>
+                            <td class="p-3 text-right font-mono text-slate-700">${fmtMoney(c.grossTotal)}</td>
+                            <td class="p-3 text-right font-bold text-slate-800 font-mono">${fmtMoney(c.netPayable)}</td>
+                            <td class="p-3 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${statusColor}">${c.status}</span></td>
+                            <td class="p-3 text-center">
+                                <button onclick="viewClaim('${doc.id}')" class="text-blue-500 hover:text-blue-700 hover:bg-blue-50 px-2 py-1 rounded text-xs transition">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+
+        // --- LOAD ACTIVITY FEED ---
         loadRecentLogs();
 
         function loadRecentLogs() {
-            db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
+            db.collection('site_logs').where('projectId', '==', pid).orderBy('timestamp', 'desc').limit(10).get().then(snap => {
                 const div = document.getElementById('activityFeed');
                 div.innerHTML = "";
-                
                 if(snap.empty) { div.innerHTML = "No recent activity."; return; }
                 
-                let logs = [];
-                snap.forEach(doc => logs.push(doc.data()));
-                
-                logs.sort((a, b) => b.timestamp - a.timestamp);
-                
-                logs.slice(0, 3).forEach(log => {
-                    div.innerHTML += `<div class="border-b border-slate-200 pb-1 mb-1 last:border-0">
-                        <span class="font-bold text-slate-600">${log.date}:</span> ${log.itemName} 
-                        <span class="bg-slate-200 px-1 rounded text-[10px] text-slate-500 font-bold">${log.qty} ${log.unit}</span>
-                    </div>`;
+                snap.forEach(doc => {
+                    const log = doc.data();
+                    let icon = 'fa-circle text-gray-300';
+                    if(log.itemName.includes("INDUCTION")) icon = 'fa-user-check text-green-500';
+                    else if(log.itemName.includes("INCIDENT")) icon = 'fa-car-crash text-red-500';
+                    else if(log.itemName.includes("HAZARD")) icon = 'fa-exclamation-triangle text-orange-500';
+                    else icon = 'fa-tools text-blue-400';
+
+                    div.innerHTML += `
+                        <div class="flex gap-3 border-b border-slate-200 pb-2 last:border-0">
+                            <div class="mt-1"><i class="fas ${icon}"></i></div>
+                            <div>
+                                <p class="text-slate-600 font-bold">${log.itemName}</p>
+                                <p class="text-[10px] text-slate-400">${log.date} • ${log.qty} ${log.unit}</p>
+                            </div>
+                        </div>`;
                 });
             });
         }
 
-        function openLink(url) {
-            window.location.href = url;
+        function createNewClaim() {
+            // Limpia ID de valuación antigua para crear una nueva
+            localStorage.removeItem('civilmate_current_claim_id');
+            window.location.href = 'valuations.html';
         }
 
+        function viewClaim(claimId) {
+            // Guarda ID para que valuations.html sepa qué cargar
+            localStorage.setItem('civilmate_current_claim_id', claimId);
+            window.location.href = 'valuations.html';
+        }
+
+        function openLink(url) { window.location.href = url; }
         function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2}); }
     </script>
 </body>
