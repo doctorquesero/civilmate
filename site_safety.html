@@ -9,8 +9,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; touch-action: manipulation; }
+        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; touch-action: none; /* Bloquea zoom/scroll global */ }
         
+        /* SCROLLABLE CONTENT AREA */
+        .scroll-content { touch-action: auto; height: 100%; overflow-y: auto; }
+
         /* NAVIGATION */
         .nav-btn { padding: 10px; font-size: 11px; font-weight: bold; color: #94a3b8; border-bottom: 2px solid transparent; width: 33.33%; text-align: center; transition: 0.2s; text-transform: uppercase; }
         .nav-btn.active { color: #facc15; border-bottom-color: #facc15; background: #1e293b; }
@@ -21,7 +24,7 @@
         .input-dark:focus { border-color: #3b82f6; }
         
         /* SIGNATURE */
-        canvas { background-color: white; border-radius: 8px; cursor: crosshair; touch-action: none; width: 100%; }
+        canvas { background-color: white; border-radius: 8px; cursor: crosshair; display: block; width: 100%; height: 150px; touch-action: none; /* CRITICO */ }
         
         /* PHOTOS */
         .photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
@@ -57,7 +60,7 @@
         </button>
     </div>
 
-    <div class="p-4 flex-1">
+    <div class="p-4 flex-1 scroll-content">
 
         <div id="viewInduction" class="space-y-5">
             <div class="bg-yellow-900/20 border-l-4 border-yellow-500 p-4 rounded">
@@ -86,8 +89,8 @@
             <div>
                 <label class="text-[10px] font-bold text-slate-500 uppercase">Digital Signature</label>
                 <div class="relative rounded overflow-hidden mt-1 border border-slate-600 bg-white">
-                    <canvas id="cvsInduction" height="120"></canvas>
-                    <button onclick="clearSig('cvsInduction')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded">Clear</button>
+                    <canvas id="cvsInduction"></canvas>
+                    <button onclick="clearSig('cvsInduction')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded font-bold">Clear</button>
                 </div>
             </div>
 
@@ -141,8 +144,8 @@
                 <label class="text-[10px] font-bold text-slate-500 uppercase">Reported By</label>
                 <input type="text" id="incReporter" class="input-dark mt-1 mb-2" placeholder="Your Name">
                 <div class="relative rounded overflow-hidden border border-slate-600 bg-white">
-                    <canvas id="cvsIncident" height="120"></canvas>
-                    <button onclick="clearSig('cvsIncident')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded">Clear</button>
+                    <canvas id="cvsIncident"></canvas>
+                    <button onclick="clearSig('cvsIncident')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded font-bold">Clear</button>
                 </div>
             </div>
 
@@ -199,8 +202,8 @@
                 <label class="text-[10px] font-bold text-slate-500 uppercase">Identified By</label>
                 <input type="text" id="hazReporter" class="input-dark mt-1 mb-2" placeholder="Your Name">
                 <div class="relative rounded overflow-hidden border border-slate-600 bg-white">
-                    <canvas id="cvsHazard" height="120"></canvas>
-                    <button onclick="clearSig('cvsHazard')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded">Clear</button>
+                    <canvas id="cvsHazard"></canvas>
+                    <button onclick="clearSig('cvsHazard')" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-black px-2 rounded font-bold">Clear</button>
                 </div>
             </div>
 
@@ -222,32 +225,123 @@
 
         function init() {
             loadProjects();
-            setTimeout(() => {
-                setupCanvas('cvsInduction');
-                setupCanvas('cvsIncident');
-                setupCanvas('cvsHazard');
-            }, 500);
             
+            // ATTACH CANVAS LISTENERS (ROBUST METHOD)
+            initCanvas('cvsInduction');
+            initCanvas('cvsIncident');
+            initCanvas('cvsHazard');
+            
+            // INITIAL FIX
+            setTimeout(() => fixCanvasSize('cvsInduction'), 600);
+
             // PRE-FILL DATE AND TIME
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0];
             const timeStr = now.toTimeString().substring(0,5);
-
-            document.getElementById('indDate').value = dateStr;
-            
-            document.getElementById('incDate').value = dateStr;
-            document.getElementById('incTime').value = timeStr;
-            
-            document.getElementById('hazDate').value = dateStr;
-            document.getElementById('hazTime').value = timeStr;
+            ['indDate', 'incDate', 'hazDate'].forEach(id => document.getElementById(id).value = dateStr);
+            ['incTime', 'hazTime'].forEach(id => document.getElementById(id).value = timeStr);
         }
 
+        // --- NEW ROBUST CANVAS LOGIC ---
+        function initCanvas(id) {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext("2d");
+            let isDrawing = false;
+
+            // Resize helper
+            function resize() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                ctx.lineWidth = 3;
+                ctx.lineCap = "round";
+                ctx.strokeStyle = "#000000";
+            }
+            setTimeout(resize, 500); // Initial resize
+
+            // Coordinate helper
+            function getTouchPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            // TOUCH EVENTS (Mobile)
+            canvas.addEventListener("touchstart", function (e) {
+                if (e.target === canvas) e.preventDefault(); // Stop scroll
+                isDrawing = true;
+                const pos = getTouchPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            }, { passive: false });
+
+            canvas.addEventListener("touchmove", function (e) {
+                if (e.target === canvas) e.preventDefault(); // Stop scroll
+                if (!isDrawing) return;
+                const pos = getTouchPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }, { passive: false });
+
+            canvas.addEventListener("touchend", function (e) {
+                if (e.target === canvas) e.preventDefault();
+                isDrawing = false;
+            }, { passive: false });
+
+            // MOUSE EVENTS (Desktop)
+            canvas.addEventListener("mousedown", function (e) {
+                isDrawing = true;
+                const pos = getTouchPos(e);
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            });
+            canvas.addEventListener("mousemove", function (e) {
+                if (!isDrawing) return;
+                const pos = getTouchPos(e);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            });
+            canvas.addEventListener("mouseup", function () { isDrawing = false; });
+            canvas.addEventListener("mouseout", function () { isDrawing = false; });
+        }
+
+        // --- TAB SWITCHER & RESIZE ---
         function switchTab(tab) {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             ['viewInduction', 'viewIncident', 'viewHazard'].forEach(id => document.getElementById(id).classList.add('hidden'));
             
             document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
             document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+
+            // FORCE RESIZE WHEN VISIBLE
+            const map = { 'induction': 'cvsInduction', 'incident': 'cvsIncident', 'hazard': 'cvsHazard' };
+            setTimeout(() => fixCanvasSize(map[tab]), 50);
+        }
+
+        function fixCanvasSize(id) {
+            const canvas = document.getElementById(id);
+            if(canvas && canvas.offsetParent !== null) {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.lineWidth = 3;
+                ctx.lineCap = "round";
+                ctx.strokeStyle = "#000000";
+            }
+        }
+
+        window.clearSig = (id) => { 
+            const c=document.getElementById(id); 
+            c.getContext('2d').clearRect(0,0,c.width,c.height); 
+        }
+        
+        function isBlank(id) { 
+            const c=document.getElementById(id); 
+            const blank = document.createElement('canvas');
+            blank.width = c.width; blank.height = c.height;
+            return c.toDataURL() === blank.toDataURL(); 
         }
 
         // --- PROJECT LOGIC ---
@@ -279,55 +373,25 @@
             }
         }
 
-        // --- HELPER: LOG TO SITE DIARY (INTEGRATION) ---
         function logToSiteDiary(type, desc, qty, unit) {
             if(!currentPid) return;
             db.collection('site_logs').add({
                 projectId: currentPid,
-                date: new Date().toLocaleDateString('en-NZ'), // Logging date
+                date: new Date().toLocaleDateString('en-NZ'),
                 itemName: type + ": " + desc,
                 qty: qty || 1,
                 unit: unit || "Event",
-                weather: "Auto-Logged", // Placeholder
+                weather: "Auto-Logged", 
                 notes: "Generated from Safety Hub",
                 timestamp: Date.now()
             });
         }
 
-        // --- CANVAS LOGIC ---
-        function setupCanvas(id) {
-            const canvas = document.getElementById(id);
-            if(!canvas) return;
-            canvas.width = canvas.parentElement.offsetWidth;
-            const ctx = canvas.getContext('2d');
-            let drawing = false;
-
-            const start = (e) => { drawing = true; ctx.beginPath(); getPos(e, canvas, ctx); };
-            const move = (e) => { if(drawing) { getPos(e, canvas, ctx); ctx.stroke(); if(e.type==='touchmove')e.preventDefault(); } };
-            const end = () => drawing = false;
-
-            canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); canvas.addEventListener('mouseup', end);
-            canvas.addEventListener('touchstart', start, {passive:false}); canvas.addEventListener('touchmove', move, {passive:false}); canvas.addEventListener('touchend', end);
-        }
-
-        function getPos(e, canvas, ctx) {
-            const r = canvas.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-            const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-            if(e.type === 'mousedown' || e.type === 'touchstart') ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-            ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
-        }
-
-        window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
-        function isBlank(id) { const c=document.getElementById(id); return c.toDataURL() === document.createElement('canvas').toDataURL(); }
-
-        // --- PHOTOS ---
+        // --- PHOTOS & RISK ---
         function handlePhoto(e, type) {
             const files = e.target.files;
             if(!files.length) return;
             if(photos[type].length + files.length > 5) return alert("Max 5 photos.");
-            
             Array.from(files).forEach(f => {
                 const reader = new FileReader();
                 reader.onload = (ev) => {
@@ -364,7 +428,7 @@
             document.getElementById(map[lvl]).style.border = '2px solid white';
         }
 
-        // --- SUBMIT FUNCTIONS ---
+        // --- SAVE FUNCTIONS ---
         function saveInduction() {
             if(!currentPid) return alert("Select Site.");
             const name = document.getElementById('indName').value;
