@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V14.1 - Live DB Update</title>
+    <title>Contract & Estimator V15.0 - Mathematical Precision</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -12,7 +12,7 @@
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
         
-        /* UI TABLES & INPUTS */
+        /* UI HELPERS */
         .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .res-table th { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
@@ -27,11 +27,12 @@
         .mode-inactive { background-color: white; color: #64748b; }
         .mode-inactive:hover { background-color: #f1f5f9; }
 
-        /* CONTRACT MODE LOCKS */
+        /* CONTRACT LOCKS */
         .contract-mode #builderPanel { display: none !important; }
         .contract-mode #printSection { width: 100% !important; max-width: 1000px; margin: 0 auto; }
         .contract-mode .header-action, .contract-mode #btnSave { display: none; }
         .contract-mode input { border: none !important; background: transparent !important; }
+        .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
 
         @media print {
             body * { visibility: hidden; }
@@ -52,7 +53,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-hard-hat"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V14.1 (Live DB Updates)</p>
+                <p class="text-[10px] text-slate-500">Estimator V15.0 (Math Core Fix)</p>
             </div>
         </div>
         <div class="flex gap-2 items-center">
@@ -86,11 +87,11 @@
             </div>
 
             <div id="builderArea" class="flex-1 flex flex-col p-6 pb-32">
-                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">3. Pricing Method</label>
+                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">3. Calculation Method</label>
                 <div class="flex gap-0 rounded-lg overflow-hidden shadow-sm border border-slate-300 mb-6">
-                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active">📊 Unit Rate</button>
-                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive">⏱️ Hourly</button>
-                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive">🌎 Lump Sum</button>
+                    <button onclick="switchMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active">📊 Unit Rate (m3)</button>
+                    <button onclick="switchMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive">⏱️ Hourly (Rate x Prod)</button>
+                    <button onclick="switchMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive">🌎 Lump Sum</button>
                 </div>
 
                 <div class="flex gap-4 mb-6 items-end">
@@ -100,7 +101,7 @@
                     </div>
                     <div class="w-1/4 text-center">
                         <label class="text-[9px] font-bold text-slate-400 uppercase">Productivity (R)</label>
-                        <input type="number" id="prodInput" oninput="updateCalculations()" class="w-full text-center text-xl font-bold text-orange-600 border-b-2 border-orange-200 focus:border-orange-500 outline-none pb-1" placeholder="1.0" value="1.0">
+                        <input type="number" id="prodInput" oninput="handleProdChange()" class="w-full text-center text-xl font-bold text-orange-600 border-b-2 border-orange-200 focus:border-orange-500 outline-none pb-1" placeholder="1.0" value="1.0">
                         <span class="text-[8px] text-slate-400 block mt-1">Units per Hour</span>
                     </div>
                     <div class="w-1/4 text-center">
@@ -126,7 +127,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <div class="flex gap-6 text-xs">
                         <div>
-                            <span class="block text-slate-400 font-bold uppercase text-[9px]" id="rateLabel">Unit Rate</span>
+                            <span class="block text-slate-400 font-bold uppercase text-[9px]" id="rateLabel">Unit Price</span>
                             <span class="font-mono text-green-400 text-2xl font-bold leading-none" id="finalRateDisplay">$0.00</span>
                         </div>
                         <div class="pl-6 border-l border-slate-700">
@@ -165,6 +166,7 @@
                     </div>
                     <div class="text-right">
                         <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Date</p><p class="font-bold text-slate-700 text-sm" id="currentDate">...</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase mt-2 mb-1">Valid Until</p><p class="text-sm text-slate-700">30 Days</p>
                     </div>
                 </div>
                 <table class="w-full text-left mb-6 text-sm border-collapse">
@@ -180,6 +182,7 @@
                 </div>
                 <div id="apuAppendix" class="hidden mt-8 pt-8 border-t-4 border-slate-800"><h2 class="text-2xl font-bold text-slate-700 uppercase mb-6">Rate Breakdown (APU)</h2><div id="apuContent" class="space-y-8"></div></div>
             </div>
+            
             <div class="fixed bottom-8 right-8 no-print z-50 flex flex-col items-end gap-2">
                 <div class="bg-white p-2 rounded shadow border border-slate-200 flex items-center gap-2"><input type="checkbox" id="printApuCheck" class="w-4 h-4 text-blue-600 rounded cursor-pointer"><label for="printApuCheck" class="text-xs font-bold text-slate-600 cursor-pointer">Include APUs in Print</label></div>
                 <button onclick="printQuote()" class="bg-slate-800 hover:bg-black text-white px-6 py-4 rounded-full shadow-2xl font-bold flex items-center gap-3 transition hover:-translate-y-1"><i class="fas fa-print text-xl"></i> <span>Print / PDF</span></button>
@@ -189,7 +192,7 @@
 
     <div id="legalContractModal" class="fixed inset-0 bg-white z-[9999] hidden overflow-y-auto">
         <div class="max-w-[21cm] mx-auto p-12 bg-white min-h-screen">
-            <div class="no-print flex justify-between items-center mb-8 border-b pb-4"><h2 class="text-xl font-bold text-slate-800">Construction Contract</h2><div class="flex gap-2"><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button><button onclick="document.getElementById('legalContractModal').classList.add('hidden')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded">Close</button></div></div>
+            <div class="no-print flex justify-between items-center mb-8 border-b pb-4"><h2 class="text-xl font-bold text-slate-800">Legal Contract</h2><div class="flex gap-2"><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button><button onclick="document.getElementById('legalContractModal').classList.add('hidden')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded">Close</button></div></div>
             <div class="font-serif text-slate-800 leading-relaxed text-sm"><div class="text-center mb-10"><h1 class="text-3xl font-bold uppercase tracking-widest border-b-2 border-black pb-2 inline-block">Short Form Agreement</h1></div><div class="mb-8"><p class="mb-4"><strong>DATE:</strong> <span id="contractDate"></span></p><div class="grid grid-cols-2 gap-8"><div><p class="font-bold uppercase text-xs text-slate-500">CLIENT</p><p class="text-lg font-bold" id="contractClientName">...</p></div><div><p class="font-bold uppercase text-xs text-slate-500">CONTRACTOR</p><p class="text-lg font-bold" id="contractMyCompany">...</p></div></div></div><div class="mb-8"><h3 class="font-bold uppercase border-b border-slate-300 mb-2">Terms</h3><p>Total Contract Price: <strong id="contractTotalVal"></strong> (Incl GST). Payment as per CCA 2002.</p></div><div class="mt-16 grid grid-cols-2 gap-16"><div><div class="border-b border-black h-8"></div><p class="text-xs uppercase mt-1 font-bold">Client Signature</p></div><div><div class="border-b border-black h-8"></div><p class="text-xs uppercase mt-1 font-bold">Contractor Signature</p></div></div></div>
         </div>
     </div>
@@ -201,8 +204,7 @@
 
         document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
         
-        // --- 1. LOCAL DATABASE IN-MEMORY (INSTANT LOAD) ---
-        // 142 ITEMS WITH PRODUCTIVITY (PROD)
+        // --- DATABASE: 142 ITEMS ---
         const INITIAL_DB = [
             { cat: "1. General", name: "Contract Works Insurance", unit: "LS", prod: 1, resources: [{n:"Premium", t:"Mat", u:"LS", q:1, c:1200}] },
             { cat: "1. General", name: "Building Consent Fees", unit: "LS", prod: 1, resources: [{n:"Council Fees", t:"Mat", u:"LS", q:1, c:4500}, {n:"Admin", t:"Lab", u:"hr", q:4, c:90}] },
@@ -330,7 +332,7 @@
         let currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
-        let activePricingMode = 'unit'; // 'unit', 'hour', 'lump'
+        let activePricingMode = 'unit'; // Default
         
         // --- MEMORY VARIABLES FOR SWITCHING ---
         let memoryPhysQty = 1.0; 
@@ -349,17 +351,8 @@
         function renderCategories() {
             const catSelect = document.getElementById('categorySelect');
             catSelect.innerHTML = '<option value="">-- Choose Category --</option>';
-            
-            // Extract Unique Categories
             const cats = [...new Set(INITIAL_DB.map(i => i.cat))];
-            
-            // Sort numerically (1., 2., 3...)
-            cats.sort((a,b) => {
-                const numA = parseInt(a) || 999;
-                const numB = parseInt(b) || 999;
-                return numA - numB;
-            });
-
+            cats.sort((a,b) => parseInt(a) - parseInt(b));
             cats.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c;
@@ -371,19 +364,14 @@
         function filterItemsByCategory() {
             const cat = document.getElementById('categorySelect').value;
             const itemSelect = document.getElementById('itemSelect');
-            
             if(!cat) {
-                itemSelect.innerHTML = '<option value="">-- First Select Category --</option>';
+                itemSelect.innerHTML = '<option value="">-- Select Category First --</option>';
                 itemSelect.disabled = true;
                 return;
             }
-
-            // Filter items matching category
             const filtered = INITIAL_DB.filter(i => i.cat === cat).sort((a,b) => a.name.localeCompare(b.name));
-            
             itemSelect.innerHTML = '<option value="">-- Select Item --</option>';
             filtered.forEach((item) => {
-                // Use Index in INITIAL_DB as ID
                 const originalIndex = INITIAL_DB.indexOf(item);
                 const opt = document.createElement('option');
                 opt.value = originalIndex;
@@ -396,20 +384,19 @@
         function loadSelectedFromUI() {
             const idx = document.getElementById('itemSelect').value;
             if(idx === "") return;
-            
             const item = INITIAL_DB[idx];
             
             document.getElementById('itemName').value = item.name;
             document.getElementById('itemUnit').value = item.unit;
             document.getElementById('prodInput').value = item.prod || 1.0;
 
-            // DEEP COPY RESOURCES
+            // DEEP COPY
             currentResources = JSON.parse(JSON.stringify(item.resources || []));
             
-            // Smart Mode Detection
-            if (item.unit === 'hr') setPricingMode('hour');
-            else if (item.unit === 'LS') setPricingMode('lump');
-            else setPricingMode('unit');
+            // Auto detect mode
+            if (item.unit === 'hr') switchMode('hour');
+            else if (item.unit === 'LS') switchMode('lump');
+            else switchMode('unit');
 
             renderAllLists();
             updateCalculations();
@@ -417,31 +404,23 @@
 
         function resetBuilder() {
             document.getElementById('categorySelect').value = "";
-            document.getElementById('itemSelect').innerHTML = '<option value="">-- First Select Category --</option>';
+            document.getElementById('itemSelect').innerHTML = '<option value="">-- Select Category First --</option>';
             document.getElementById('itemSelect').disabled = true;
             document.getElementById('itemName').value = "New Item";
             document.getElementById('itemUnit').value = "m3";
             document.getElementById('prodInput').value = "1.0";
             currentResources = [{n:"Labor", u:"hr", q:1, c:45, t:"Lab"}];
             renderAllLists();
-            setPricingMode('unit');
+            switchMode('unit');
         }
 
-        // --- 2. PRICING MODES ---
-        function setPricingMode(mode) {
+        // --- 2. SWITCHING LOGIC (MEMORY PRESERVED) ---
+        function switchMode(mode) {
+            activePricingMode = mode;
             const qtyInput = document.getElementById('qtyInput');
             const unitInput = document.getElementById('itemUnit');
-            const prodContainer = document.getElementById('prodInput').parentElement;
             
-            // Save quantity before switching if valid
-            if (activePricingMode === 'unit' && mode !== 'unit') {
-                lastUnitQty = parseFloat(qtyInput.value) || 1;
-                memoryPhysQty = lastUnitQty;
-            }
-
-            activePricingMode = mode;
-            
-            // UI Styling
+            // Visuals
             ['unit', 'hour', 'lump'].forEach(m => {
                 const btn = document.getElementById('btn-'+m);
                 if(m === mode) {
@@ -453,43 +432,62 @@
                 }
             });
 
-            // Logic
-            if(mode === 'hour') {
-                unitInput.value = 'hr';
+            // Logic logic
+            if (mode === 'unit') {
+                unitInput.value = 'm3'; // Default, user can change
+                qtyInput.value = memoryPhysQty; // Restore physical qty
                 qtyInput.readOnly = false;
-                // If coming from unit, convert phys qty to hours? No, user usually enters hours directly.
-                // Let's keep it clean.
+                document.getElementById('qtyLabel').innerText = "Qty (Phys):";
+            } else if (mode === 'hour') {
+                unitInput.value = 'hr';
+                // Convert Phys Qty to Hours for display? Or let Calc do it?
+                // Logic: Qty Box = Hours. 
+                // Hours = PhysQty / Productivity.
+                const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+                qtyInput.value = (memoryPhysQty / prod).toFixed(2); 
+                qtyInput.readOnly = false;
                 document.getElementById('qtyLabel').innerText = "Hours:";
-                prodContainer.style.opacity = "1";
-            } else if(mode === 'lump') {
+            } else if (mode === 'lump') {
                 unitInput.value = 'LS';
                 qtyInput.value = 1;
-                qtyInput.readOnly = true; // Lump sum is 1
+                qtyInput.readOnly = true;
                 document.getElementById('qtyLabel').innerText = "Qty:";
-                prodContainer.style.opacity = "0.5";
-            } else {
-                // Unit Rate
-                if(unitInput.value === 'hr' || unitInput.value === 'LS') unitInput.value = 'm3';
-                qtyInput.value = memoryPhysQty; // Restore memory
-                qtyInput.readOnly = false;
-                document.getElementById('qtyLabel').innerText = "Qty:";
-                prodContainer.style.opacity = "1";
             }
+
             updateCalculations();
         }
 
         function handleQtyChange() {
             const val = parseFloat(document.getElementById('qtyInput').value) || 0;
+            const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+            
+            // If in unit mode, this is the physical quantity
             if(activePricingMode === 'unit') {
                 memoryPhysQty = val;
             } 
+            // If in hourly mode, user is typing hours. Convert back to phys qty to save
+            else if(activePricingMode === 'hour') {
+                memoryPhysQty = val * prod;
+            }
+            // Lump sum, we ignore qty change (it's 1)
+            
             updateCalculations();
+        }
+        
+        function handleProdChange() {
+             // If prod changes, update calcs
+             // If in hourly mode, maybe update hours shown?
+             if(activePricingMode === 'hour') {
+                 const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+                 document.getElementById('qtyInput').value = (memoryPhysQty / prod).toFixed(2);
+             }
+             updateCalculations();
         }
 
         // --- 3. CORE CALCULATION (YOUR FORMULA) ---
         function updateCalculations() {
-            // 1. Calculate Unit Cost (CU) from resources (The cost to make 1 m3, 1 m2, etc)
-            let CU = 0; 
+            // 1. Base Cost Unitario (CU)
+            let CU = 0;
             currentResources.forEach(r => CU += (parseFloat(r.c)||0) * (parseFloat(r.q)||0));
             
             const margin = parseFloat(document.getElementById('marginInput').value) || 0;
@@ -497,37 +495,45 @@
             const qtyDisplay = parseFloat(document.getElementById('qtyInput').value) || 0;
 
             let FinalRate = 0;
-            let TotalLineValue = 0;
+            let TotalValue = 0;
 
+            // CALCULATE BASED ON MODE
             if (activePricingMode === 'unit') {
-                // UNIT MODE: Rate = CU + Margin. Total = Rate * Qty
+                // Rate = Costo Unitario + Margen
                 FinalRate = CU * (1 + (margin/100));
-                TotalLineValue = FinalRate * qtyDisplay;
+                // Total = Rate x Cantidad Fisica
+                TotalValue = FinalRate * qtyDisplay;
                 document.getElementById('rateLabel').innerText = "Unit Rate";
-            
-            } else if (activePricingMode === 'hour') {
-                // HOURLY MODE (YOUR FORMULA): Cost/hr = CU * Productivity (R)
-                // Meaning: "How much $ do I burn per hour?"
-                let hourlyBaseCost = CU * productivity; 
-                FinalRate = hourlyBaseCost * (1 + (margin/100));
-                TotalLineValue = FinalRate * qtyDisplay; // Qty is HOURS here
-                document.getElementById('rateLabel').innerText = "Hourly Rate";
 
+            } else if (activePricingMode === 'hour') {
+                // Rate = (Costo Unitario x Rendimiento) + Margen
+                // Ex: ($100/m3 * 10m3/hr) = $1000/hr base cost
+                let hourlyBase = CU * productivity;
+                FinalRate = hourlyBase * (1 + (margin/100));
+                
+                // Total = Rate ($/hr) x Qty (hrs)
+                TotalValue = FinalRate * qtyDisplay;
+                document.getElementById('rateLabel').innerText = "Hourly Rate";
+                
             } else if (activePricingMode === 'lump') {
-                // LUMP SUM: Rate = Total Cost + Margin. Qty fixed to 1.
-                FinalRate = CU * (1 + (margin/100));
-                TotalLineValue = FinalRate; 
-                document.getElementById('rateLabel').innerText = "Global Sum";
+                // Lump Sum logic: Total is calculated from Phys Qty x Unit Rate
+                // But visualized as Qty 1 x Total Price
+                
+                // Real Total = (CU * 1.Margin) * MemoryPhysQty
+                let realUnitRate = CU * (1 + (margin/100));
+                TotalValue = realUnitRate * memoryPhysQty;
+                
+                FinalRate = TotalValue; // Rate = Total because Qty is 1
+                document.getElementById('rateLabel').innerText = "Lump Sum";
             }
-            
-            document.getElementById('rawCostDisplay').innerText = "$" + CU.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+
             document.getElementById('finalRateDisplay').innerText = "$" + FinalRate.toLocaleString('en-NZ', {minimumFractionDigits: 2});
-            document.getElementById('totalLineValueDisplay').innerText = "$" + TotalLineValue.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            
-            return { rate: FinalRate, total: TotalLineValue };
+            document.getElementById('totalLineValueDisplay').innerText = "$" + TotalValue.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+
+            return { rate: FinalRate, total: TotalValue };
         }
 
-        // --- 4. RESOURCE TABLES ---
+        // --- 4. RENDER LISTS ---
         function renderAllLists() {
             document.getElementById('resourcesContainer').innerHTML = "";
             renderList('Lab', 'Labor Cost', 'bg-orange-50', 'text-orange-800', 'border-orange-200', 'text-orange-600');
@@ -574,36 +580,26 @@
 
         window.addRes = (t) => { currentResources.push({n:"New Item", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
-        window.updRes = (i, f, v) => { 
-            currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; 
-            renderAllLists(); 
-            updateCalculations(); 
-        };
+        window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
 
-        // --- 5. ADD TO QUOTE (FIXED) ---
+        // --- ADD TO QUOTE ---
         function addToQuote() {
             let qty = parseFloat(document.getElementById('qtyInput').value) || 1;
             let name = document.getElementById('itemName').value;
             let unit = document.getElementById('itemUnit').value;
+            let calc = updateCalculations(); // Fresh calc
             
-            let vals = updateCalculations(); // Get fresh values
-            
-            // Push to Array (ADD TO QUOTE LOGIC)
+            // Save Item to Quote Array
             quoteItems.push({ 
                 desc: name, 
                 name: name, 
                 unit: unit, 
                 qty: qty, 
-                rate: vals.rate, 
-                total: vals.total, 
+                rate: calc.rate, 
+                total: calc.total, 
                 resources: JSON.parse(JSON.stringify(currentResources)) 
             });
             
-            if(document.getElementById('updateDbCheck').checked) {
-                // Optional: Save new item to local array for session persistence
-                alert("New item saved to session database!");
-            }
-
             renderQuote();
         }
 
@@ -616,9 +612,7 @@
                 tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-300 italic text-xs border-b border-slate-100">No items added.</td></tr>`;
             } else {
                 quoteItems.forEach((item, i) => {
-                    item.total = item.qty * item.rate; 
                     sub += item.total;
-                    
                     tbody.innerHTML += `
                         <tr class="border-b border-slate-100 group hover:bg-slate-50 transition">
                             <td class="p-3 font-bold text-slate-700">${item.desc}</td>
@@ -641,6 +635,8 @@
         function updateQuoteQty(i, v) { 
             let q = parseFloat(v)||0;
             quoteItems[i].qty = q;
+            // Update total based on fixed rate
+            quoteItems[i].total = q * quoteItems[i].rate;
             renderQuote(); 
         }
 
@@ -653,7 +649,7 @@
                     document.getElementById('clientAddress').value = data.address||"";
                     quoteItems = data.schedule || []; 
                     renderQuote(); 
-                    if (data.status === 'Active' || data.status === 'Completed') document.body.classList.add('contract-mode');
+                    if (data.status === 'Active' || data.status === 'Completed') activateContractMode();
                 }
             }); 
         }
@@ -667,11 +663,7 @@
             }));
             
             let totalRev = 0; cleanItems.forEach(i => totalRev += i.total);
-            
-            const pData = { 
-                name: client + " - Project", client: client, address: document.getElementById('clientAddress').value, 
-                items: cleanItems, schedule: cleanItems, total: totalRev, status: "Pending", updatedAt: Date.now() 
-            };
+            const pData = { name: client + " - Project", client: client, address: document.getElementById('clientAddress').value, items: cleanItems, schedule: cleanItems, total: totalRev, status: "Pending", updatedAt: Date.now() };
 
             if(currentProjectId) { 
                 db.collection('projects').doc(currentProjectId).update(pData).then(()=>alert("Saved!")); 
