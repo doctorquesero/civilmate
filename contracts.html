@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Contract & Estimator V15.5 - Stable Core</title>
+    <title>Contract & Estimator V15.2 - Final System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -53,7 +53,7 @@
             <div class="bg-slate-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-hard-hat"></i></div>
             <div>
                 <h1 class="font-bold text-lg text-slate-800 leading-none">CivilMate</h1>
-                <p class="text-[10px] text-slate-500">Estimator V15.5 (Final Logic)</p>
+                <p class="text-[10px] text-slate-500">Estimator V15.2 (APU & DB Fix)</p>
             </div>
         </div>
         <div class="flex gap-2 items-center">
@@ -331,7 +331,9 @@
         let currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
         let quoteItems = [];
         let currentProjectId = localStorage.getItem('civilmate_current_project_id');
-        let activePricingMode = 'unit'; 
+        let activePricingMode = 'unit'; // Default
+        
+        // --- MEMORY VARIABLES FOR SWITCHING ---
         let memoryPhysQty = 1.0; 
 
         // INIT
@@ -388,8 +390,10 @@
             document.getElementById('itemUnit').value = item.unit;
             document.getElementById('prodInput').value = item.prod || 1.0;
 
+            // DEEP COPY RESOURCES
             currentResources = JSON.parse(JSON.stringify(item.resources || []));
             
+            // Smart Mode Detection
             if (item.unit === 'hr') setPricingMode('hour');
             else if (item.unit === 'LS') setPricingMode('lump');
             else setPricingMode('unit');
@@ -410,13 +414,13 @@
             setPricingMode('unit');
         }
 
-        // --- 2. SWITCHING LOGIC (RENAMED TO SETPRICINGMODE FOR STABILITY) ---
+        // --- 2. SWITCHING LOGIC (MEMORY PRESERVED) ---
         function setPricingMode(mode) {
             const qtyInput = document.getElementById('qtyInput');
             const unitInput = document.getElementById('itemUnit');
             const prodContainer = document.getElementById('prodInput').parentElement;
             
-            // Save quantity before switching if valid
+            // Before switching, save current Qty to memory if we are in Unit Mode
             if (activePricingMode === 'unit' && mode !== 'unit') {
                 memoryPhysQty = parseFloat(qtyInput.value) || 1;
             } else if (activePricingMode === 'hour' && mode !== 'hour') {
@@ -427,7 +431,7 @@
 
             activePricingMode = mode;
             
-            // Visuals
+            // UI Styling
             ['unit', 'hour', 'lump'].forEach(m => {
                 const btn = document.getElementById('btn-'+m);
                 if(m === mode) {
@@ -445,17 +449,22 @@
                 qtyInput.value = memoryPhysQty; 
                 qtyInput.readOnly = false;
                 document.getElementById('qtyLabel').innerText = "Qty (Phys):";
+                prodContainer.style.opacity = "1";
+            
             } else if (mode === 'hour') {
                 unitInput.value = 'hr';
                 const prod = parseFloat(document.getElementById('prodInput').value) || 1;
                 qtyInput.value = (memoryPhysQty / prod).toFixed(2); 
                 qtyInput.readOnly = false;
                 document.getElementById('qtyLabel').innerText = "Hours:";
+                prodContainer.style.opacity = "1";
+
             } else if (mode === 'lump') {
                 unitInput.value = 'LS';
                 qtyInput.value = 1;
                 qtyInput.readOnly = true;
                 document.getElementById('qtyLabel').innerText = "Qty:";
+                prodContainer.style.opacity = "0.5";
             }
 
             updateCalculations();
@@ -468,7 +477,7 @@
             if(activePricingMode === 'unit') {
                 memoryPhysQty = val;
             } else if(activePricingMode === 'hour') {
-                memoryPhysQty = val * prod;
+                memoryPhysQty = val * prod; 
             }
             updateCalculations();
         }
@@ -481,7 +490,7 @@
              updateCalculations();
         }
 
-        // --- 3. CORE CALCULATION (YOUR FORMULA) ---
+        // --- 3. CORE CALCULATION ---
         function updateCalculations() {
             let CU = 0; 
             currentResources.forEach(r => CU += (parseFloat(r.c)||0) * (parseFloat(r.q)||0));
@@ -514,7 +523,7 @@
             document.getElementById('finalRateDisplay').innerText = "$" + FinalRate.toLocaleString('en-NZ', {minimumFractionDigits: 2});
             document.getElementById('totalLineValueDisplay').innerText = "$" + TotalValue.toLocaleString('en-NZ', {minimumFractionDigits: 2});
 
-            return { rate: FinalRate, total: TotalValue };
+            return { rate: FinalRate, total: TotalValue, baseCost: CU, margin: margin };
         }
 
         // --- 4. RENDER LISTS ---
@@ -570,14 +579,14 @@
             updateCalculations(); 
         };
 
-        // --- 5. ADD TO QUOTE & SAVE PROMPT (THE FIX) ---
+        // --- 5. ADD TO QUOTE & SAVE (UPDATED FIX) ---
         function addToQuote() {
             let qty = parseFloat(document.getElementById('qtyInput').value) || 1;
             let name = document.getElementById('itemName').value;
             let unit = document.getElementById('itemUnit').value;
             let calc = updateCalculations(); 
             
-            // LOGIC: ASK TO SAVE IF CHECKED
+            // SAVE LOGIC: ASK USER + UPDATE LOCAL MEMORY IMMEDIATELY
             if(document.getElementById('updateDbCheck').checked) {
                 let choice = confirm(`Save "${name}" to Database?\n\n[OK] = Create New Item in Library\n[Cancel] = Do Not Save (Just Add to Quote)`);
                 
@@ -587,9 +596,15 @@
                         unit: unit, 
                         prod: parseFloat(document.getElementById('prodInput').value)||1,
                         resources: currentResources, 
-                        cat: document.getElementById('categorySelect').value || "User Custom" 
+                        cat: document.getElementById('categorySelect').value || "99. User Custom" 
                     };
+                    
+                    // 1. Save to Cloud
                     db.collection('master_library').add(itemData).then(() => alert("✅ Item Saved to Database!"));
+                    
+                    // 2. IMPORTANT: PUSH TO LOCAL MEMORY so it appears in dropdown immediately
+                    INITIAL_DB.push(itemData);
+                    renderCategories(); // Refresh dropdowns
                 }
             }
 
@@ -599,7 +614,9 @@
                 unit: unit, 
                 qty: qty, 
                 rate: calc.rate, 
-                total: calc.total, 
+                total: calc.total,
+                baseCost: calc.baseCost, // Store for APU
+                margin: calc.margin,     // Store for APU
                 resources: JSON.parse(JSON.stringify(currentResources)) 
             });
             
@@ -661,7 +678,7 @@
             if(!quoteItems.length) return alert("Quote is empty.");
             
             const cleanItems = quoteItems.map(item => ({ 
-                desc: item.desc, name: item.name, unit: item.unit, qty: item.qty, rate: item.rate, total: item.total, resources: item.resources 
+                desc: item.desc, name: item.name, unit: item.unit, qty: item.qty, rate: item.rate, total: item.total, resources: item.resources, baseCost: item.baseCost, margin: item.margin 
             }));
             
             let totalRev = 0; cleanItems.forEach(i => totalRev += i.total);
@@ -679,7 +696,7 @@
             }
         }
 
-        // --- PRINT & APPENDIX ---
+        // --- PRINT & APPENDIX (UPDATED APU FORMAT) ---
         function printQuote() {
             const includeAPU = document.getElementById('printApuCheck').checked;
             const printSec = document.getElementById('printSection');
@@ -691,13 +708,72 @@
 
         function generateAPUAppendix() {
             const container = document.getElementById('apuContent'); container.innerHTML = "";
+            
             quoteItems.forEach((item, index) => {
-                let html = `<div class="border border-slate-200 rounded-lg p-6 bg-slate-50 avoid-break"><div class="flex justify-between border-b border-slate-300 pb-2 mb-4"><h3 class="font-bold text-lg text-slate-800">${index + 1}. ${item.desc}</h3><div class="text-right"><span class="block text-[10px] uppercase font-bold text-slate-500">Unit Rate</span><span class="font-mono font-bold text-lg">$${item.rate.toFixed(2)} / ${item.unit}</span></div></div><table class="w-full text-xs text-slate-600 mb-2"><thead class="font-bold uppercase bg-slate-200"><tr><th class="p-2 text-left">Resource</th><th class="p-2 text-center">Type</th><th class="p-2 text-center">Yield</th><th class="p-2 text-right">Cost</th></tr></thead><tbody>`;
+                // Calculate Overhead Value for display
+                let overheadVal = item.rate - (item.baseCost || 0); 
+                // If baseCost wasn't saved (older items), approximate it
+                if(!item.baseCost) overheadVal = item.rate - (item.rate / (1 + ((item.margin||18)/100)));
+
+                let html = `
+                <div class="border border-slate-200 rounded-lg p-6 bg-slate-50 avoid-break mb-8">
+                    <div class="flex justify-between border-b border-slate-300 pb-2 mb-4">
+                        <h3 class="font-bold text-lg text-slate-800">${index + 1}. ${item.desc}</h3>
+                        <div class="text-right">
+                            <span class="block text-[10px] uppercase font-bold text-slate-500">Sell Rate</span>
+                            <span class="font-mono font-bold text-lg">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})} / ${item.unit}</span>
+                        </div>
+                    </div>
+                    <table class="w-full text-xs text-slate-600 mb-2">
+                        <thead class="font-bold uppercase bg-slate-200">
+                            <tr>
+                                <th class="p-2 text-left">Resource</th>
+                                <th class="p-2 text-center">Type</th>
+                                <th class="p-2 text-center">Unit</th>
+                                <th class="p-2 text-center">Yield</th>
+                                <th class="p-2 text-right">Cost</th>
+                                <th class="p-2 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                let checkSum = 0;
                 item.resources.forEach(res => { 
                     const typeMap = { 'Lab': 'Labor', 'Plant': 'Plant', 'Mat': 'Material' }; 
-                    html += `<tr class="border-b border-slate-200"><td class="p-2">${res.n}</td><td class="p-2 text-center">${typeMap[res.t]}</td><td class="p-2 text-center">${res.q} ${res.u}</td><td class="p-2 text-right">$${res.c}</td></tr>`; 
+                    const lineTotal = (parseFloat(res.q) * parseFloat(res.c));
+                    checkSum += lineTotal;
+                    html += `
+                    <tr class="border-b border-slate-200">
+                        <td class="p-2">${res.n}</td>
+                        <td class="p-2 text-center">${typeMap[res.t]}</td>
+                        <td class="p-2 text-center">${res.u}</td>
+                        <td class="p-2 text-center">${res.q}</td>
+                        <td class="p-2 text-right">$${res.c}</td>
+                        <td class="p-2 text-right font-bold">$${lineTotal.toFixed(2)}</td>
+                    </tr>`; 
                 });
-                container.innerHTML += html + `</tbody></table></div>`;
+
+                // Add Overhead Row
+                let margin = item.margin || 18;
+                let marginAmount = checkSum * (margin / 100);
+                let finalTotal = checkSum + marginAmount;
+
+                html += `
+                    <tr class="bg-yellow-50 font-bold text-slate-700">
+                        <td colspan="5" class="p-2 text-right uppercase">Subtotal (Direct Cost)</td>
+                        <td class="p-2 text-right">$${checkSum.toFixed(2)}</td>
+                    </tr>
+                    <tr class="bg-blue-50 font-bold text-blue-700">
+                        <td colspan="5" class="p-2 text-right uppercase">Overheads & Margin (${margin}%)</td>
+                        <td class="p-2 text-right">$${marginAmount.toFixed(2)}</td>
+                    </tr>
+                    <tr class="bg-slate-800 text-white font-bold text-sm">
+                        <td colspan="5" class="p-2 text-right uppercase">TOTAL UNIT RATE</td>
+                        <td class="p-2 text-right">$${finalTotal.toFixed(2)}</td>
+                    </tr>
+                </tbody></table></div>`;
+                
+                container.innerHTML += html;
             });
         }
         
