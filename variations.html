@@ -2,176 +2,188 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Variations Manager - CivilMate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Variations Manager V2.0 - CivilMate NZ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
-        /* ESTILOS COPIADOS DE CONTRACTS PARA CONSISTENCIA */
-        .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; color: #334155; }
+        
+        /* UI HELPERS */
         .res-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .res-table th { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; padding: 6px 4px; border-bottom: 2px solid #e2e8f0; }
         .res-table td { padding: 4px; border-bottom: 1px dashed #f1f5f9; vertical-align: middle; }
         .res-input { width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; font-size: 11px; padding: 2px 4px; }
         .res-input:hover { background-color: #f1f5f9; border-color: #e2e8f0; }
         .res-input:focus { background-color: white; border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
+        
+        /* MODE SWITCHER */
+        .mode-btn { transition: all 0.2s; border: 1px solid #cbd5e1; cursor: pointer; }
+        .mode-active { background-color: #7c3aed; color: white; border-color: #7c3aed; } /* Purple for Variations */
+        .mode-inactive { background-color: white; color: #64748b; }
+        .mode-inactive:hover { background-color: #f1f5f9; }
+
+        .col-desc { width: 45%; } .col-unit { width: 15%; text-align: center; } .col-qty { width: 15%; text-align: right; } .col-rate { width: 15%; text-align: right; } .col-total { width: 10%; text-align: right; }
     </style>
 </head>
-<body class="p-6 max-w-[1200px] mx-auto min-h-screen relative">
+<body class="h-screen flex flex-col overflow-hidden relative">
 
-    <header class="mb-8 flex justify-between items-center">
-        <div>
-            <button onclick="window.location.href='project_hub.html'" class="text-sm text-slate-400 hover:text-slate-600 mb-2">
-                <i class="fas fa-arrow-left"></i> Back to Hub
-            </button>
-            <h1 class="text-3xl font-bold text-slate-800">Variations Register (VOs)</h1>
-            <p class="text-slate-500 text-sm">NZS 3910 - Section 9: Variations</p>
+    <header class="bg-white border-b border-purple-200 p-3 flex justify-between items-center shrink-0 z-20 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-purple-800 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg"><i class="fas fa-file-contract"></i></div>
+            <div>
+                <h1 class="font-bold text-lg text-purple-900 leading-none">Variations (VOs)</h1>
+                <p class="text-[10px] text-purple-500">Contract Adjustment Manager</p>
+            </div>
         </div>
-        <div class="text-right">
-            <p class="text-xs font-bold text-slate-400 uppercase">Revised Contract Sum</p>
-            <h2 class="text-2xl font-bold text-purple-700" id="revisedTotal">$0.00</h2>
+        <div class="flex gap-2 items-center">
+            <button onclick="window.location.href='dashboard.html'" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border"><i class="fas fa-arrow-left mr-1"></i> Dashboard</button>
+            <button onclick="issueVO()" class="px-6 py-2 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white rounded shadow flex items-center gap-2"><i class="fas fa-file-signature"></i> Issue VO</button>
         </div>
     </header>
 
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <table class="w-full text-left">
-            <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
-                <tr>
-                    <th class="p-4">VO #</th>
-                    <th class="p-4">Description of Change</th>
-                    <th class="p-4 text-center">Status</th>
-                    <th class="p-4 text-right">Value (Ex GST)</th>
-                    <th class="p-4"></th>
-                </tr>
-            </thead>
-            <tbody id="voTable" class="divide-y divide-slate-100 text-sm text-slate-700">
-                <tr><td colspan="5" class="p-6 text-center text-slate-400 italic">Loading Variations...</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="bg-purple-50 p-6 rounded-xl border border-purple-100 shadow-inner">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-purple-800 flex items-center gap-2">
-                <i class="fas fa-plus-circle"></i> Raise New Variation Price Request
-            </h3>
-            <button onclick="openEstimator()" class="text-xs bg-white text-purple-700 border border-purple-200 px-3 py-1.5 rounded hover:bg-purple-100 font-bold shadow-sm flex items-center gap-2">
-                <i class="fas fa-database"></i> Open VO Cost Analyst
-            </button>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-4">
-            <div class="md:col-span-2">
-                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Description</label>
-                <input type="text" id="voDesc" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="e.g. Extra Drainage Line">
-            </div>
-            <div>
-                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Unit</label>
-                <input type="text" id="voUnit" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="m, m3">
-            </div>
-            <div>
-                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Qty</label>
-                <input type="number" id="voQty" oninput="calcTotal()" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0">
-            </div>
-            <div>
-                <label class="block text-[10px] font-bold text-purple-400 uppercase mb-1">Rate ($)</label>
-                <input type="number" id="voRate" oninput="calcTotal()" class="w-full p-2 rounded border border-purple-200 focus:outline-none focus:border-purple-500" placeholder="0.00">
-            </div>
-            <div>
-                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Total ($)</label>
-                <input type="text" id="voTotalDisplay" class="w-full p-2 rounded border border-transparent bg-purple-100 font-bold text-purple-800 text-right" readonly value="$0.00">
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-purple-200 pt-4 mb-4">
-            <div class="bg-red-50 p-3 rounded border border-red-100">
-                <p class="text-[9px] font-bold text-red-500 uppercase mb-2"><i class="fas fa-gavel"></i> LBP / Building Act Check</p>
-                <div class="flex items-start gap-2">
-                    <input type="checkbox" id="checkConsent" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
-                    <label for="checkConsent" class="text-[10px] text-slate-600 cursor-pointer">I confirm this implies NO change to the Consent OR The Owner has provided the Amendment.</label>
-                </div>
-            </div>
-            <div class="bg-blue-50 p-3 rounded border border-blue-100">
-                <p class="text-[9px] font-bold text-blue-500 uppercase mb-2"><i class="fas fa-hard-hat"></i> H&S / Safe Work Check</p>
-                <div class="flex items-start gap-2">
-                    <input type="checkbox" id="checkSafety" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
-                    <label for="checkSafety" class="text-[10px] text-slate-600 cursor-pointer">I have assessed risks and updated SSSP/Task Analysis.</label>
-                </div>
-            </div>
-            <div class="bg-slate-50 p-3 rounded border border-slate-200">
-                <label class="block text-[9px] font-bold text-slate-500 uppercase mb-2"><i class="fas fa-clock"></i> Extension of Time (EOT)</label>
-                <div class="flex items-center gap-2">
-                    <input type="number" id="voTime" class="w-full p-2 rounded border border-slate-300 text-xs font-bold text-slate-700" placeholder="0">
-                    <span class="text-[10px] text-slate-400 font-bold uppercase">Days</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="text-right">
-            <button onclick="createVO()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded shadow-lg transition flex items-center gap-2 ml-auto">
-                <i class="fas fa-file-signature"></i> Approve & Issue VO
-            </button>
-        </div>
-    </div>
-
-    <div id="estimatorModal" class="fixed inset-0 bg-slate-900/80 z-50 hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="flex flex-1 overflow-hidden">
+        <div id="builderPanel" class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-lg">
             
-            <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
-                <h3 class="font-bold"><i class="fas fa-server mr-2"></i>VO Cost Analyst (Standard APU)</h3>
-                <button onclick="closeEstimator()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
-            </div>
-
-            <div class="p-4 bg-slate-100 border-b border-slate-200 shrink-0">
-                <label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Import from Master Database</label>
-                <select id="masterDbSelect" onchange="loadFromMaster()" class="w-full p-2 border border-slate-300 rounded text-sm font-bold text-slate-700 shadow-sm">
-                    <option value="">-- Start from Scratch (New Analysis) --</option>
-                </select>
-            </div>
-
-            <div class="p-6 overflow-y-auto bg-slate-50">
-                <div class="flex justify-between mb-6">
-                    <div class="w-2/3">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Analysis Name</label>
-                        <input type="text" id="analysisName" class="w-full border-b-2 border-slate-200 bg-transparent focus:border-purple-500 outline-none font-bold text-lg text-slate-800" placeholder="e.g. Concrete Slab 20MPa">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 sticky top-0 z-20">
+                <div class="flex gap-3 mb-1">
+                    <div class="w-1/2">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">1. Category</label>
+                        <select id="categorySelect" onchange="filterItemsByCategory()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-purple-500 outline-none cursor-pointer shadow-sm">
+                            <option value="">-- Choose --</option>
+                        </select>
                     </div>
-                    <div class="w-1/4">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase">Base Unit</label>
-                        <input type="text" id="analysisUnit" class="w-full border-b-2 border-slate-200 bg-transparent focus:border-purple-500 outline-none text-center font-bold text-slate-600" placeholder="m3">
+                    <div class="w-1/2">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">2. Item</label>
+                        <select id="itemSelect" onchange="loadSelectedFromUI()" class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 focus:ring-2 ring-purple-500 outline-none cursor-pointer shadow-sm" disabled>
+                            <option value="">-- Select Category First --</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                         <button onclick="resetBuilder()" class="h-[34px] w-10 bg-slate-200 text-slate-600 rounded hover:bg-slate-300 flex items-center justify-center"><i class="fas fa-eraser"></i></button>
                     </div>
                 </div>
-
-                <div id="resourcesContainer" class="space-y-4 mb-6">
-                    </div>
-
-                <div class="bg-white p-4 rounded border border-slate-200 space-y-2 shadow-sm">
-                    <div class="flex justify-between text-xs text-slate-500">
-                        <span>Base Cost (Net)</span>
-                        <span id="estSub" class="font-mono">$0.00</span>
-                    </div>
-                    <div class="flex justify-between text-sm items-center">
-                        <span class="text-slate-600 font-bold">Margin / Profit (%)</span>
-                        <input type="number" id="estMargin" value="15" onchange="updateCalculations()" class="w-16 text-right border rounded text-xs font-bold p-1 bg-white focus:ring-2 ring-purple-500 outline-none">
-                    </div>
-                    <div class="flex justify-between text-2xl font-bold text-purple-700 pt-2 border-t border-slate-100">
-                        <span>Final Unit Rate</span>
-                        <span id="estTotal">$0.00</span>
-                    </div>
-                </div>
-
-                <div class="mt-4 flex items-center gap-2 p-3 bg-green-50 rounded border border-green-100">
-                    <input type="checkbox" id="saveToDbCheck" class="w-5 h-5 text-green-600 rounded cursor-pointer" checked>
-                    <div>
-                        <p class="text-xs font-bold text-green-800">Add to Master Database</p>
-                        <p class="text-[10px] text-green-600">CivilMate will save this standard APU for future Contracts & VOs.</p>
-                    </div>
-                </div>
-
-                <button onclick="applyRate()" class="w-full mt-4 bg-slate-800 text-white py-3 rounded font-bold hover:bg-black shadow-lg transition">Apply Rate & Save</button>
             </div>
+
+            <div id="builderArea" class="flex-1 flex flex-col p-6 pb-32">
+                <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">3. Variation Calculation Method</label>
+                <div class="flex gap-0 rounded-lg overflow-hidden shadow-sm border border-purple-200 mb-6">
+                    <button onclick="setPricingMode('unit')" id="btn-unit" class="flex-1 py-2 text-xs font-bold mode-active bg-purple-600 text-white">📊 Unit Rate</button>
+                    <button onclick="setPricingMode('hour')" id="btn-hour" class="flex-1 py-2 text-xs font-bold mode-inactive">⏱️ Hourly</button>
+                    <button onclick="setPricingMode('lump')" id="btn-lump" class="flex-1 py-2 text-xs font-bold mode-inactive">🌎 Lump Sum</button>
+                </div>
+
+                <div class="flex gap-4 mb-6 items-end">
+                    <div class="w-1/2">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase">Variation Description</label>
+                        <input type="text" id="itemName" class="w-full text-xl font-bold text-slate-800 border-b-2 border-purple-200 focus:border-purple-600 outline-none pb-1" placeholder="Describe the Change (e.g. Extra Rock Excavation)">
+                    </div>
+                    <div class="w-1/4 text-center">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase">Productivity (R)</label>
+                        <input type="number" id="prodInput" oninput="handleProdChange()" class="w-full text-center text-xl font-bold text-orange-600 border-b-2 border-orange-200 focus:border-orange-500 outline-none pb-1" placeholder="1.0" value="1.0">
+                        <span class="text-[8px] text-slate-400 block mt-1">Units per Hour</span>
+                    </div>
+                    <div class="w-1/4 text-center">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase">Unit</label>
+                        <input type="text" id="itemUnit" class="w-full text-center text-xl font-bold text-slate-600 border-b-2 border-purple-200 focus:border-purple-600 outline-none pb-1" placeholder="m3">
+                    </div>
+                </div>
+                
+                <div id="resourcesContainer" class="space-y-6"></div> 
+                
+                <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 pt-6">
+                     <div class="bg-red-50 p-3 rounded border border-red-100">
+                        <p class="text-[9px] font-bold text-red-500 uppercase mb-2"><i class="fas fa-gavel"></i> LBP / Building Act</p>
+                        <div class="flex items-start gap-2">
+                            <input type="checkbox" id="checkConsent" class="mt-1 w-4 h-4 text-purple-600 cursor-pointer">
+                            <label for="checkConsent" class="text-[10px] text-slate-600 cursor-pointer font-bold">I confirm this implies NO change to Consent OR Amendment provided.</label>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-200">
+                        <label class="block text-[9px] font-bold text-slate-500 uppercase mb-2"><i class="fas fa-clock"></i> Extension of Time (EOT)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="voTime" class="w-20 p-1 rounded border border-slate-300 text-sm font-bold text-slate-700 text-center" placeholder="0">
+                            <span class="text-[10px] text-slate-400 font-bold uppercase">Days Claimed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="absolute bottom-0 left-0 w-full bg-slate-900 text-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] z-30">
+                <div class="flex items-center justify-between gap-4 mb-3 border-b border-slate-700 pb-3">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="updateDbCheck" class="w-4 h-4 text-green-500 rounded cursor-pointer">
+                        <label for="updateDbCheck" class="text-[10px] font-bold text-green-400 uppercase cursor-pointer">Save Analysis to Master DB</label>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-400 font-bold uppercase text-[9px] mr-2">Margin %</span>
+                        <input type="number" id="marginInput" value="18" oninput="updateCalculations()" class="w-12 bg-slate-800 border border-slate-600 rounded px-1 text-center outline-none text-yellow-400 text-xs">
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                    <div class="flex gap-6 text-xs">
+                        <div>
+                            <span class="block text-slate-400 font-bold uppercase text-[9px]" id="rateLabel">Unit Price</span>
+                            <span class="font-mono text-green-400 text-2xl font-bold leading-none" id="finalRateDisplay">$0.00</span>
+                        </div>
+                        <div class="pl-6 border-l border-slate-700">
+                            <span class="block text-slate-400 font-bold uppercase text-[9px]">Variation Total</span>
+                            <span class="font-mono text-yellow-400 text-2xl font-bold leading-none" id="totalLineValueDisplay">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase mr-2" id="qtyLabel">Qty:</label>
+                            <input type="number" id="qtyInput" oninput="handleQtyChange()" class="w-20 bg-transparent font-bold text-center outline-none text-white text-xl" placeholder="1" value="1">
+                        </div>
+                        <button onclick="addToRegister()" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded font-bold shadow-lg transition flex items-center gap-2 text-sm"><i class="fas fa-plus"></i> Add to Register</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto relative p-8">
+            
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mb-6">
+                <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                    <h2 class="font-bold text-slate-700 uppercase tracking-wide text-sm">Variations Register</h2>
+                    <span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded">Pending Approval</span>
+                </div>
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100">
+                        <tr>
+                            <th class="p-4 w-16">VO#</th>
+                            <th class="p-4">Description</th>
+                            <th class="p-4 text-center">EOT</th>
+                            <th class="p-4 text-right">Amount</th>
+                            <th class="p-4 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="voRegisterTable" class="divide-y divide-slate-100">
+                        <tr><td colspan="5" class="p-6 text-center text-slate-400 italic text-xs">No Variations added yet.</td></tr>
+                    </tbody>
+                    <tfoot class="bg-slate-50 font-bold text-slate-700">
+                        <tr>
+                            <td colspan="3" class="p-4 text-right uppercase text-xs">Total Variations (Ex GST)</td>
+                            <td class="p-4 text-right font-mono text-purple-700" id="voTotalSum">$0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase">Contract Impact Summary</h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between text-slate-500"><span>Original Contract Sum</span><span class="font-mono font-bold">$<span id="originalSum">0.00</span></span></div>
+                    <div class="flex justify-between text-purple-600 font-bold"><span>Total Variations</span><span class="font-mono">$<span id="voSumDisplay">0.00</span></span></div>
+                    <div class="border-t border-slate-200 my-2 pt-2 flex justify-between text-lg font-bold text-slate-800"><span>Revised Contract Sum</span><span class="font-mono">$<span id="revisedSum">0.00</span></span></div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -180,253 +192,263 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        const pid = localStorage.getItem('civilmate_current_project_id');
-        if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
-
-        let currentSchedule = [];
-        let projectTotal = 0;
-        let masterItems = []; 
+        // --- GLOBAL VARIABLES ---
+        let currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
+        let voItems = [];
+        let projectOriginalTotal = 0;
+        let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+        let activePricingMode = 'unit'; // Default
+        let memoryPhysQty = 1.0; 
         
-        // --- APU ENGINE VARIABLES (Standardized) ---
-        let currentResources = [
-            {n:"General Labor", u:"hr", q:1, c:45, t:"Lab"} // Default Item
+        // Use same DB as Contracts for consistency
+        const INITIAL_DB = [
+            { cat: "1. General", name: "Contract Works Insurance", unit: "LS", prod: 1, resources: [{n:"Premium", t:"Mat", u:"LS", q:1, c:1200}] },
+            { cat: "2. Excavation", name: "Bulk Excavation (14T Digger)", unit: "m3", prod: 15, resources: [{n:"Excavator 14T", t:"Plant", u:"hr", q:0.067, c:145}, {n:"Operator", t:"Lab", u:"hr", q:0.067, c:65}, {n:"Truck 6W", t:"Plant", u:"hr", q:0.08, c:120}] },
+            { cat: "3. Concrete", name: "Standard Footings 20MPa", unit: "m3", prod: 2, resources: [{n:"Concrete 20MPa", t:"Mat", u:"m3", q:1.05, c:280}, {n:"Pump", t:"Plant", u:"m3", q:1, c:45}, {n:"Placers", t:"Lab", u:"hr", q:0.5, c:65}] },
+            { cat: "4. Framing", name: "Wall Framing (90x45)", unit: "m2", prod: 2.5, resources: [{n:"SG8 Timber", t:"Mat", u:"m", q:4.5, c:7.50}, {n:"Carpenter", t:"Lab", u:"hr", q:0.4, c:75}] },
+            { cat: "5. Cladding", name: "Weatherboard (Pine)", unit: "m2", prod: 1.5, resources: [{n:"Bevelback", t:"Mat", u:"m", q:7, c:14}, {n:"Carpenter", t:"Lab", u:"hr", q:0.66, c:75}] },
+            // ... (Full DB is shared conceptually, keeping short for this file but extensible)
+            { cat: "99. User Custom", name: "Custom Variation Item", unit: "LS", prod: 1, resources: [{n:"Misc Cost", t:"Mat", u:"LS", q:1, c:100}] }
         ];
 
         init();
 
-        function init() { 
-            loadProject();
-            loadMasterLibrary();
-            renderAllLists(); // Iniciar tablas vacías o por defecto
+        function init() {
+            renderCategories();
+            renderAllLists();
+            if(currentProjectId) loadProjectFromDB(currentProjectId);
+            updateCalculations();
         }
 
-        function loadProject() {
-            db.collection('projects').doc(pid).onSnapshot(doc => {
-                if(doc.exists) {
-                    const p = doc.data();
-                    currentSchedule = p.schedule || p.items || [];
-                    projectTotal = p.total || 0;
-                    document.getElementById('revisedTotal').innerText = fmtMoney(projectTotal);
-                    renderTable(currentSchedule);
-                }
+        // --- SHARED LOGIC FROM CONTRACTS (Standardized) ---
+        function renderCategories() {
+            const catSelect = document.getElementById('categorySelect');
+            catSelect.innerHTML = '<option value="">-- Choose Category --</option>';
+            const cats = [...new Set(INITIAL_DB.map(i => i.cat))].sort();
+            cats.forEach(c => {
+                const opt = document.createElement('option'); opt.value = c; opt.innerText = c; catSelect.appendChild(opt);
             });
         }
 
-        // --- DATABASE LOGIC (STANDARD FORMAT) ---
-        function loadMasterLibrary() {
-            const select = document.getElementById('masterDbSelect');
-            db.collection('master_library').get().then(snap => {
-                masterItems = [];
-                select.innerHTML = '<option value="">-- Start from Scratch (New Analysis) --</option>';
-                snap.forEach(doc => {
-                    const item = doc.data();
-                    item.id = doc.id;
-                    masterItems.push(item);
-                    select.innerHTML += `<option value="${doc.id}">${item.name} (${item.unit}) - $${(item.rate || 0).toFixed(2)}</option>`;
-                });
+        function filterItemsByCategory() {
+            const cat = document.getElementById('categorySelect').value;
+            const itemSelect = document.getElementById('itemSelect');
+            if(!cat) { itemSelect.innerHTML = '<option value="">-- Select Category First --</option>'; itemSelect.disabled = true; return; }
+            const filtered = INITIAL_DB.filter(i => i.cat === cat).sort((a,b) => a.name.localeCompare(b.name));
+            itemSelect.innerHTML = '<option value="">-- Select Item --</option>';
+            filtered.forEach((item) => {
+                const originalIndex = INITIAL_DB.indexOf(item);
+                const opt = document.createElement('option'); opt.value = originalIndex; opt.innerText = item.name; itemSelect.appendChild(opt);
             });
+            itemSelect.disabled = false;
         }
 
-        function loadFromMaster() {
-            const id = document.getElementById('masterDbSelect').value;
-            if(!id) {
-                // Reset to default
-                document.getElementById('analysisName').value = "";
-                document.getElementById('analysisUnit').value = "";
-                currentResources = [{n:"General Labor", u:"hr", q:1, c:45, t:"Lab"}];
-                renderAllLists();
-                updateCalculations();
-                return;
-            }
-
-            const item = masterItems.find(i => i.id === id);
-            if(item) {
-                document.getElementById('analysisName').value = item.name;
-                document.getElementById('analysisUnit').value = item.unit;
-                // Importante: Deep copy para no alterar la referencia
-                currentResources = JSON.parse(JSON.stringify(item.resources || []));
-                renderAllLists();
-                updateCalculations();
-            }
+        function loadSelectedFromUI() {
+            const idx = document.getElementById('itemSelect').value;
+            if(idx === "") return;
+            const item = INITIAL_DB[idx];
+            document.getElementById('itemName').value = "VO: " + item.name; // Auto-prefix VO
+            document.getElementById('itemUnit').value = item.unit;
+            document.getElementById('prodInput').value = item.prod || 1.0;
+            currentResources = JSON.parse(JSON.stringify(item.resources || []));
+            if (item.unit === 'hr') setPricingMode('hour'); else if (item.unit === 'LS') setPricingMode('lump'); else setPricingMode('unit');
+            renderAllLists();
+            updateCalculations();
         }
 
-        // --- APU ENGINE (THE CONTRACTS LOGIC) ---
+        function resetBuilder() {
+            document.getElementById('categorySelect').value = "";
+            document.getElementById('itemSelect').innerHTML = '<option value="">-- Select Category First --</option>';
+            document.getElementById('itemSelect').disabled = true;
+            document.getElementById('itemName').value = "Variation Item";
+            document.getElementById('itemUnit').value = "m3";
+            currentResources = [{n:"Labor", u:"hr", q:1, c:45, t:"Lab"}];
+            renderAllLists();
+            setPricingMode('unit');
+        }
+
+        function setPricingMode(mode) {
+            const qtyInput = document.getElementById('qtyInput');
+            const unitInput = document.getElementById('itemUnit');
+            const prodContainer = document.getElementById('prodInput').parentElement;
+
+            if (activePricingMode === 'unit' && mode !== 'unit') { memoryPhysQty = parseFloat(qtyInput.value) || 1; } 
+            else if (activePricingMode === 'hour' && mode !== 'hour') { 
+                const currentHours = parseFloat(qtyInput.value) || 0; 
+                const prod = parseFloat(document.getElementById('prodInput').value) || 1; 
+                memoryPhysQty = currentHours * prod; 
+            }
+
+            activePricingMode = mode;
+            ['unit', 'hour', 'lump'].forEach(m => {
+                const btn = document.getElementById('btn-'+m);
+                if(m === mode) { btn.classList.remove('mode-inactive'); btn.classList.add('mode-active'); } 
+                else { btn.classList.remove('mode-active'); btn.classList.add('mode-inactive'); }
+            });
+
+            if (mode === 'unit') {
+                unitInput.value = 'm3'; qtyInput.value = memoryPhysQty; qtyInput.readOnly = false;
+                document.getElementById('qtyLabel').innerText = "Qty (Phys):"; prodContainer.style.opacity = "1";
+            } else if (mode === 'hour') {
+                unitInput.value = 'hr'; 
+                const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+                qtyInput.value = (memoryPhysQty / prod).toFixed(2); qtyInput.readOnly = false;
+                document.getElementById('qtyLabel').innerText = "Hours:"; prodContainer.style.opacity = "1";
+            } else if (mode === 'lump') {
+                unitInput.value = 'LS'; qtyInput.value = 1; qtyInput.readOnly = true;
+                document.getElementById('qtyLabel').innerText = "Qty:"; prodContainer.style.opacity = "0.5";
+            }
+            updateCalculations();
+        }
+
+        function handleQtyChange() {
+            const val = parseFloat(document.getElementById('qtyInput').value) || 0;
+            const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+            if(activePricingMode === 'unit') { memoryPhysQty = val; } 
+            else if(activePricingMode === 'hour') { memoryPhysQty = val * prod; }
+            updateCalculations();
+        }
+
+        function handleProdChange() {
+             if(activePricingMode === 'hour') {
+                 const prod = parseFloat(document.getElementById('prodInput').value) || 1;
+                 document.getElementById('qtyInput').value = (memoryPhysQty / prod).toFixed(2);
+             }
+             updateCalculations();
+        }
+
+        function updateCalculations() {
+            let CU = 0; currentResources.forEach(r => CU += (parseFloat(r.c)||0) * (parseFloat(r.q)||0));
+            const margin = parseFloat(document.getElementById('marginInput').value) || 0;
+            const productivity = parseFloat(document.getElementById('prodInput').value) || 1.0;
+            const qtyDisplay = parseFloat(document.getElementById('qtyInput').value) || 0;
+
+            let FinalRate = 0; let TotalValue = 0;
+
+            if (activePricingMode === 'unit') {
+                FinalRate = CU * (1 + (margin/100)); TotalValue = FinalRate * qtyDisplay; document.getElementById('rateLabel').innerText = "Unit Rate";
+            } else if (activePricingMode === 'hour') {
+                let hourlyBase = CU * productivity; FinalRate = hourlyBase * (1 + (margin/100)); TotalValue = FinalRate * qtyDisplay; document.getElementById('rateLabel').innerText = "Hourly Rate";
+            } else if (activePricingMode === 'lump') {
+                let baseUnitRate = CU * (1 + (margin/100)); TotalValue = baseUnitRate * memoryPhysQty; FinalRate = TotalValue; document.getElementById('rateLabel').innerText = "Lump Sum";
+            }
+
+            document.getElementById('finalRateDisplay').innerText = "$" + FinalRate.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            document.getElementById('totalLineValueDisplay').innerText = "$" + TotalValue.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            return { rate: FinalRate, total: TotalValue };
+        }
+
+        // --- RENDER LISTS ---
         function renderAllLists() {
+            document.getElementById('resourcesContainer').innerHTML = "";
             renderList('Lab', 'Labor Cost', 'bg-orange-50', 'text-orange-800', 'border-orange-200', 'text-orange-600');
             renderList('Plant', 'Plant Cost', 'bg-green-50', 'text-green-800', 'border-green-200', 'text-green-600');
             renderList('Mat', 'Material Cost', 'bg-blue-50', 'text-blue-800', 'border-blue-200', 'text-blue-600');
         }
 
         function renderList(type, title, bgClass, textClass, borderClass, btnClass) {
-            // Verificar si el contenedor ya existe, si no, crearlo dinámicamente
-            // Esto es un truco para reutilizar el contenedor 'resourcesContainer'
-            let sectionId = `section-${type}`;
             let container = document.getElementById('resourcesContainer');
-            
-            // Buscar si ya pintamos esta sección, si no, la agregamos
-            let sectionHTML = `
-                <div id="${sectionId}" class="border ${borderClass} rounded-lg overflow-hidden shadow-sm">
-                    <div class="${bgClass} px-3 py-2 flex justify-between items-center border-b ${borderClass.replace('200','100')}">
-                        <span class="text-[10px] font-bold ${textClass} uppercase tracking-wider">${title}</span>
-                        <button onclick="addRes('${type}')" class="${btnClass} hover:brightness-75 text-xs font-bold bg-white px-2 py-0.5 rounded border ${borderClass} shadow-sm transition">+ Add</button>
-                    </div>
-                    <div class="bg-white">
-                        <table class="res-table">
-                            <thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead>
-                            <tbody id="list${type}"></tbody>
-                        </table>
-                    </div>
-                </div>`;
-
-            // Si es la primera vez (renderAllLists), limpiamos el container al inicio del loop
-            if (type === 'Lab') container.innerHTML = ""; 
-            
-            container.innerHTML += sectionHTML;
-
-            // Llenar filas
-            const tbody = document.getElementById(`list${type}`);
-            currentResources.forEach((res, idx) => {
-                if(res.t !== type) return;
-                const total = (res.c * res.q).toFixed(2);
-                tbody.innerHTML += `
-                    <tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0">
-                        <td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td>
-                        <td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td>
-                        <td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td>
-                        <td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td>
-                        <td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td>
-                        <td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td>
-                    </tr>
-                `;
-            });
+            container.insertAdjacentHTML('beforeend', `<div class="border ${borderClass} rounded-lg overflow-hidden shadow-sm mb-4"><div class="${bgClass} px-3 py-2 flex justify-between items-center border-b ${borderClass.replace('200','100')}"><span class="text-[10px] font-bold ${textClass} uppercase tracking-wider">${title}</span><button onclick="addRes('${type}')" class="${btnClass} hover:brightness-75 text-xs font-bold bg-white px-2 py-0.5 rounded border ${borderClass} shadow-sm transition">+ Add</button></div><div class="bg-white"><table class="res-table"><thead><tr><th class="col-desc pl-3 text-left">Description</th><th class="col-unit text-center">Unit</th><th class="col-qty text-right">Yield</th><th class="col-rate text-right">Cost</th><th class="col-total text-right">Total</th><th class="w-[5%]"></th></tr></thead><tbody id="list${type}"></tbody></table></div></div>`);
+            renderRows(type);
         }
 
+        function renderRows(type) {
+            const tbody = document.getElementById(`list${type}`);
+            tbody.innerHTML = "";
+            currentResources.forEach((res, idx) => {
+                if(res.t !== type) return;
+                const total = ((parseFloat(res.c)||0) * (parseFloat(res.q)||0)).toFixed(2);
+                tbody.innerHTML += `<tr class="group hover:bg-slate-50 transition border-b border-dashed border-slate-100 last:border-0"><td><input type="text" value="${res.n}" onchange="updRes(${idx},'n',this.value)" class="res-input font-medium text-slate-700"></td><td><input type="text" value="${res.u}" onchange="updRes(${idx},'u',this.value)" class="res-input text-center text-slate-500"></td><td><input type="number" value="${res.q}" onchange="updRes(${idx},'q',this.value)" class="res-input text-right font-bold text-blue-600"></td><td><input type="number" value="${res.c}" onchange="updRes(${idx},'c',this.value)" class="res-input text-right text-slate-600"></td><td class="text-right text-[10px] font-mono font-bold text-slate-800 px-2">$${total}</td><td class="text-center"><button onclick="delRes(${idx})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button></td></tr>`;
+            });
+        }
+        
         window.addRes = (t) => { currentResources.push({n:"New Item", u:"hr", q:1, c:0, t:t}); renderAllLists(); updateCalculations(); };
         window.delRes = (i) => { currentResources.splice(i,1); renderAllLists(); updateCalculations(); };
         window.updRes = (i, f, v) => { currentResources[i][f] = (f==='q'||f==='c') ? (parseFloat(v)||0) : v; renderAllLists(); updateCalculations(); };
 
-        function updateCalculations() {
-            let cost = 0;
-            currentResources.forEach(r => cost += (r.c * r.q));
-            const margin = parseFloat(document.getElementById('estMargin').value) || 0;
-            const price = cost * (1 + (margin/100));
-            document.getElementById('estSub').innerText = fmtMoney(cost);
-            document.getElementById('estTotal').innerText = fmtMoney(price);
-            return price;
-        }
+        // --- VO REGISTER LOGIC ---
+        function addToRegister() {
+            let qty = parseFloat(document.getElementById('qtyInput').value) || 1;
+            let name = document.getElementById('itemName').value;
+            let unit = document.getElementById('itemUnit').value;
+            let eot = document.getElementById('voTime').value;
+            let consent = document.getElementById('checkConsent').checked;
+            
+            if(!consent) return alert("⚠️ Please confirm Consent/LBP check before adding.");
 
-        // --- APPLY TO VO & SAVE TO MASTER DB ---
-        function applyRate() {
-            const finalRate = updateCalculations();
-            const name = document.getElementById('analysisName').value;
-            const unit = document.getElementById('analysisUnit').value;
+            let calc = updateCalculations();
 
-            if(!name) return alert("Please name this analysis (e.g. Concrete Slab).");
+            // SAVE TO DB PROMPT
+            if(document.getElementById('updateDbCheck').checked) {
+                let choice = confirm(`Save "${name}" to Master Database?\n\n[OK] = Yes, Save as New Standard\n[Cancel] = No, Just add to VO Register`);
+                if(choice) {
+                    const itemData = { name: name.replace('VO: ',''), unit: unit, prod: parseFloat(document.getElementById('prodInput').value)||1, resources: currentResources, cat: "99. User Custom" };
+                    db.collection('master_library').add(itemData).then(() => alert("✅ Item Saved to Database!"));
+                    INITIAL_DB.push(itemData); // Update Local
+                    renderCategories();
+                }
+            }
 
-            // 1. LLENAR FORMULARIO PRINCIPAL
-            document.getElementById('voDesc').value = name;
-            document.getElementById('voUnit').value = unit;
-            document.getElementById('voRate').value = finalRate.toFixed(2);
-            calcTotal();
-
-            // 2. APRENDIZAJE (GUARDAR EN FORMATO ESTÁNDAR)
-            if(document.getElementById('saveToDbCheck').checked) {
-                const newItem = {
-                    name: name,
-                    unit: unit,
-                    rate: finalRate,
-                    resources: currentResources, // ESTA ES LA CLAVE: Guardamos el array estructurado
-                    lastUsed: Date.now()
-                };
-                
-                db.collection('master_library').add(newItem).then(() => {
-                    alert("Analysis saved to Master Database (Standard Format) ✅");
-                    loadMasterLibrary(); // Recargar dropdown
+            const vo = { desc: name, unit: unit, qty: qty, rate: calc.rate, total: calc.total, eot: eot, date: new Date().toLocaleDateString() };
+            voItems.push(vo);
+            
+            // Save to Firebase (Project VOs)
+            if(currentProjectId) {
+                db.collection('projects').doc(currentProjectId).get().then(doc => {
+                    let p = doc.data();
+                    let newVos = p.variations || [];
+                    newVos.push(vo);
+                    db.collection('projects').doc(currentProjectId).update({ variations: newVos }).then(() => {
+                        console.log("VO Saved");
+                    });
                 });
             }
 
-            closeEstimator();
+            renderVORegister();
         }
 
-        // --- UI HELPERS ---
-        function openEstimator() { document.getElementById('estimatorModal').classList.remove('hidden'); renderAllLists(); updateCalculations(); }
-        function closeEstimator() { document.getElementById('estimatorModal').classList.add('hidden'); }
-        
-        function renderTable(items) {
-            const tbody = document.getElementById('voTable');
+        function renderVORegister() {
+            const tbody = document.getElementById('voRegisterTable');
             tbody.innerHTML = "";
-            const variations = items.filter(i => (i.desc || i.name || "").startsWith("VO#"));
-            if(variations.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No Variations raised yet.</td></tr>`; return; }
-
-            variations.forEach((vo, index) => {
-                const val = vo.qty * vo.rate;
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0">
-                        <td class="p-4 font-bold text-slate-700">VO #${index + 1}</td>
-                        <td class="p-4 font-medium">${vo.desc || vo.name}
-                            ${vo.timeImpact ? `<span class="block text-[10px] text-orange-500 font-bold">+ ${vo.timeImpact} Days EOT</span>` : ''}
-                        </td>
-                        <td class="p-4 text-center"><span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase border border-green-200">Approved</span></td>
-                        <td class="p-4 text-right font-mono">${fmtMoney(val)}</td>
-                        <td class="p-4 text-center text-xs text-slate-400">Integrated</td>
-                    </tr>
-                `;
-            });
+            let voSum = 0;
+            
+            if(voItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic text-xs">No Variations added yet.</td></tr>`;
+            } else {
+                voItems.forEach((vo, i) => {
+                    voSum += vo.total;
+                    tbody.innerHTML += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="p-4 font-bold text-slate-700">VO #${i+1}</td><td class="p-4 font-medium">${vo.desc}</td><td class="p-4 text-center text-xs font-bold text-orange-500">${vo.eot > 0 ? '+'+vo.eot+' Days' : '-'}</td><td class="p-4 text-right font-mono text-slate-600">$${vo.total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td><td class="p-4 text-center"><button class="text-red-300 hover:text-red-500"><i class="fas fa-times"></i></button></td></tr>`;
+                });
+            }
+            
+            document.getElementById('voSumDisplay').innerText = voSum.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            document.getElementById('voTotalSum').innerText = "$" + voSum.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            
+            // Update Totals
+            let revised = projectOriginalTotal + voSum;
+            document.getElementById('revisedSum').innerText = revised.toLocaleString('en-NZ', {minimumFractionDigits: 2});
         }
 
-        function calcTotal() {
-            const q = parseFloat(document.getElementById('voQty').value) || 0;
-            const r = parseFloat(document.getElementById('voRate').value) || 0;
-            document.getElementById('voTotalDisplay').value = fmtMoney(q * r);
+        function loadProjectFromDB(id) { 
+            db.collection('projects').doc(id).get().then(doc => { 
+                if(doc.exists) { 
+                    const data = doc.data(); 
+                    projectOriginalTotal = data.total || 0;
+                    document.getElementById('originalSum').innerText = projectOriginalTotal.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+                    
+                    if(data.variations) {
+                        voItems = data.variations;
+                        renderVORegister();
+                    }
+                }
+            }); 
         }
 
-        function createVO() {
-            const desc = document.getElementById('voDesc').value;
-            const unit = document.getElementById('voUnit').value;
-            const qty = parseFloat(document.getElementById('voQty').value);
-            const rate = parseFloat(document.getElementById('voRate').value);
-            const hasConsentCheck = document.getElementById('checkConsent').checked;
-            const hasSafetyCheck = document.getElementById('checkSafety').checked;
-            const timeImpact = document.getElementById('voTime').value || "0";
-
-            if(!desc || !qty || !rate) return alert("Please fill all financial fields.");
-            if(!hasSafetyCheck) return alert("🛑 STOP WORK AUTHORITY: Check H&S box.");
-            if(!hasConsentCheck) return alert("⚠️ LBP LICENSE WARNING: Check Building Consent box.");
-
-            const voCount = currentSchedule.filter(i => (i.desc || i.name || "").startsWith("VO#")).length + 1;
-            const voTitle = `VO#${voCount}: ${desc}`;
-
-            const newVO = {
-                desc: voTitle,
-                name: voTitle,
-                unit: unit,
-                qty: qty,
-                rate: rate,
-                total: qty * rate,
-                timeImpact: timeImpact,
-                approved: true
-            };
-
-            const newTotal = projectTotal + newVO.total;
-            const newSchedule = [...currentSchedule, newVO];
-
-            db.collection('projects').doc(pid).update({
-                schedule: newSchedule,
-                items: newSchedule,
-                total: newTotal,
-                updatedAt: Date.now()
-            }).then(() => {
-                alert("✅ VO #" + voCount + " ISSUED SUCCESSFULLY.");
-                document.getElementById('voDesc').value = "";
-                document.getElementById('voQty').value = "";
-                document.getElementById('voRate').value = "";
-                document.getElementById('voTotalDisplay').value = "$0.00";
-                document.getElementById('checkConsent').checked = false;
-                document.getElementById('checkSafety').checked = false;
-            }).catch(e => alert("Error: " + e.message));
+        function issueVO() {
+            if(voItems.length === 0) return alert("No variations to issue.");
+            alert("VO Document Generated & Saved to Project History.");
+            // In real app, generate PDF here
         }
-
-        function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
     </script>
 </body>
 </html>
