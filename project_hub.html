@@ -122,13 +122,13 @@
             <div class="space-y-4">
                 <h2 class="font-bold text-slate-700 text-sm uppercase tracking-wider border-b pb-2">Administration</h2>
                 
-                <div onclick="openLink('master_contract.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
+                <div onclick="openLink('contracts.html')" class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:border-blue-400 cursor-pointer transition group flex items-center gap-4">
                     <div class="bg-blue-50 w-10 h-10 rounded flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
                         <i class="fas fa-file-contract"></i>
                     </div>
                     <div>
                         <h3 class="font-bold text-slate-700">Master Contract</h3>
-                        <p class="text-xs text-slate-400">Rates & Schedule (Read Only)</p>
+                        <p class="text-xs text-slate-400">Rates & Schedule</p>
                     </div>
                 </div>
 
@@ -197,13 +197,14 @@
             }
         });
 
-        // --- LOAD CLAIMS HISTORY ---
+        // --- LOAD CLAIMS HISTORY (NEW!) ---
+        // Esto buscará una colección 'claims' que crearemos en el siguiente paso
         db.collection('claims')
             .where('projectId', '==', pid)
             .orderBy('claimNumber', 'desc')
             .onSnapshot(snap => {
                 const tbody = document.getElementById('claimsTable');
-                if(snap.empty) return; 
+                if(snap.empty) return; // Keep default message if empty
                 
                 tbody.innerHTML = "";
                 snap.forEach(doc => {
@@ -258,11 +259,13 @@
         }
 
         function createNewClaim() {
+            // Limpia ID de valuación antigua para crear una nueva
             localStorage.removeItem('civilmate_current_claim_id');
             window.location.href = 'valuations.html';
         }
 
         function viewClaim(claimId) {
+            // Guarda ID para que valuations.html sepa qué cargar
             localStorage.setItem('civilmate_current_claim_id', claimId);
             window.location.href = 'valuations.html';
         }
