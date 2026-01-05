@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Contract Schedule - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f1f5f9; font-family: 'Times New Roman', serif; }
+        .contract-sheet { background: white; min-height: 297mm; padding: 40px; margin: 40px auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); max-width: 210mm; }
+        .contract-header { border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 30px; }
+        @media print {
+            body { background: white; margin: 0; }
+            .contract-sheet { box-shadow: none; margin: 0; width: 100%; max-width: none; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="py-8">
+
+    <div class="max-w-[210mm] mx-auto mb-6 no-print flex justify-between">
+        <button onclick="window.location.href='project_hub.html'" class="bg-white px-4 py-2 rounded shadow font-sans text-sm font-bold text-slate-600 hover:bg-slate-50"><i class="fas fa-arrow-left"></i> Dashboard</button>
+        <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-2 rounded shadow font-sans text-sm font-bold hover:bg-black"><i class="fas fa-print"></i> Print Contract</button>
+    </div>
+
+    <div class="contract-sheet">
+        <div class="contract-header text-center">
+            <h1 class="text-4xl font-bold text-slate-900 uppercase tracking-widest mb-2">Schedule of Works</h1>
+            <p class="text-sm font-bold text-slate-500 uppercase font-sans">Attachment A - NZS 3910 Construction Contract</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 mb-8 text-sm">
+            <div>
+                <p class="font-bold text-xs text-slate-400 uppercase font-sans">Project</p>
+                <p class="text-lg font-bold text-slate-800" id="mcProjName">Loading...</p>
+                <p class="text-slate-600" id="mcAddress">...</p>
+            </div>
+            <div class="text-right">
+                <p class="font-bold text-xs text-slate-400 uppercase font-sans">Contract Reference</p>
+                <p class="text-lg font-bold text-slate-800">MASTER-001</p>
+                <p class="text-slate-600">Date: <span id="mcDate">...</span></p>
+            </div>
+        </div>
+
+        <table class="w-full text-left mb-8 border-collapse text-sm">
+            <thead class="bg-slate-900 text-white uppercase text-[10px] font-sans">
+                <tr>
+                    <th class="py-3 pl-4 w-12 text-center">#</th>
+                    <th class="py-3 pl-2">Description of Work Item</th>
+                    <th class="py-3 text-center">Unit</th>
+                    <th class="py-3 text-center">Qty</th>
+                    <th class="py-3 text-right">Rate</th>
+                    <th class="py-3 text-right pr-4">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="mcTableBody" class="divide-y divide-slate-200"></tbody>
+            <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-900 text-slate-800">
+                <tr>
+                    <td colspan="5" class="py-3 text-right pr-6 uppercase text-xs font-sans">Total Contract Sum (Ex GST)</td>
+                    <td class="py-3 text-right pr-4 text-lg" id="mcTotal">$0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="mt-16 grid grid-cols-2 gap-16">
+            <div><div class="border-b border-black h-12"></div><p class="text-[10px] font-bold uppercase mt-2 font-sans text-slate-500">Signed for Contractor</p></div>
+            <div><div class="border-b border-black h-12"></div><p class="text-[10px] font-bold uppercase mt-2 font-sans text-slate-500">Signed for Principal</p></div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const pid = localStorage.getItem('civilmate_current_project_id');
+
+        document.getElementById('mcDate').innerText = new Date().toLocaleDateString('en-NZ');
+
+        if(pid) {
+            db.collection('projects').doc(pid).get().then(doc => {
+                if(doc.exists) {
+                    const p = doc.data();
+                    document.getElementById('mcProjName').innerText = p.name;
+                    document.getElementById('mcAddress').innerText = p.address;
+                    
+                    const items = p.schedule || p.items || [];
+                    const tbody = document.getElementById('mcTableBody');
+                    let total = 0;
+                    
+                    items.forEach((item, i) => {
+                        const lineTotal = item.qty * item.rate;
+                        total += lineTotal;
+                        tbody.innerHTML += `
+                            <tr class="border-b border-slate-100">
+                                <td class="py-3 text-center text-slate-400 font-sans text-xs">${i+1}</td>
+                                <td class="py-3 pl-2 font-bold">${item.desc || item.name}</td>
+                                <td class="py-3 text-center font-sans text-xs">${item.unit}</td>
+                                <td class="py-3 text-center font-sans">${item.qty}</td>
+                                <td class="py-3 text-right font-sans">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
+                                <td class="py-3 text-right pr-4 font-sans font-bold">$${lineTotal.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
+                            </tr>`;
+                    });
+                    document.getElementById('mcTotal').innerText = "$" + total.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+                }
+            });
+        }
+    </script>
+</body>
+</html>
