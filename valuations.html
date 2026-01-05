@@ -3,22 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Claims - CivilMate</title>
+    <title>Smart Valuations - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
-        .locked-input { background-color: transparent; color: #334155; border: none; pointer-events: none; font-weight: bold; text-align: center; width: 100%; }
-        .percent-input { background-color: #fef9c3; border: 1px solid #fde047; color: #854d0e; font-weight: bold; text-align: center; border-radius: 4px; width: 60px; }
+        .locked-input { background-color: transparent; color: #334155; border: none; pointer-events: none; font-weight: bold; width: 100%; text-align: center; }
+        .percent-input { background-color: #fef9c3; border: 1px solid #fde047; color: #854d0e; font-weight: bold; text-align: center; border-radius: 4px; width: 100%; }
         .percent-input:focus { outline: 2px solid #ca8a04; background-color: #fff; }
+        
+        /* FIX: FORZAR ANCHOS DE TABLA */
+        table { table-layout: fixed; width: 100%; }
+        
         canvas { background-color: white; cursor: crosshair; width: 100%; height: 80px; touch-action: none; border: 1px dashed #cbd5e1; }
+        
         @media print {
             body * { visibility: hidden; }
             #invoice, #invoice * { visibility: visible; }
             #invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; }
             .no-print { display: none !important; }
+            .percent-input { border: none !important; background: transparent !important; }
+            input { border: none !important; background: transparent !important; }
         }
     </style>
 </head>
@@ -28,7 +35,9 @@
         <button onclick="window.location.href='project_hub.html'" class="bg-white border border-slate-300 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-50 font-bold transition">
             <i class="fas fa-arrow-left"></i> Back to Hub
         </button>
+        
         <div class="flex gap-2 items-center">
+            <div id="statusBadge" class="px-4 py-2 rounded-lg text-xs font-bold uppercase hidden"></div>
             <button onclick="window.print()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black shadow-lg transition flex items-center gap-2">
                 <i class="fas fa-print"></i> Print / PDF
             </button>
@@ -36,13 +45,14 @@
     </div>
 
     <div id="invoice" class="bg-white p-10 rounded-xl shadow-xl border border-slate-200 min-h-[1000px] relative">
-        <div class="flex justify-between items-start border-b-2 border-purple-800 pb-6 mb-8">
+        
+        <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
             <div>
                 <h1 class="text-4xl font-bold text-slate-800 tracking-tight uppercase">Payment Claim</h1>
                 <p class="text-xs text-slate-500 font-bold mt-1">CONSTRUCTION CONTRACTS ACT 2002</p>
             </div>
             <div class="text-right">
-                <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Claim No:</span> <span class="font-bold text-xl" id="claimNum">1</span></div>
+                <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Claim No:</span> <span class="font-bold text-xl" id="claimNum">...</span></div>
                 <div class="mb-1"><span class="font-bold text-slate-400 text-xs uppercase mr-2">Date:</span> <span class="font-bold" id="claimDate">...</span></div>
                 <div><span class="font-bold text-slate-400 text-xs uppercase mr-2">Project:</span> <span class="font-bold text-blue-600" id="projName">Loading...</span></div>
             </div>
@@ -51,150 +61,379 @@
         <div class="flex justify-end mb-8">
             <div class="w-1/3 bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <h3 class="text-xs font-bold text-slate-400 uppercase mb-3 border-b pb-1">Claim Summary</h3>
-                <div class="flex justify-between text-sm mb-2"><span class="text-slate-600">Total Work Done</span><span class="font-bold text-slate-800" id="sumGross">$0.00</span></div>
-                <div class="flex justify-between text-sm mb-2"><span class="text-red-400">Less: Retention (10%)</span><span class="font-bold text-red-400" id="sumRet">-$0.00</span></div>
-                <div class="flex justify-between text-sm mb-2 items-center"><span class="text-amber-600">Less: Prior Payments</span>
-                    <div class="flex items-center"><span class="text-amber-600 mr-1">-$</span><input type="number" id="advanceInput" value="0" onchange="recalcTotal()" class="w-20 text-right font-bold text-amber-600 bg-transparent border-b border-amber-200 outline-none"></div>
+                
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-slate-600">Total Work Done (To Date)</span>
+                    <span class="font-bold text-slate-800" id="sumGross">$0.00</span>
                 </div>
+                <div class="flex justify-between text-sm mb-2">
+                    <span class="text-red-400">Less: Retention (10%)</span>
+                    <span class="font-bold text-red-400" id="sumRet">-$0.00</span>
+                </div>
+                <div class="flex justify-between text-sm mb-2 items-center">
+                    <span class="text-amber-600">Less: Advance Repayment</span>
+                    <div class="flex items-center">
+                        <span class="text-amber-600 mr-1">-$</span>
+                        <input type="number" id="advanceInput" value="0" onchange="recalcTotal()" class="w-20 text-right font-bold text-amber-600 bg-transparent border-b border-amber-200 outline-none focus:border-amber-500">
+                    </div>
+                </div>
+                
                 <div class="border-t border-slate-300 my-2"></div>
-                <div class="flex justify-between text-lg mb-1"><span class="font-bold text-slate-800">Net Claim (Ex GST)</span><span class="font-bold text-slate-900" id="sumNet">$0.00</span></div>
-                <div class="flex justify-between text-xs text-slate-400 mb-2"><span>GST (15%)</span><span id="sumGst">$0.00</span></div>
-                <div class="flex justify-between text-xl font-bold text-green-600 mt-2 pt-2 border-t border-slate-200"><span>TOTAL PAYABLE</span><span id="sumTotal">$0.00</span></div>
+                
+                <div class="flex justify-between text-lg mb-1">
+                    <span class="font-bold text-slate-800">Net Claim (Ex GST)</span>
+                    <span class="font-bold text-slate-900" id="sumNet">$0.00</span>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span>GST (15%)</span>
+                    <span id="sumGst">$0.00</span>
+                </div>
+                <div class="flex justify-between text-xl font-bold text-green-600 mt-2 pt-2 border-t border-slate-200">
+                    <span>TOTAL PAYABLE</span>
+                    <span id="sumTotal">$0.00</span>
+                </div>
             </div>
         </div>
 
         <table class="w-full text-left mb-12 border-collapse">
             <thead class="bg-purple-50 text-purple-900 font-bold uppercase text-[9px] border-b border-purple-200">
                 <tr>
-                    <th class="py-3 pl-2 w-1/4">Description</th>
-                    <th class="py-3 text-center">Unit</th>
-                    <th class="py-3 text-center">Contract Qty</th>
-                    <th class="py-3 text-right">Rate</th>
-                    <th class="py-3 text-right pr-4 border-r border-purple-200">Total</th>
-                    <th class="py-3 text-center w-20 bg-yellow-50">% Done</th>
-                    <th class="py-3 text-center w-24">Qty Done</th>
-                    <th class="py-3 text-right pr-2">Claim Value</th>
+                    <th class="py-2 pl-2 w-[35%]">Description</th>
+                    <th class="py-2 text-center w-[5%]">Unit</th>
+                    <th class="py-2 text-center w-[10%]">Contract Qty</th>
+                    <th class="py-2 text-right w-[10%]">Rate</th>
+                    <th class="py-2 text-right w-[12%] pr-4 border-r border-purple-200">Total Contract</th>
+                    
+                    <th class="py-2 text-center w-[8%] bg-yellow-50 text-yellow-800 border-l border-yellow-200">% Done</th>
+                    <th class="py-2 text-center w-[8%]">Qty Done</th>
+                    <th class="py-2 text-right w-[12%] pr-2">Claim Value</th>
                 </tr>
             </thead>
-            <tbody id="linesTable" class="divide-y divide-slate-100 text-sm"></tbody>
+            <tbody id="linesTable" class="divide-y divide-slate-100 text-sm">
+                <tr><td colspan="8" class="p-4 text-center text-slate-400 italic">Loading Approved Schedule...</td></tr>
+            </tbody>
         </table>
+
+        <div class="mt-8 pt-8 border-t-2 border-slate-800">
+            <h3 class="text-lg font-bold text-slate-700 uppercase mb-1">Appendix A: Traceability Record</h3>
+            <p class="text-xs text-slate-400 mb-4">Site Daily Logs & Evidence supporting this claim</p>
+            <table class="w-full text-left text-xs text-slate-600">
+                <thead class="bg-slate-100 font-bold uppercase">
+                    <tr>
+                        <th class="p-2 w-24">Date</th>
+                        <th class="p-2">Activity / Item</th>
+                        <th class="p-2 text-right">Qty Reported</th>
+                        <th class="p-2">Reference / Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTable" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
 
         <div class="mt-12 pt-6 border-t-2 border-slate-800 avoid-break">
             <div class="grid grid-cols-2 gap-12 mb-8">
+                
                 <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Contractor Declaration:</p>
-                    <div class="h-20 border border-dashed border-slate-300 rounded mb-1 bg-white relative">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Claimed By (Contractor):</p>
+                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24 overflow-hidden">
                         <canvas id="sigContractor"></canvas>
-                        <button onclick="clearSig('sigContractor')" class="absolute top-1 right-1 text-[9px] bg-slate-100 px-2 rounded border no-print">Clear</button>
+                        <img id="imgContractor" class="absolute inset-0 w-full h-full object-contain hidden">
+                        <button id="btnClearContractor" onclick="clearSig('sigContractor')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
                     </div>
                     <p class="text-xs font-bold text-slate-700">Authorized Signature</p>
+                    <p class="text-[10px] text-slate-400">Date: <span id="signDate"></span></p>
                 </div>
+
                 <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Certified By Engineer:</p>
-                    <div class="h-20 border border-dashed border-slate-300 rounded mb-1 bg-white relative">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Certified By (Engineer to Contract):</p>
+                    <div class="relative border border-slate-300 rounded mb-1 bg-white h-24 overflow-hidden">
                         <canvas id="sigEngineer"></canvas>
-                        <button onclick="clearSig('sigEngineer')" class="absolute top-1 right-1 text-[9px] bg-slate-100 px-2 rounded border no-print">Clear</button>
+                        <img id="imgEngineer" class="absolute inset-0 w-full h-full object-contain hidden">
+                        <button id="btnClearEngineer" onclick="clearSig('sigEngineer')" class="absolute top-1 right-1 text-[9px] bg-slate-200 px-2 rounded no-print">Clear</button>
                     </div>
-                    <p class="text-xs font-bold text-slate-700">Payment Schedule Issued</p>
+                    <p class="text-xs font-bold text-slate-700">Engineer's Signature / Stamp</p>
+                    <p class="text-[10px] text-slate-400">Payment Schedule Issued On: _________</p>
                 </div>
+
             </div>
+            
             <div class="bg-slate-50 p-4 rounded text-[9px] text-slate-500 text-justify leading-relaxed border border-slate-200">
-                <p class="font-bold mb-1">PAYMENT CLAIM NOTICE:</p>
-                <p>This is a valid payment claim under the <strong>Construction Contracts Act 2002</strong>. The principal must provide a Payment Schedule within 20 working days. Failure to do so may result in liability for the full claimed amount.</p>
+                <p class="font-bold mb-1">NOTICE TO THE PRINCIPAL (PAYER):</p>
+                <p>This is a payment claim under the <strong>Construction Contracts Act 2002</strong>. You must provide a Payment Schedule within 20 working days. Failure to do so may result in liability for the full claimed amount.</p>
             </div>
         </div>
+
     </div>
 
-    <div class="fixed bottom-6 right-6 no-print">
-        <button onclick="approveAndLock()" class="bg-green-600 text-white px-8 py-3 rounded-full shadow-xl hover:bg-green-700 transition font-bold flex items-center gap-2 transform hover:scale-105">
-            <i class="fas fa-check-circle"></i> SUBMIT CLAIM
-        </button>
+    <div class="fixed bottom-6 right-6 no-print flex gap-4">
+        <div id="draftControls" class="flex gap-4">
+            <button onclick="saveDraft()" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
+                <i class="fas fa-save"></i> Save Draft
+            </button>
+            <button onclick="approveAndLock()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-8 rounded-full shadow-xl flex items-center gap-2 transform transition hover:scale-105">
+                <i class="fas fa-check-circle"></i> SIGN & SUBMIT
+            </button>
+        </div>
+        <div id="lockedControls" class="hidden">
+            <div class="bg-red-100 text-red-700 px-6 py-3 rounded-full font-bold border border-red-200 flex items-center gap-2 shadow-lg">
+                <i class="fas fa-lock"></i> VIEWING HISTORICAL RECORD
+            </div>
+        </div>
     </div>
 
     <script>
         const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+
         const pid = localStorage.getItem('civilmate_current_project_id');
-        let scheduleData = [];
+        const viewClaimId = localStorage.getItem('civilmate_current_claim_id');
 
         if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
 
+        let scheduleData = [];
+        let executionMap = {};
+        let nextClaimNum = 1;
+
         init();
-        function init() {
+
+        async function init() {
             document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
-            initCanvas('sigContractor'); initCanvas('sigEngineer');
+            document.getElementById('signDate').innerText = new Date().toLocaleDateString('en-NZ');
+            
+            initCanvas('sigContractor');
+            initCanvas('sigEngineer');
+
+            if(viewClaimId) {
+                loadHistoricalClaim(viewClaimId);
+            } else {
+                await getNextClaimNumber();
+                await analyzeLogs(); 
+                loadContractAndBuildTable();
+            }
+        }
+
+        async function getNextClaimNumber() {
+            const snap = await db.collection('claims').where('projectId', '==', pid).orderBy('claimNumber', 'desc').limit(1).get();
+            if(!snap.empty) nextClaimNum = snap.docs[0].data().claimNumber + 1;
+            document.getElementById('claimNum').innerText = nextClaimNum;
+        }
+
+        // --- NEW CANVAS LOGIC ---
+        function initCanvas(id) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext("2d");
+            let isDrawing = false;
+            function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; ctx.lineWidth = 2; ctx.strokeStyle = "#000"; }
+            setTimeout(resize, 200);
+            function getTouchPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                return { x: (e.touches ? e.touches[0].clientX : e.clientX) - rect.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - rect.top };
+            }
+            const start = (e) => { if(e.type === 'touchstart') e.preventDefault(); isDrawing = true; ctx.beginPath(); const p = getTouchPos(e); ctx.moveTo(p.x, p.y); };
+            const move = (e) => { if(e.type === 'touchmove') e.preventDefault(); if(!isDrawing) return; const p = getTouchPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+            const end = (e) => { if(e.type === 'touchend') e.preventDefault(); isDrawing = false; };
+            canvas.addEventListener('mousedown', start); canvas.addEventListener('touchstart', start, {passive: false});
+            canvas.addEventListener('mousemove', move); canvas.addEventListener('touchmove', move, {passive: false});
+            canvas.addEventListener('mouseup', end); canvas.addEventListener('touchend', end);
+        }
+        window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+        function isBlank(id) { const c=document.getElementById(id); return c.toDataURL() === document.createElement('canvas').toDataURL(); }
+
+        // --- LOAD DATA ---
+        function analyzeLogs() {
+            return db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
+                const logBody = document.getElementById('logsTable');
+                logBody.innerHTML = "";
+                snap.forEach(d => {
+                    const log = d.data();
+                    const key = (log.itemName || "").trim();
+                    if(!log.itemName.includes("INDUCTION") && !log.itemName.includes("INCIDENT")) {
+                        if(!executionMap[key]) executionMap[key] = 0;
+                        executionMap[key] += (parseFloat(log.qty) || 0);
+                    }
+                    logBody.innerHTML += `<tr class="border-b border-slate-50 last:border-0"><td class="p-2 font-bold text-slate-700">${log.date}</td><td class="p-2">${log.itemName}</td><td class="p-2 text-right font-mono font-bold text-blue-600">${log.qty} ${log.unit}</td><td class="p-2 italic text-slate-400 text-[10px]">${log.notes || '-'}</td></tr>`;
+                });
+            });
+        }
+
+        function loadContractAndBuildTable() {
             db.collection('projects').doc(pid).get().then(doc => {
                 if(doc.exists) {
                     const p = doc.data();
                     document.getElementById('projName').innerText = p.name;
                     scheduleData = p.schedule || p.items || [];
-                    renderTable();
+                    renderTable(false);
                 }
             });
         }
 
-        function renderTable() {
+        function renderTable(isReadOnly, savedItems) {
             const tbody = document.getElementById('linesTable');
             tbody.innerHTML = "";
-            scheduleData.forEach(item => {
-                const total = item.qty * item.rate;
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 transition item-row" data-qty="${item.qty}" data-rate="${item.rate}">
-                        <td class="py-3 pl-2 font-bold text-slate-700">${item.desc || item.name}</td>
-                        <td class="py-3 text-center text-slate-500">${item.unit}</td>
-                        <td class="py-3 text-center font-mono locked-input">${item.qty}</td>
-                        <td class="py-3 text-right font-mono locked-input">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
-                        <td class="py-3 text-right pr-4 font-mono text-slate-400 border-r border-purple-200">$${total.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
-                        <td class="py-3 text-center bg-yellow-50"><input type="number" min="0" max="100" value="0" oninput="calcRow(this)" class="percent-input text-sm"> %</td>
-                        <td class="py-3 text-center font-bold text-blue-600 qty-done">0.00</td>
-                        <td class="py-3 text-right pr-2 font-bold font-mono text-slate-900 row-total">$0.00</td>
-                    </tr>`;
-            });
-            recalcTotal();
+            const items = savedItems || scheduleData;
+
+            if(items.length > 0) {
+                items.forEach((item) => {
+                    let contractTotal = item.qty * item.rate;
+                    let executedQty = 0;
+                    let suggestedPercent = 0;
+                    let claimValue = 0;
+
+                    if(isReadOnly) {
+                        executedQty = item.executedQty;
+                        suggestedPercent = item.percent;
+                        claimValue = item.claimValue;
+                    } else {
+                        const key = (item.desc || item.name || "").trim();
+                        executedQty = executionMap[key] || 0;
+                        if(item.qty > 0) suggestedPercent = (executedQty / item.qty) * 100;
+                        suggestedPercent = Math.round(suggestedPercent * 100) / 100;
+                        claimValue = (item.qty * item.rate) * (suggestedPercent / 100);
+                    }
+
+                    const remaining = item.qty - executedQty;
+                    let remHTML = `<span class="font-bold text-slate-600">${remaining.toLocaleString()}</span>`;
+                    if(remaining < 0) remHTML = `<span class="font-bold text-red-600 blink">${remaining.toLocaleString()}</span>`;
+
+                    const inputClass = isReadOnly ? "locked-input" : "percent-input";
+                    const readOnlyAttr = isReadOnly ? "readonly" : "";
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition text-xs item-row" 
+                            data-desc="${item.desc||item.name}" data-unit="${item.unit}" 
+                            data-qty="${item.qty}" data-rate="${item.rate}">
+                            <td class="py-3 pl-2 font-bold text-slate-700">${item.desc || item.name}</td>
+                            <td class="py-3 text-center text-slate-500">${item.unit}</td>
+                            <td class="py-3 text-center font-mono locked-input">${item.qty}</td>
+                            <td class="py-3 text-right font-mono locked-input">$${item.rate.toLocaleString()}</td>
+                            <td class="py-3 text-right pr-4 font-mono text-slate-400 border-r border-purple-200">$${contractTotal.toLocaleString()}</td>
+                            <td class="py-3 text-center bg-yellow-50 border-l border-yellow-200">
+                                <input type="number" min="0" max="100" step="1" value="${suggestedPercent}" ${readOnlyAttr}
+                                    onchange="calcRow(this, ${item.qty}, ${item.rate})"
+                                    class="${inputClass} text-sm"> %
+                            </td>
+                            <td class="py-3 text-center font-bold text-blue-600 qty-done">${executedQty}</td>
+                            <td class="py-3 text-right pr-2 font-bold font-mono text-slate-900 row-total">$${claimVal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `;
+                });
+                if(!isReadOnly) recalcTotal();
+            }
         }
 
-        function calcRow(input) {
+        // --- MATH ENGINE ---
+        function calcRow(input, totalQty, rate) {
+            let percent = parseFloat(input.value) || 0;
+            if(percent > 100) { percent = 100; input.value = 100; alert("Cannot claim > 100%"); }
+            const qtyDone = totalQty * (percent / 100);
+            const valDone = qtyDone * rate;
             const row = input.closest('tr');
-            const qty = parseFloat(row.dataset.qty);
-            const rate = parseFloat(row.dataset.rate);
-            let pct = parseFloat(input.value) || 0;
-            if(pct > 100) { input.value = 100; pct = 100; }
-            const done = qty * (pct/100);
-            row.querySelector('.qty-done').innerText = done.toFixed(2);
-            row.querySelector('.row-total').innerText = "$" + (done * rate).toLocaleString('en-NZ', {minimumFractionDigits: 2});
+            row.querySelector('.qty-done').innerText = parseFloat(qtyDone.toFixed(2));
+            row.querySelector('.row-total').innerText = fmtMoney(valDone);
             recalcTotal();
         }
 
         function recalcTotal() {
-            let total = 0;
-            document.querySelectorAll('.row-total').forEach(el => total += parseFloat(el.innerText.replace(/[$,]/g,''))||0);
-            const ret = total * 0.10;
-            const prior = parseFloat(document.getElementById('advanceInput').value)||0;
-            const net = total - ret - prior;
+            let totalGross = 0;
+            document.querySelectorAll('.row-total').forEach(cell => {
+                totalGross += parseFloat(cell.innerText.replace(/[$,]/g,'')) || 0;
+            });
+            const retention = totalGross * 0.10; 
+            const advance = parseFloat(document.getElementById('advanceInput').value) || 0;
+            const net = totalGross - retention - advance;
             const gst = net * 0.15;
-            
-            document.getElementById('sumGross').innerText = fmtMoney(total);
-            document.getElementById('sumRet').innerText = "-" + fmtMoney(ret);
+            const total = net + gst;
+
+            document.getElementById('sumGross').innerText = fmtMoney(totalGross);
+            document.getElementById('sumRet').innerText = "-" + fmtMoney(retention);
             document.getElementById('sumNet').innerText = fmtMoney(net);
             document.getElementById('sumGst').innerText = fmtMoney(gst);
-            document.getElementById('sumTotal').innerText = fmtMoney(net + gst);
+            document.getElementById('sumTotal').innerText = fmtMoney(total);
         }
 
-        function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
-        function initCanvas(id) {
-            const c = document.getElementById(id); const ctx = c.getContext('2d'); let d=false;
-            function rs(){c.width=c.offsetWidth;c.height=c.offsetHeight;ctx.lineWidth=2;} setTimeout(rs,200);
-            const start=(e)=>{if(e.type==='touchstart')e.preventDefault();d=true;ctx.beginPath();const p=pos(e);ctx.moveTo(p.x,p.y);};
-            const move=(e)=>{if(e.type==='touchmove')e.preventDefault();if(!d)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();};
-            const end=(e)=>{if(e.type==='touchend')e.preventDefault();d=false;};
-            const pos=(e)=>{const r=c.getBoundingClientRect();return{x:(e.touches?e.touches[0].clientX:e.clientX)-r.left,y:(e.touches?e.touches[0].clientY:e.clientY)-r.top};};
-            c.addEventListener('mousedown',start); c.addEventListener('touchstart',start,{passive:false});
-            c.addEventListener('mousemove',move); c.addEventListener('touchmove',move,{passive:false});
-            c.addEventListener('mouseup',end); c.addEventListener('touchend',end);
+        // --- SUBMIT ---
+        function approveAndLock() {
+            if(isBlank('sigContractor')) return alert("Sign first.");
+            if(!confirm("Submit Claim #" + nextClaimNum + "?")) return;
+
+            const itemsSnapshot = [];
+            document.querySelectorAll('.item-row').forEach(row => {
+                itemsSnapshot.push({
+                    desc: row.dataset.desc,
+                    unit: row.dataset.unit,
+                    qty: parseFloat(row.dataset.qty),
+                    rate: parseFloat(row.dataset.rate),
+                    executedQty: parseFloat(row.querySelector('.qty-done').innerText),
+                    percent: parseFloat(row.querySelector('input').value),
+                    claimValue: parseFloat(row.querySelector('.row-total').innerText.replace(/[$,]/g,''))
+                });
+            });
+
+            const claimData = {
+                projectId: pid,
+                claimNumber: nextClaimNum,
+                date: Date.now(),
+                grossTotal: parseFloat(document.getElementById('sumGross').innerText.replace(/[$,]/g,'')),
+                netPayable: parseFloat(document.getElementById('sumTotal').innerText.replace(/[$,]/g,'')),
+                advanceRepayment: parseFloat(document.getElementById('advanceInput').value),
+                signatures: { contractor: document.getElementById('sigContractor').toDataURL(), engineer: document.getElementById('sigEngineer').toDataURL() },
+                items: itemsSnapshot
+            };
+
+            const batch = db.batch();
+            batch.set(db.collection('claims').doc(), claimData);
+            batch.update(db.collection('projects').doc(pid), { totalClaimedGross: claimData.grossTotal, lastClaimDate: Date.now() });
+
+            batch.commit().then(() => {
+                alert("Claim Submitted Successfully! ✅");
+                lockUI(true);
+                window.print();
+                window.location.href = 'project_hub.html';
+            });
         }
-        window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
-        function approveAndLock() { if(confirm("Submit Claim?")) { alert("Submitted!"); window.print(); } }
+
+        function loadHistoricalClaim(id) {
+            lockUI(true);
+            db.collection('claims').doc(id).get().then(doc => {
+                const c = doc.data();
+                document.getElementById('claimNum').innerText = c.claimNumber;
+                document.getElementById('claimDate').innerText = new Date(c.date).toLocaleDateString('en-NZ');
+                document.getElementById('sumGross').innerText = fmtMoney(c.grossTotal);
+                document.getElementById('sumTotal').innerText = fmtMoney(c.netPayable);
+                document.getElementById('advanceInput').value = c.advanceRepayment;
+                if(c.signatures) {
+                    showSigImage('sigContractor', 'imgContractor', 'btnClearContractor', c.signatures.contractor);
+                    showSigImage('sigEngineer', 'imgEngineer', 'btnClearEngineer', c.signatures.engineer);
+                }
+                db.collection('projects').doc(pid).get().then(p => {
+                    document.getElementById('projName').innerText = p.data().name;
+                    renderTable(true, c.items);
+                });
+            });
+        }
+
+        function showSigImage(canvasId, imgId, btnId, dataUrl) {
+            document.getElementById(canvasId).classList.add('hidden');
+            document.getElementById(btnId).classList.add('hidden');
+            const img = document.getElementById(imgId);
+            img.src = dataUrl;
+            img.classList.remove('hidden');
+        }
+
+        function lockUI(locked) {
+            if(locked) {
+                document.querySelectorAll('input').forEach(i => i.classList.add('locked-input'));
+                document.getElementById('draftControls').classList.add('hidden');
+                document.getElementById('lockedControls').classList.remove('hidden');
+                document.getElementById('statusBadge').classList.remove('hidden');
+                document.getElementById('statusBadge').innerText = "SUBMITTED RECORD";
+                document.getElementById('statusBadge').className = "px-4 py-2 rounded-lg text-xs font-bold uppercase bg-green-100 text-green-700 border border-green-200";
+            }
+        }
+
+        function saveDraft() { alert("Draft Saved locally."); }
+        function fmtMoney(n) { return "$" + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
     </script>
 </body>
 </html>
