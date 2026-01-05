@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Valuations V4.0 - CivilMate</title>
+    <title>Contract & Valuations Manager - CivilMate</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -18,8 +18,11 @@
         
         @media print {
             body * { visibility: hidden; }
-            #invoice, #invoice * { visibility: visible; }
-            #invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; }
+            
+            /* Logic for printing visible section */
+            .print-visible, .print-visible * { visibility: visible; }
+            .print-visible { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; box-shadow: none; border: none; }
+            
             .no-print { display: none !important; }
             .percent-input { border: none !important; background: transparent !important; }
             input { border: none !important; background: transparent !important; }
@@ -41,7 +44,7 @@
         </div>
     </div>
 
-    <div id="invoice" class="bg-white p-10 rounded-xl shadow-xl border border-slate-200 min-h-[1000px] relative">
+    <div id="invoice" class="bg-white p-10 rounded-xl shadow-xl border border-slate-200 min-h-[1000px] relative print-visible">
         
         <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
             <div>
@@ -160,7 +163,73 @@
 
     </div>
 
-    <div class="fixed bottom-6 right-6 no-print flex gap-4">
+    <div id="masterContractDoc" class="bg-white p-12 rounded-xl shadow-xl border border-slate-200 min-h-[1000px] relative hidden">
+        
+        <div class="text-center border-b-4 border-black pb-8 mb-10">
+            <h1 class="text-5xl font-serif font-bold text-slate-900 tracking-widest uppercase mb-2">Schedule of Works</h1>
+            <p class="text-sm font-bold text-slate-500 uppercase tracking-wide">Attachment A - NZS 3910 Construction Contract</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-12 mb-10 font-serif">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Project</p>
+                <p class="text-xl font-bold text-slate-800 border-b border-slate-200 pb-1" id="mcProjName">...</p>
+                <p class="text-xs text-slate-500 mt-1" id="mcAddress">...</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Contract Reference</p>
+                <p class="text-xl font-bold text-slate-800 border-b border-slate-200 pb-1">MASTER-001</p>
+                <p class="text-xs text-slate-500 mt-1">Date: <span id="mcDate">...</span></p>
+            </div>
+        </div>
+
+        <table class="w-full text-left mb-12 border-collapse font-serif">
+            <thead class="bg-slate-800 text-white font-bold uppercase text-[10px]">
+                <tr>
+                    <th class="py-4 pl-4 w-12 text-center">#</th>
+                    <th class="py-4 pl-2 w-1/2">Description of Work Item</th>
+                    <th class="py-4 text-center">Unit</th>
+                    <th class="py-4 text-center">Qty</th>
+                    <th class="py-4 text-right">Rate</th>
+                    <th class="py-4 text-right pr-4">Total Amount</th>
+                </tr>
+            </thead>
+            <tbody id="mcTableBody" class="divide-y divide-slate-200 text-sm text-slate-700">
+                </tbody>
+            <tfoot class="bg-slate-100 font-bold text-slate-800 border-t-2 border-black">
+                <tr>
+                    <td colspan="5" class="py-4 text-right pr-6 uppercase text-xs">Total Contract Sum (Ex GST)</td>
+                    <td class="py-4 text-right pr-4 text-lg" id="mcTotalSum">$0.00</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="py-2 text-right pr-6 uppercase text-[10px] text-slate-500">GST (15%)</td>
+                    <td class="py-2 text-right pr-4 text-sm text-slate-500" id="mcGst">$0.00</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="py-4 text-right pr-6 uppercase text-xs">Total Incl GST</td>
+                    <td class="py-4 text-right pr-4 text-lg" id="mcTotalInc">$0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="mt-16 grid grid-cols-2 gap-20 avoid-break">
+            <div>
+                <div class="border-b border-black h-10"></div>
+                <p class="text-xs font-bold uppercase mt-2">Signed for Contractor</p>
+            </div>
+            <div>
+                <div class="border-b border-black h-10"></div>
+                <p class="text-xs font-bold uppercase mt-2">Signed for Principal (Client)</p>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 left-0 w-full text-center text-[10px] text-slate-300">
+            OFFICIAL SCHEDULE OF WORKS - DO NOT ALTER
+        </div>
+
+    </div>
+
+    <div class="fixed bottom-6 right-6 no-print flex gap-4" id="valuationControls">
         <div id="draftControls" class="flex gap-4">
             <button onclick="saveDraft()" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition">
                 <i class="fas fa-save"></i> Save Draft
@@ -182,7 +251,8 @@
         const db = firebase.firestore();
 
         const pid = localStorage.getItem('civilmate_current_project_id');
-        const viewClaimId = localStorage.getItem('civilmate_current_claim_id'); // If viewing history
+        const viewClaimId = localStorage.getItem('civilmate_current_claim_id'); 
+        const viewMode = localStorage.getItem('civilmate_view_mode'); // CHECK VIEW MODE
 
         if(!pid) { alert("No project selected"); window.location.href='dashboard.html'; }
 
@@ -193,20 +263,35 @@
         init();
 
         async function init() {
+            // DATE SETTING
             document.getElementById('claimDate').innerText = new Date().toLocaleDateString('en-NZ');
             document.getElementById('signDate').innerText = new Date().toLocaleDateString('en-NZ');
+            document.getElementById('mcDate').innerText = new Date().toLocaleDateString('en-NZ');
             
             initCanvas('sigContractor');
             initCanvas('sigEngineer');
 
-            if(viewClaimId) {
-                // VIEW HISTORY MODE
-                loadHistoricalClaim(viewClaimId);
+            // --- ROUTER LOGIC ---
+            if(viewMode === 'contract') {
+                // RENDER MASTER SCHEDULE (READ ONLY)
+                document.getElementById('invoice').classList.add('hidden');
+                document.getElementById('invoice').classList.remove('print-visible');
+                
+                document.getElementById('masterContractDoc').classList.remove('hidden');
+                document.getElementById('masterContractDoc').classList.add('print-visible');
+                
+                document.getElementById('valuationControls').classList.add('hidden');
+                
+                loadMasterSchedule(); // New Function for SOW
             } else {
-                // NEW CLAIM MODE
-                await getNextClaimNumber();
-                await analyzeLogs(); // Get site quantities hint
-                loadContractSchedule(); // Load locked items
+                // RENDER VALUATION (DEFAULT)
+                if(viewClaimId) {
+                    loadHistoricalClaim(viewClaimId);
+                } else {
+                    await getNextClaimNumber();
+                    await analyzeLogs(); 
+                    loadContractScheduleForValuation(); 
+                }
             }
         }
 
@@ -234,32 +319,30 @@
         window.clearSig = (id) => { const c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
         function isBlank(id) { const c=document.getElementById(id); return c.toDataURL() === document.createElement('canvas').toDataURL(); }
 
-        // --- LOAD DATA ---
+        // --- LOAD DATA FOR VALUATION ---
         function analyzeLogs() {
             return db.collection('site_logs').where('projectId', '==', pid).get().then(snap => {
                 const logBody = document.getElementById('logsTable');
                 logBody.innerHTML = "";
                 snap.forEach(d => {
                     const log = d.data();
-                    // Just helper for display, actual claim is entered manually in %
                     logBody.innerHTML += `<tr class="border-b border-slate-50"><td class="p-2 font-bold">${log.date}</td><td class="p-2">${log.itemName}</td><td class="p-2 text-right">${log.qty} ${log.unit}</td><td class="p-2 italic">${log.notes||'-'}</td></tr>`;
                 });
             });
         }
 
-        function loadContractSchedule() {
+        function loadContractScheduleForValuation() {
             db.collection('projects').doc(pid).get().then(doc => {
                 if(doc.exists) {
                     const p = doc.data();
                     document.getElementById('projName').innerText = p.name;
-                    // Use 'schedule' which is the finalized list
                     scheduleData = p.schedule || p.items || [];
-                    renderTable(false); // False = Editable Percentages
+                    renderTable(false); 
                 }
             });
         }
 
-        // --- RENDER SCHEDULE (LOCKED EXCEPT %) ---
+        // --- RENDER VALUATION TABLE ---
         function renderTable(isReadOnly, savedItems) {
             const tbody = document.getElementById('linesTable');
             tbody.innerHTML = "";
@@ -273,13 +356,9 @@
                     let claimVal = 0;
 
                     if(isReadOnly) {
-                        // History: Read stored values
                         executedQty = item.executedQty;
                         percent = item.percent;
                         claimVal = item.claimValue;
-                    } else {
-                        // New: Default 0%, user will input
-                        // Try to auto-suggest based on site logs? (Optional, skipping for clean manual input)
                     }
 
                     const inputClass = isReadOnly ? "locked-input" : "percent-input";
@@ -294,9 +373,9 @@
                             <td class="py-3 text-center text-slate-500">${item.unit}</td>
                             <td class="py-3 text-center font-mono locked-input">${item.qty}</td>
                             <td class="py-3 text-right font-mono locked-input">$${item.rate.toLocaleString()}</td>
-                            <td class="py-3 text-right pr-4 font-mono text-slate-400 border-r border-slate-100">$${contractTotal.toLocaleString()}</td>
+                            <td class="py-3 text-right pr-4 font-mono text-slate-400 border-r border-slate-200">$${contractTotal.toLocaleString()}</td>
                             
-                            <td class="py-3 text-center bg-yellow-50 border-l border-yellow-100">
+                            <td class="py-3 text-center bg-yellow-50 border-l border-yellow-200">
                                 <input type="number" min="0" max="100" step="1" value="${percent}" ${readOnlyAttr}
                                     onchange="calcRow(this, ${item.qty}, ${item.rate})"
                                     class="w-16 p-1 text-sm ${inputClass}"> %
@@ -310,7 +389,45 @@
             }
         }
 
-        // --- MATH ENGINE ---
+        // --- MASTER CONTRACT (SCHEDULE OF WORKS) VIEW ---
+        function loadMasterSchedule() {
+            db.collection('projects').doc(pid).get().then(doc => {
+                if(doc.exists) {
+                    const p = doc.data();
+                    document.getElementById('mcProjName').innerText = p.name;
+                    document.getElementById('mcAddress').innerText = p.address || "";
+                    
+                    const items = p.schedule || p.items || [];
+                    const tbody = document.getElementById('mcTableBody');
+                    let totalSum = 0;
+
+                    tbody.innerHTML = "";
+                    
+                    if(items.length > 0) {
+                        items.forEach((item, index) => {
+                            const lineTotal = item.qty * item.rate;
+                            totalSum += lineTotal;
+                            tbody.innerHTML += `
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="py-3 text-center text-slate-400">${index + 1}</td>
+                                    <td class="py-3 pl-2 font-medium text-slate-800">${item.desc || item.name}</td>
+                                    <td class="py-3 text-center text-slate-600">${item.unit}</td>
+                                    <td class="py-3 text-center font-mono text-slate-700">${item.qty}</td>
+                                    <td class="py-3 text-right font-mono text-slate-600">$${item.rate.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
+                                    <td class="py-3 text-right pr-4 font-bold font-mono text-slate-800">$${lineTotal.toLocaleString('en-NZ', {minimumFractionDigits: 2})}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+
+                    document.getElementById('mcTotalSum').innerText = "$" + totalSum.toLocaleString('en-NZ', {minimumFractionDigits: 2});
+                    document.getElementById('mcGst').innerText = "$" + (totalSum * 0.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
+                    document.getElementById('mcTotalInc').innerText = "$" + (totalSum * 1.15).toLocaleString('en-NZ', {minimumFractionDigits: 2});
+                }
+            });
+        }
+
+        // --- MATH ENGINE (VALUATIONS) ---
         function calcRow(input, totalQty, rate) {
             let percent = parseFloat(input.value) || 0;
             if(percent > 100) { percent = 100; input.value = 100; alert("Cannot claim > 100%"); }
@@ -331,9 +448,8 @@
                 totalGross += parseFloat(cell.innerText.replace(/[$,]/g,'')) || 0;
             });
 
-            const retention = totalGross * 0.10; // 10% Retention
+            const retention = totalGross * 0.10; 
             const advance = parseFloat(document.getElementById('advanceInput').value) || 0;
-            
             const net = totalGross - retention - advance;
             const gst = net * 0.15;
             const total = net + gst;
@@ -400,7 +516,6 @@
                 document.getElementById('sumTotal').innerText = fmtMoney(c.netPayable);
                 document.getElementById('advanceInput').value = c.advanceRepayment;
                 
-                // Load Images
                 if(c.signatures) {
                     const img = document.getElementById('imgContractor');
                     img.src = c.signatures.contractor;
@@ -408,7 +523,6 @@
                     document.getElementById('sigContractor').classList.add('hidden');
                 }
 
-                // Render Snapshot
                 db.collection('projects').doc(pid).get().then(p => {
                     document.getElementById('projName').innerText = p.data().name;
                     renderTable(true, c.items);
