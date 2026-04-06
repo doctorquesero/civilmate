@@ -2,201 +2,169 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CivilMate Field App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivilMate Pro - Access</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <script>tailwind.config = { darkMode: 'class' }</script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
     <style>
-        body { background-color: #1a1a1a; font-family: 'Inter', sans-serif; }
-        .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #262626; position: relative; }
-        .btn-disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); pointer-events: none; }
+        body { transition: background-color 0.3s, color 0.3s; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .tab-inactive { color: #64748b; border-bottom: 2px solid transparent; }
     </style>
 </head>
-<body class="text-white">
+<body class="h-screen flex items-center justify-center font-sans relative overflow-hidden bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-white">
 
-    <div id="loginScreen" class="fixed inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6">
-        <div class="mb-10 text-center">
-            <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
-                <i class="fas fa-hard-hat text-4xl text-white"></i>
+    <button onclick="openSettings()" class="absolute top-6 right-6 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition z-20" title="Display Settings">
+        <i class="fas fa-cog text-2xl"></i>
+    </button>
+
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-8 rounded-2xl shadow-2xl w-full max-w-md relative z-10 transition-colors">
+        
+        <div class="text-center mb-8">
+            <div class="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+                <i class="fas fa-hard-hat text-3xl text-white"></i>
             </div>
-            <h1 class="text-3xl font-bold tracking-tight mb-2">CivilMate</h1>
-            <p class="text-gray-400 text-sm">Secure Site Management System</p>
+            <h1 class="text-3xl font-bold tracking-tight">CivilMate <span class="text-blue-500">Pro</span></h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">Smart Construction Management</p>
         </div>
 
-        <div class="w-full max-w-sm space-y-4" id="roleSelection">
-            <button onclick="selectRole('ENGINEER')" class="w-full bg-slate-800 hover:bg-slate-700 p-5 rounded-xl flex items-center border border-slate-700 transition group">
-                <div class="bg-green-500/10 p-3 rounded-full mr-4 group-hover:bg-green-500/20 transition">
-                    <i class="fas fa-user text-green-500 text-xl"></i>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Email Address</label>
+                <div class="relative">
+                    <i class="fas fa-envelope absolute left-3 top-3 text-slate-400"></i>
+                    <input type="email" id="logEmail" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg py-2 pl-10 pr-3 focus:outline-none focus:border-blue-500 transition-colors" placeholder="admin@company.co.nz">
                 </div>
-                <div class="text-left flex-1">
-                    <span class="block font-bold text-lg">Site Engineer</span>
-                    <span class="text-xs text-gray-400">Field Access Only</span>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Password</label>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-3 top-3 text-slate-400"></i>
+                    <input type="password" id="logPassword" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg py-2 pl-10 pr-3 focus:outline-none focus:border-blue-500 transition-colors" placeholder="••••••••">
                 </div>
-                <i class="fas fa-chevron-right text-gray-600"></i>
+            </div>
+            
+            <p id="errorMsg" class="text-red-500 text-xs font-bold text-center hidden"></p>
+
+            <button id="btnLogin" onclick="loginUser()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg mt-2 shadow-lg transition transform active:scale-95">Sign In <i class="fas fa-sign-in-alt ml-2"></i></button>
+            
+            <div class="relative flex items-center my-6">
+                <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                <span class="flex-shrink px-4 text-xs font-bold text-slate-400 dark:text-slate-600 uppercase">Or continue with</span>
+                <div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+            </div>
+
+            <button onclick="loginWithGoogle()" class="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white font-bold py-3 rounded-xl shadow-sm transition flex justify-center items-center gap-2 transform active:scale-95">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google Logo">
+                Google
             </button>
+        </div>
 
-            <button onclick="showPinInput()" class="w-full bg-slate-800 hover:bg-slate-700 p-5 rounded-xl flex items-center border border-slate-700 transition group">
-                <div class="bg-blue-500/10 p-3 rounded-full mr-4 group-hover:bg-blue-500/20 transition">
-                    <i class="fas fa-lock text-blue-500 text-xl"></i>
-                </div>
-                <div class="text-left flex-1">
-                    <span class="block font-bold text-lg">Director / QS</span>
-                    <span class="text-xs text-gray-400">Admin & Financials</span>
-                </div>
-                <i class="fas fa-chevron-right text-gray-600"></i>
+        <div class="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800 text-center">
+            <p class="text-slate-600 dark:text-slate-400 text-sm mb-4">New here? Let's build your organization.</p>
+            <button onclick="goToRegister()" class="w-full text-blue-600 dark:text-blue-400 hover:text-white border-2 border-blue-600 dark:border-blue-500 hover:bg-blue-600 dark:hover:bg-blue-500 font-bold py-3 rounded-xl transition transform active:scale-95 flex items-center justify-center gap-2 shadow-sm">
+                <i class="fas fa-user-plus text-sm"></i>
+                Register for CivilMate Pro
             </button>
         </div>
-
-        <div id="pinArea" class="hidden w-full max-w-sm">
-            <p class="text-center text-gray-400 mb-4 text-sm">Enter Secure Admin PIN</p>
-            <div class="flex gap-2 mb-4">
-                <input type="password" id="pinInput" class="w-full p-4 bg-slate-900 border border-slate-700 rounded-xl text-center text-2xl tracking-widest outline-none focus:border-blue-500 transition" placeholder="••••" maxlength="4">
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="cancelPin()" class="p-3 rounded-lg border border-slate-600 text-gray-400">Cancel</button>
-                <button onclick="verifyPin()" class="p-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500">Unlock</button>
-            </div>
-            <p id="pinError" class="text-red-500 text-center text-xs mt-3 hidden animate-pulse">⛔ Incorrect PIN. Access Denied.</p>
-        </div>
-
-        <p class="absolute bottom-6 text-xs text-gray-600">Server Connection: australia-southeast1 (Active)</p>
     </div>
 
-    <div class="mobile-container flex flex-col p-6">
-        <header class="mb-8 pt-6 pb-4 text-center relative border-b border-gray-700 flex justify-between items-center">
-            <div class="text-left">
-                <h1 class="text-2xl font-bold tracking-wide">CivilMate</h1>
-                <div id="userBadge" class="flex items-center mt-1">
-                    <div class="w-2 h-2 rounded-full bg-gray-500 mr-2" id="statusDot"></div>
-                    <p class="text-gray-400 text-xs uppercase tracking-widest" id="userRoleLabel">Guest</p>
-                </div>
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 dark:bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl text-slate-900 dark:text-white">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2"><i class="fas fa-desktop text-blue-500"></i> Display Settings</h3>
+            <div class="space-y-3 mb-6">
+                <label class="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <input type="radio" name="theme" value="light" onchange="setTheme('light')" class="w-4 h-4 text-blue-600">
+                    <i class="fas fa-sun text-amber-500 text-xl"></i><span class="text-sm font-bold">Light Mode (Daylight)</span>
+                </label>
+                <label class="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                    <input type="radio" name="theme" value="dark" onchange="setTheme('dark')" class="w-4 h-4 text-blue-600">
+                    <i class="fas fa-moon text-indigo-400 text-xl"></i><span class="text-sm font-bold">Dark Mode (Premium)</span>
+                </label>
             </div>
-            <button onclick="logout()" class="text-xs text-gray-400 border border-gray-700 px-3 py-1 rounded hover:text-white hover:border-gray-500 transition">
-                <i class="fas fa-sign-out-alt mr-1"></i> Logout
-            </button>
-        </header>
-
-        <div class="flex-1 flex flex-col justify-center space-y-5">
-
-            <a href="site_safety.html" class="w-full bg-gradient-to-r from-red-600 to-red-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer no-underline border border-red-400/30">
-                <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
-                    <i class="fas fa-shield-alt text-3xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-xl leading-none text-white mb-1">Health & Safety</span>
-                    <span class="text-xs text-red-100 opacity-80">Inductions, Hazards, Reports</span>
-                </div>
-            </a>
-
-            <a href="tracker.html" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer no-underline border border-green-400/30">
-                <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
-                    <i class="fas fa-tasks text-3xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-xl leading-none text-white mb-1">Site Control</span>
-                    <span class="text-xs text-green-100 opacity-80">Daily Logs & Progress</span>
-                </div>
-            </a>
-
-            <div id="btnContracts" onclick="handleProtectedClick('dashboard.html')" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-blue-400/30 relative overflow-hidden">
-                <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
-                    <i class="fas fa-file-signature text-3xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-xl leading-none text-white mb-1">Contracts</span>
-                    <span class="text-xs text-blue-100 opacity-80">Estimates & NZS 3902</span>
-                </div>
-                <div id="lockContracts" class="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px] z-10 transition-opacity duration-300">
-                    <div class="bg-black/80 p-2 rounded-full border border-gray-600">
-                        <i class="fas fa-lock text-xl text-gray-300"></i>
-                    </div>
-                </div>
+            <div class="text-right">
+                <button onclick="closeSettings()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm">Done</button>
             </div>
-
-            <div id="btnValuations" onclick="handleProtectedClick('dashboard.html')" class="w-full bg-gradient-to-r from-slate-700 to-slate-600 hover:brightness-110 active:scale-95 transition transform rounded-2xl py-6 px-6 flex items-center shadow-lg cursor-pointer border border-slate-500/30 relative overflow-hidden">
-                <div class="bg-black/20 w-14 h-14 rounded-xl flex items-center justify-center mr-5">
-                    <i class="fas fa-calculator text-3xl text-white"></i>
-                </div>
-                <div class="text-left">
-                    <span class="block font-bold text-xl leading-none text-white mb-1">Valuations</span>
-                    <span class="text-xs text-gray-300 opacity-80">Claims & Variations</span>
-                </div>
-                <div id="lockValuations" class="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[2px] z-10 transition-opacity duration-300">
-                    <div class="bg-black/80 p-2 rounded-full border border-gray-600">
-                        <i class="fas fa-lock text-xl text-gray-300"></i>
-                    </div>
-                </div>
-            </div>
-
         </div>
-        <footer class="mt-8 text-center text-gray-500 text-xs">CivilMate V5.5 &bull; Enterprise Security</footer>
     </div>
 
     <script>
-        let currentUserRole = null; 
+        // FIREBASE INICIALIZACIÓN
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
 
-        function showPinInput() {
-            document.getElementById('roleSelection').classList.add('hidden');
-            document.getElementById('pinArea').classList.remove('hidden');
-            document.getElementById('pinInput').focus();
-        }
+        // LÓGICA DE LOGIN CON CORREO
+        function loginUser() {
+            const email = document.getElementById('logEmail').value;
+            const password = document.getElementById('logPassword').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const btn = document.getElementById('btnLogin');
 
-        function cancelPin() {
-            document.getElementById('roleSelection').classList.remove('hidden');
-            document.getElementById('pinArea').classList.add('hidden');
-            document.getElementById('pinError').classList.add('hidden');
-            document.getElementById('pinInput').value = '';
-        }
-
-        function verifyPin() {
-            const pin = document.getElementById('pinInput').value;
-            if (pin === '2025') {
-                selectRole('DIRECTOR');
-            } else {
-                document.getElementById('pinError').classList.remove('hidden');
-                document.getElementById('pinInput').value = '';
-                if(navigator.vibrate) navigator.vibrate(200);
-            }
-        }
-
-        function selectRole(role) {
-            currentUserRole = role;
-            document.getElementById('loginScreen').classList.add('hidden');
-            
-            const label = document.getElementById('userRoleLabel');
-            const dot = document.getElementById('statusDot');
-
-            if (role === 'ENGINEER') {
-                label.innerText = "Site Engineer";
-                dot.classList.remove('bg-gray-500'); dot.classList.add('bg-green-500');
-                
-                document.getElementById('lockContracts').classList.remove('hidden');
-                document.getElementById('lockValuations').classList.remove('hidden');
-            } else {
-                label.innerText = "Director / QS";
-                dot.classList.remove('bg-gray-500'); dot.classList.add('bg-blue-500');
-                
-                document.getElementById('lockContracts').classList.add('hidden');
-                document.getElementById('lockValuations').classList.add('hidden'); 
-            }
-        }
-
-        function handleProtectedClick(url) {
-            if (currentUserRole === 'ENGINEER') {
-                alert("⛔ ACCESS DENIED\n\nYou do not have permission to view Financial Data.\nThis attempt has been logged.");
+            if(!email || !password) {
+                errorMsg.innerText = "Please enter both email and password.";
+                errorMsg.classList.remove('hidden');
                 return;
             }
-            window.location.href = url;
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Authenticating...';
+            
+            auth.signInWithEmailAndPassword(email, password)
+            .then(() => { window.location.href = "dashboard.html"; })
+            .catch((error) => {
+                btn.innerHTML = 'Sign In <i class="fas fa-sign-in-alt ml-2"></i>';
+                errorMsg.innerText = error.message;
+                errorMsg.classList.remove('hidden');
+            });
         }
 
-        function logout() {
-            location.reload();
+        // LÓGICA DE LOGIN CON GOOGLE
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+            .then(() => { window.location.href = "dashboard.html"; })
+            .catch((error) => {
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.innerText = error.message;
+                errorMsg.classList.remove('hidden');
+            });
         }
 
-        document.getElementById('pinInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') verifyPin();
+        // REDIRECCIÓN AUTOMÁTICA SI YA ESTÁ LOGEADO
+        auth.onAuthStateChanged((user) => {
+            if (user) { window.location.href = "dashboard.html"; }
         });
+
+        // MOTOR DE TEMA VISUAL Y NAVEGACIÓN
+        function initTheme() {
+            const savedTheme = localStorage.getItem('civilmate_theme') || 'light';
+            setTheme(savedTheme, false);
+            const radio = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
+            if(radio) radio.checked = true;
+        }
+        function setTheme(theme, save = true) {
+            if (theme === 'dark') document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            if(save) localStorage.setItem('civilmate_theme', theme);
+        }
+        document.addEventListener('DOMContentLoaded', initTheme);
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); document.getElementById('settingsModal').classList.add('flex'); }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').classList.remove('flex'); }
+        function goToRegister() { window.location.href = "onboarding.html"; }
     </script>
 </body>
 </html>

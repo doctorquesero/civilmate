@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Rate Library | CivilMate Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        if (!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <script src="civilmate_core.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #8b5cf6;
+            color: #c4b5fd;
+            font-weight: bold;
+            background-color: rgba(139, 92, 246, 0.1);
+        }
+
+        .tab-inactive {
+            color: #64748b;
+        }
+
+        .tab-inactive:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+        }
+
+        .lib-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .lib-th {
+            background-color: #0f172a;
+            color: #94a3b8;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .lib-td {
+            padding: 12px;
+            font-size: 13px;
+            color: #e2e8f0;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .lib-tr:hover {
+            background-color: #1e293b;
+        }
+
+        .scroller::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroller::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .scroller::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        /* EXACT EXCEL REPLICA CSS */
+        .excel-bg {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: Calibri, Arial, sans-serif;
+        }
+
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            table-layout: fixed;
+            margin-bottom: 16px;
+        }
+
+        .excel-table td {
+            border: 1px solid #d4d4d4;
+            padding: 4px 6px;
+            height: 26px;
+            vertical-align: middle;
+        }
+
+        .excel-th {
+            background-color: #f3f2f1;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .excel-input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            box-sizing: border-box;
+        }
+
+        .excel-input:focus {
+            background-color: #fffac8;
+        }
+
+        .excel-select {
+            width: 100%;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .bg-yellow-edit {
+            background-color: #fef9c3;
+        }
+
+        .w-col-desc {
+            width: 30%;
+        }
+
+        .w-col-inc {
+            width: 12%;
+        }
+    </style>
+</head>
+
+<body class="font-sans text-slate-200 h-screen flex flex-col">
+
+    <header class="h-16 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50">
+        <div class="flex items-center gap-4">
+            <a href="dashboard.html" class="text-slate-400 hover:text-white transition"><i class="fas fa-home"></i></a>
+            <h1 class="text-xl font-bold text-white">Master <span class="text-purple-500">Rate Library</span></h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">Active Database:</span>
+            <select
+                class="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-3 py-1 font-bold outline-none focus:border-purple-500">
+                <option value="AUCKLAND_2026">Auckland Region 2026 (Active)</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <aside class="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col gap-2 shrink-0">
+            <div class="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2 mt-4">Database Management
+            </div>
+            <button type="button" onclick="switchTab('resources')" id="btnTabResources"
+                class="w-full text-left px-4 py-3 rounded-lg text-sm tab-active transition"><i
+                    class="fas fa-boxes w-6"></i> 1. Global Resources</button>
+            <button type="button" onclick="switchTab('apus')" id="btnTabAPUs"
+                class="w-full text-left px-4 py-3 rounded-lg text-sm tab-inactive transition"><i
+                    class="fas fa-layer-group w-6"></i> 2. Master APUs</button>
+        </aside>
+
+        <section class="flex-1 p-6 overflow-y-auto bg-[#0f172a] scroller" id="workspace">
+            <div id="panelResources" class="block animate-in fade-in duration-300">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-2xl font-bold text-white">Global Resources <span id="resCount"
+                                class="text-sm bg-slate-800 text-slate-400 px-2 py-1 rounded ml-2">0</span></h2>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <input type="text" id="resSearch" onkeyup="renderResourcesTable()" placeholder="Search Code or Desc..." class="bg-slate-800 border border-slate-600 rounded px-3 py-1 text-xs text-white w-64 outline-none">
+                        <div class="flex bg-slate-800 p-1 rounded">
+                            <button onclick="renderResourcesTable('All')" class="px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded mr-1" id="catBtnAll">All</button>
+                            <button onclick="renderResourcesTable('Material')" class="px-3 py-1 text-xs font-bold text-slate-400 hover:text-white" id="catBtnMaterial">Mat</button>
+                            <button onclick="renderResourcesTable('Plant')" class="px-3 py-1 text-xs font-bold text-slate-400 hover:text-white" id="catBtnPlant">Plant</button>
+                            <button onclick="renderResourcesTable('Labour')" class="px-3 py-1 text-xs font-bold text-slate-400 hover:text-white" id="catBtnLabour">Labor</button>
+                        </div>
+                        <button type="button" onclick="createNewResource()"
+                            class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm border border-slate-700"><i
+                                class="fas fa-plus text-green-400 mr-2"></i>New Resource</button>
+                    </div>
+                </div>
+                <div
+                    class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden max-h-[75vh] overflow-y-auto shadow-lg scroller">
+                    <table class="lib-table" id="resourcesTable"></table>
+                </div>
+            </div>
+
+            <div id="panelAPUs" class="hidden animate-in fade-in duration-300">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-white">Master APU Database <span id="apuCount"
+                            class="text-sm bg-slate-800 text-slate-400 px-2 py-1 rounded ml-2">0</span></h2>
+                    <button type="button" onclick="createNewAPU()"
+                        class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg transition"><i
+                            class="fas fa-plus mr-2"></i>Create Master APU</button>
+                </div>
+                <div
+                    class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden max-h-[75vh] overflow-y-auto shadow-lg scroller">
+                    <table class="lib-table" id="apusTable"></table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="resourceModal"
+        class="fixed inset-0 bg-slate-900/95 hidden flex-col items-center justify-center z-[999] p-4">
+        <div class="bg-slate-800 w-full max-w-md rounded-xl border border-slate-700 flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-700 flex justify-between bg-slate-950 rounded-t-xl items-center">
+                <h3 class="font-bold text-white flex gap-2 items-center" id="resModalTitle"><i
+                        class="fas fa-edit text-blue-500"></i> Edit Resource</h3>
+                <button type="button" onclick="closeResourceModal()" class="text-slate-400 hover:text-white"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div><label class="text-xs text-slate-500 uppercase font-bold">Code</label><input id="resCode"
+                        class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-white font-mono"></div>
+                <div><label class="text-xs text-slate-500 uppercase font-bold">Description</label><input id="resDesc"
+                        class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-white font-bold"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-500 uppercase font-bold">Category</label>
+                        <select id="resCat" class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-white">
+                            <option value="Material">Material</option>
+                            <option value="Plant">Plant</option>
+                            <option value="Labour">Labour</option>
+                        </select>
+                    </div>
+                    <div><label class="text-xs text-slate-500 uppercase font-bold">Unit</label><input id="resUnit"
+                            class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-white text-center">
+                    </div>
+                </div>
+                <div><label class="text-xs text-slate-500 uppercase font-bold">Base Rate ($)</label><input type="number"
+                        id="resRate"
+                        class="w-full bg-slate-900 border border-green-500 p-2 rounded text-green-400 font-bold text-center text-lg">
+                </div>
+            </div>
+            <div class="p-4 bg-slate-950 border-t border-slate-700 flex justify-end gap-3 rounded-b-xl">
+                <button type="button" onclick="closeResourceModal()"
+                    class="px-6 py-2 text-slate-400 hover:text-white font-bold text-sm">Cancel</button>
+                <button type="button" onclick="saveResource()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded font-bold text-sm shadow-lg">Save
+                    Rate</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="apuModal" class="fixed inset-0 bg-slate-900/95 hidden flex-col items-center justify-center z-[999] p-4">
+        <div
+            class="excel-bg w-full max-w-6xl rounded shadow-2xl flex flex-col h-[95vh] border-2 border-slate-400 overflow-hidden">
+
+            <div class="bg-green-700 p-2 flex justify-between items-center text-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-file-excel text-xl"></i>
+                    <span class="font-bold text-sm">Unit Rate Analysis Sheet - Live Editor</span>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="saveAPU()"
+                        class="bg-white text-green-700 px-4 py-1 rounded text-xs font-bold shadow hover:bg-green-100"><i
+                            class="fas fa-save mr-1"></i> Save Master APU</button>
+                    <button type="button" onclick="closeAPUModal()"
+                        class="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold shadow hover:bg-red-500"><i
+                            class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto scroller p-8">
+
+                <table class="excel-table mb-4">
+                    <colgroup>
+                        <col style="width: 15%;">
+                        <col style="width: 25%;">
+                        <col style="width: 15%;">
+                        <col style="width: 5%;">
+                        <col style="width: 20%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                    </colgroup>
+                    <tr>
+                        <td colspan="7" class="text-center font-bold text-lg border-none pb-4">Unit Rate Analisys Sheet
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="excel-th text-left">Description</td>
+                        <td colspan="6"><input id="xlsDesc" class="excel-input font-bold text-blue-800"
+                                onchange="runEngine()"></td>
+                    </tr>
+                    <tr>
+                        <td class="excel-th text-left">Unit</td>
+                        <td colspan="4"><input id="xlsUnit" class="excel-input" onchange="runEngine()"></td>
+                        <td class="excel-th text-center bg-green-100 font-bold text-green-800">Unit Rate</td>
+                        <td class="text-right font-bold text-green-600 bg-green-50 text-lg" id="xlsFinalRateTop">0.00
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="excel-th text-left">Costs</td>
+                        <td class="excel-th text-left">Cost per Hour</td>
+                        <td class="text-right font-bold text-red-600 font-mono" id="xlsCostHour">0.00</td>
+                        <td class="border-none"></td>
+                        <td class="excel-th text-center bg-blue-50">Output per Unit/Day<br><span
+                                class="text-[10px] font-normal">(8 hours Shift)</span></td>
+                        <td class="bg-yellow-edit"><input type="number" id="xlsOut"
+                                class="excel-input text-center font-bold text-blue-700 text-lg" value="45"
+                                onchange="runEngine()"></td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                </table>
+
+                <table class="excel-table">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col class="w-col-desc">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col class="w-col-inc">
+                        <col style="width: 4%;">
+                    </colgroup>
+                    <tr>
+                        <td colspan="8" class="font-bold border-none pb-1">Materials</td>
+                    </tr>
+                    <tr>
+                        <td class="excel-th">Cod</td>
+                        <td class="excel-th">Description</td>
+                        <td class="excel-th">Unit</td>
+                        <td class="excel-th">Qty</td>
+                        <td class="excel-th">Price</td>
+                        <td class="excel-th">Total</td>
+                        <td class="excel-th">Incidence Over Unit Rate</td>
+                        <td class="excel-th"><button type="button" onclick="addRow('materials')"
+                                class="text-green-600 hover:text-green-800"><i class="fas fa-plus"></i></button></td>
+                    </tr>
+                    <tbody id="tbMaterials"></tbody>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold border-none pr-4">Total Material Unit Rate</td>
+                        <td class="text-right font-bold font-mono" id="totMat">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                </table>
+
+                <table class="excel-table">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col class="w-col-desc">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col class="w-col-inc">
+                        <col style="width: 4%;">
+                    </colgroup>
+                    <tr>
+                        <td colspan="8" class="font-bold border-none pb-1 mt-4">Plant Equipment</td>
+                    </tr>
+                    <tr>
+                        <td class="excel-th">Cod</td>
+                        <td class="excel-th">Description</td>
+                        <td class="excel-th">Unit</td>
+                        <td class="excel-th">Qty</td>
+                        <td class="excel-th">Price</td>
+                        <td class="excel-th">Total $</td>
+                        <td class="excel-th">Incidence Over Unit Rate</td>
+                        <td class="excel-th"><button type="button" onclick="addRow('plant')"
+                                class="text-green-600 hover:text-green-800"><i class="fas fa-plus"></i></button></td>
+                    </tr>
+                    <tbody id="tbPlant"></tbody>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold border-none pr-4">Total $ (Daily Plant)</td>
+                        <td class="text-right font-bold font-mono border-none" id="totPlantDaily">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold border-none pr-4">Total Plant Unit Rate</td>
+                        <td class="text-right font-bold font-mono" id="totPlantUnit">0.00</td>
+                        <td colspan="2" class="border-none text-slate-400 text-xs italic text-center">=(Total $ /
+                            Output)</td>
+                    </tr>
+                </table>
+
+                <table class="excel-table">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col class="w-col-desc">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col class="w-col-inc">
+                        <col style="width: 4%;">
+                    </colgroup>
+                    <tr>
+                        <td colspan="8" class="font-bold border-none pb-1 mt-4">Labour</td>
+                    </tr>
+                    <tr>
+                        <td class="excel-th">Cod</td>
+                        <td class="excel-th">Description</td>
+                        <td class="excel-th">Unit</td>
+                        <td class="excel-th">Qty</td>
+                        <td class="excel-th">Price</td>
+                        <td class="excel-th">Total $</td>
+                        <td class="excel-th">Incidence Over Unit Rate</td>
+                        <td class="excel-th"><button type="button" onclick="addRow('labor')"
+                                class="text-green-600 hover:text-green-800"><i class="fas fa-plus"></i></button></td>
+                    </tr>
+                    <tbody id="tbLabor"></tbody>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold border-none pr-4">Base Daily Labour $</td>
+                        <td class="text-right font-bold font-mono border-none" id="totLabDailyBase">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" class="border-none"></td>
+                        <td colspan="2" class="text-left font-bold whitespace-nowrap pl-4">Labor Benefits (%)</td>
+                        <td class="bg-yellow-edit border border-slate-300"><input type="number" id="xlsBen"
+                                class="excel-input text-center text-blue-800 font-bold" value="50"
+                                onchange="runEngine()"></td>
+                        <td class="text-right font-bold font-mono text-slate-600" id="totLabBenAmount">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold border-none pr-4">Total Labour Unit Rate (Incl.
+                            Benefits)</td>
+                        <td class="text-right font-bold font-mono text-blue-800" id="totLabUnit">0.00</td>
+                        <td colspan="2" class="border-none text-slate-400 text-xs italic text-center">=(Base + Benefits)
+                            / Output</td>
+                    </tr>
+                </table>
+
+                <table class="excel-table mt-8">
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col class="w-col-desc">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 10%;">
+                        <col class="w-col-inc">
+                        <col style="width: 4%;">
+                    </colgroup>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold text-sm bg-slate-100 border-none pr-4">DIRECT COST
+                            SUBTOTAL (Mat + Plant + Labour)</td>
+                        <td class="text-right font-bold font-mono text-slate-800 bg-slate-100" id="totDirectCost">0.00
+                        </td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" class="border-none"></td>
+                        <td colspan="2" class="text-left font-bold whitespace-nowrap pl-4">Company Overheads (%)</td>
+                        <td class="bg-yellow-edit border border-slate-300"><input type="number" id="xlsOH"
+                                class="excel-input text-center text-purple-800 font-bold" value="10"
+                                onchange="runEngine()"></td>
+                        <td class="text-right font-bold font-mono text-slate-600" id="totOHAmount">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="5" class="text-right font-bold text-sm bg-slate-100 border-none pr-4">UNIT RATE +
+                            OVERHEADS SUBTOTAL</td>
+                        <td class="text-right font-bold font-mono text-slate-800 bg-slate-100" id="totSubWithOH">0.00
+                        </td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" class="border-none"></td>
+                        <td colspan="2" class="text-left font-bold whitespace-nowrap pl-4">Profit Margin (%)</td>
+                        <td class="bg-yellow-edit border border-slate-300"><input type="number" id="xlsProfit"
+                                class="excel-input text-center text-green-800 font-bold" value="15"
+                                onchange="runEngine()"></td>
+                        <td class="text-right font-bold font-mono text-slate-600" id="totProfitAmount">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="5"
+                            class="text-right font-bold text-green-900 bg-green-200 text-lg border-2 border-green-700">
+                            FINAL UNIT RATE</td>
+                        <td class="text-right font-bold text-green-800 bg-green-100 text-xl font-mono border-2 border-green-700"
+                            id="xlsFinalRateBottom">0.00</td>
+                        <td colspan="2" class="border-none"></td>
+                    </tr>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEditingAPU = null;
+        let globalResources = [];
+        let isEditingResMode = false;
+        let currentResCategory = 'All';
+
+        function formatMoney(amount) {
+            let val = parseFloat(amount); if (isNaN(val)) val = 0;
+            return val.toLocaleString('en-NZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        function formatPerc(amount) {
+            let val = parseFloat(amount); if (isNaN(val)) val = 0;
+            return val.toLocaleString('en-NZ', { minimumFractionDigits: 4, maximumFractionDigits: 9 });
+        }
+
+        // --- SISTEMA DE SEGURIDAD (PASSKEY) ---
+        function secureDelete(callback) {
+            const s = DataManager.getSettings() || {};
+            const correctKey = s.adminPasskey || "master2026";
+            const key = prompt("⚠️ SECURITY LOCK\nEnter Admin Passkey to perform this action:");
+            if (key === correctKey) { callback(); } else if (key !== null) { alert("❌ Access Denied."); }
+        }
+
+        // --- TABLAS PRINCIPALES ---
+        function renderResourcesTable(cat) {
+            if (cat) currentResCategory = cat;
+            
+            ['All', 'Material', 'Plant', 'Labour'].forEach(c => {
+                const btn = document.getElementById('catBtn' + c);
+                if (btn) {
+                    btn.className = (c === currentResCategory) 
+                        ? "px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded mr-1" 
+                        : "px-3 py-1 text-xs font-bold text-slate-400 hover:text-white";
+                }
+            });
+
+            globalResources = DataManager.get('civilmate_resources') || [];
+
+            const searchEl = document.getElementById('resSearch');
+            const q = searchEl ? searchEl.value.toLowerCase() : '';
+
+            let filtered = globalResources.filter(r => {
+                const rCat = r.category || r.cat; 
+                let matchCat = currentResCategory === 'All';
+                if (!matchCat) {
+                    if (currentResCategory === 'Labour' || currentResCategory === 'Labor') {
+                         matchCat = (rCat === 'Labour' || rCat === 'Labor');
+                    } else {
+                         matchCat = rCat === currentResCategory;
+                    }
+                }
+                const matchSearch = (r.desc && r.desc.toLowerCase().includes(q)) || (r.code && r.code.toLowerCase().includes(q));
+                return matchCat && matchSearch;
+            });
+
+            filtered.sort((a, b) => {
+                const descA = (a.desc || '').toLowerCase();
+                const descB = (b.desc || '').toLowerCase();
+                if (descA < descB) return -1;
+                if (descA > descB) return 1;
+                return 0;
+            });
+
+            document.getElementById('resCount').innerText = filtered.length;
+
+            let html = `<thead><tr><th class="lib-th w-24">Code</th><th class="lib-th">Description</th><th class="lib-th w-32">Category</th><th class="lib-th w-16 text-center">Unit</th><th class="lib-th w-32 text-right">Base Rate</th><th class="lib-th w-24 text-center">Actions</th></tr></thead><tbody>`;
+            if (filtered.length === 0) { html += `<tr><td colspan="6" class="p-8 text-center text-slate-500 italic">No resources found.</td></tr>`; }
+            else {
+                filtered.forEach(r => {
+                    let rCat = r.category || r.cat;
+                    let catColor = (rCat === 'Labour' || rCat === 'Labor') ? "text-blue-400" : (rCat === 'Plant' ? "text-orange-400" : "text-green-400");
+                    let displayCat = (rCat && String(rCat) !== "undefined") ? rCat : '<span class="text-red-400">Needs Update</span>';
+                    html += `<tr class="lib-tr"><td class="lib-td font-mono text-slate-400">${r.code}</td><td class="lib-td font-bold">${r.desc}</td><td class="lib-td ${catColor} font-bold">${displayCat}</td><td class="lib-td text-center text-slate-400">${r.unit}</td><td class="lib-td text-right font-mono text-green-400 font-bold">$${formatMoney(r.rate)}</td>
+                    <td class="lib-td text-center flex justify-center gap-3">
+                        <button type="button" onclick="editResource('${r.code}')" class="text-blue-500 hover:text-white" title="Edit Resource"><i class="fas fa-pencil-alt"></i></button>
+                        <button type="button" onclick="deleteResource('${r.code}')" class="text-red-500 hover:text-white" title="Delete Resource"><i class="fas fa-trash"></i></button>
+                    </td></tr>`;
+                });
+            }
+            html += `</tbody>`; document.getElementById('resourcesTable').innerHTML = html;
+        }
+
+        window.renderAPUsTable = function () {
+            let apus = DataManager.get('civilmate_master_apus') || [];
+            document.getElementById('apuCount').innerText = apus.length;
+            let html = `<thead><tr><th class="lib-th w-12 text-center">#</th><th class="lib-th w-32">Category</th><th class="lib-th">APU Description</th><th class="lib-th w-16 text-center">Unit</th><th class="lib-th w-24 text-center">Output/Day</th><th class="lib-th w-32 text-right">Unit Rate</th><th class="lib-th w-24 text-center">Actions</th></tr></thead><tbody>`;
+            if (apus.length === 0) { html += `<tr><td colspan="7" class="p-8 text-center text-slate-500 italic">No APUs found.</td></tr>`; }
+            else {
+                apus.sort((a, b) => {
+                    // Extraer el número base de la categoría (ej: "300. Earthworks" -> 300)
+                    let catA = parseInt((a.category || "").match(/\d+/)) || 0;
+                    let catB = parseInt((b.category || "").match(/\d+/)) || 0;
+
+                    // Ordenar primero por Categoría
+                    if (catA !== catB) {
+                        return catA - catB;
+                    }
+
+                    // Si están en la misma Categoría, ordenar secundariamente por el número de la Descripción
+                    let descA = parseInt((a.desc || "").match(/\d+/)) || 0;
+                    let descB = parseInt((b.desc || "").match(/\d+/)) || 0;
+
+                    if (descA !== descB) {
+                        return descA - descB;
+                    }
+
+                    // Como último recurso, orden alfabético
+                    return (a.desc || "").localeCompare(b.desc || "");
+                });
+                apus.forEach((a, index) => {
+                    html += `<tr class="lib-tr"><td class="lib-td text-center text-slate-500 font-mono text-xs">${index + 1}</td><td class="lib-td text-purple-400 text-xs uppercase tracking-wider">${a.category || 'General'}</td><td class="lib-td font-bold text-white">${a.desc}</td><td class="lib-td text-center text-slate-400">${a.unit}</td><td class="lib-td text-center text-slate-400">${a.output || '-'}</td><td class="lib-td text-right font-mono text-green-400 font-bold">$${formatMoney(a.rate)}</td>
+                    <td class="lib-td text-center flex justify-center gap-2">
+                        <button type="button" onclick="editAPU('${a.id}')" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs shadow"><i class="fas fa-pencil-alt"></i></button>
+                        <button type="button" onclick="deleteAPU('${a.id}')" class="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-2 py-1 rounded text-xs shadow transition"><i class="fas fa-trash"></i></button>
+                    </td></tr>`;
+                });
+            }
+            html += `</tbody>`; document.getElementById('apusTable').innerHTML = html;
+        };
+
+        function switchTab(tabId) {
+            document.getElementById('panelResources').classList.add('hidden'); document.getElementById('panelAPUs').classList.add('hidden');
+            document.getElementById('btnTabResources').className = "w-full text-left px-4 py-3 rounded-lg text-sm tab-inactive transition"; document.getElementById('btnTabAPUs').className = "w-full text-left px-4 py-3 rounded-lg text-sm tab-inactive transition";
+            if (tabId === 'resources') { document.getElementById('panelResources').classList.remove('hidden'); document.getElementById('btnTabResources').className = "w-full text-left px-4 py-3 rounded-lg text-sm tab-active transition"; }
+            else if (tabId === 'apus') { document.getElementById('panelAPUs').classList.remove('hidden'); document.getElementById('btnTabAPUs').className = "w-full text-left px-4 py-3 rounded-lg text-sm tab-active transition"; }
+        }
+
+        // --- CRUD RESOURCES ---
+        function createNewResource() {
+            isEditingResMode = false;
+            document.getElementById('resCode').value = "NEW-CODE"; document.getElementById('resCode').readOnly = false;
+            document.getElementById('resDesc').value = ""; document.getElementById('resUnit').value = "hr"; document.getElementById('resRate').value = 0;
+            document.getElementById('resModalTitle').innerHTML = '<i class="fas fa-plus text-green-500"></i> New Resource';
+            document.getElementById('resourceModal').classList.remove('hidden'); document.getElementById('resourceModal').classList.add('flex');
+        }
+
+        function editResource(code) {
+            let res = globalResources.find(r => r.code === code);
+            if (!res) return;
+            isEditingResMode = true;
+            document.getElementById('resCode').value = res.code; document.getElementById('resCode').readOnly = true;
+            document.getElementById('resDesc').value = res.desc; document.getElementById('resUnit').value = res.unit; document.getElementById('resRate').value = res.rate;
+            document.getElementById('resCat').value = res.cat || 'Material';
+            document.getElementById('resModalTitle').innerHTML = '<i class="fas fa-edit text-blue-500"></i> Edit Resource';
+            document.getElementById('resourceModal').classList.remove('hidden'); document.getElementById('resourceModal').classList.add('flex');
+        }
+
+        function saveResource() {
+            let code = document.getElementById('resCode').value.trim();
+            if (code === "") return;
+            let resObj = { code: code, desc: document.getElementById('resDesc').value, unit: document.getElementById('resUnit').value, cat: document.getElementById('resCat').value, rate: parseFloat(document.getElementById('resRate').value) || 0 };
+            if (isEditingResMode) {
+                let index = globalResources.findIndex(r => r.code === code);
+                if (index !== -1) globalResources[index] = resObj;
+            } else {
+                if (globalResources.some(r => r.code === code)) { alert("Resource Code already exists."); return; }
+                globalResources.push(resObj);
+            }
+            DataManager.set('civilmate_resources', globalResources);
+            closeResourceModal(); renderResourcesTable();
+        }
+
+        function deleteResource(code) { secureDelete(() => { globalResources = globalResources.filter(r => r.code !== code); DataManager.set('civilmate_resources', globalResources); renderResourcesTable(); }); }
+        function closeResourceModal() { document.getElementById('resourceModal').classList.add('hidden'); document.getElementById('resourceModal').classList.remove('flex'); }
+
+        // --- HOJA DE CÁLCULO LOGIC BLINDADA ---
+        function createNewAPU() {
+            currentEditingAPU = {
+                id: 'APU-' + Date.now(), desc: "New Analysis", unit: "m3", category: "General", output: 45, rate: 0,
+                benefitsPerc: 50, overheadPerc: 10, profitPerc: 15, materials: [], plant: [], labor: []
+            };
+            loadDataToModal();
+        }
+
+        function editAPU(id) {
+            try {
+                let apus = DataManager.get('civilmate_master_apus') || [];
+                let foundAPU = apus.find(a => a.id === id);
+                if (!foundAPU) { alert("Error: APU not found."); return; }
+
+                currentEditingAPU = JSON.parse(JSON.stringify(foundAPU));
+
+                // Reparación forzada de memoria corrupta
+                if (!currentEditingAPU.materials || typeof currentEditingAPU.materials !== 'object' || !Array.isArray(currentEditingAPU.materials)) currentEditingAPU.materials = [];
+                if (!currentEditingAPU.plant || typeof currentEditingAPU.plant !== 'object' || !Array.isArray(currentEditingAPU.plant)) currentEditingAPU.plant = [];
+                if (!currentEditingAPU.labor || typeof currentEditingAPU.labor !== 'object' || !Array.isArray(currentEditingAPU.labor)) currentEditingAPU.labor = [];
+
+                if (currentEditingAPU.benefitsPerc === undefined || isNaN(currentEditingAPU.benefitsPerc)) currentEditingAPU.benefitsPerc = 50;
+                if (currentEditingAPU.overheadPerc === undefined || isNaN(currentEditingAPU.overheadPerc)) currentEditingAPU.overheadPerc = 10;
+                if (currentEditingAPU.profitPerc === undefined || isNaN(currentEditingAPU.profitPerc)) currentEditingAPU.profitPerc = 15;
+
+                loadDataToModal();
+            } catch (e) {
+                console.error("Error cargando APU:", e);
+                alert("Hubo un error cargando este APU. Revisa la consola.");
+            }
+        }
+
+        function loadDataToModal() {
+            document.getElementById('xlsDesc').value = currentEditingAPU.desc;
+            document.getElementById('xlsUnit').value = currentEditingAPU.unit;
+            document.getElementById('xlsOut').value = currentEditingAPU.output || 1;
+            document.getElementById('xlsBen').value = currentEditingAPU.benefitsPerc;
+            document.getElementById('xlsOH').value = currentEditingAPU.overheadPerc;
+            document.getElementById('xlsProfit').value = currentEditingAPU.profitPerc;
+
+            runEngine();
+            document.getElementById('apuModal').classList.remove('hidden'); document.getElementById('apuModal').classList.add('flex');
+        }
+
+        function runEngine() {
+            if (!currentEditingAPU) return;
+
+            // Reaseguro matemático para que NUNCA sea null
+            if (!Array.isArray(currentEditingAPU.materials)) currentEditingAPU.materials = [];
+            if (!Array.isArray(currentEditingAPU.plant)) currentEditingAPU.plant = [];
+            if (!Array.isArray(currentEditingAPU.labor)) currentEditingAPU.labor = [];
+
+            currentEditingAPU.desc = document.getElementById('xlsDesc').value;
+            currentEditingAPU.unit = document.getElementById('xlsUnit').value;
+            currentEditingAPU.output = parseFloat(document.getElementById('xlsOut').value) || 1;
+            currentEditingAPU.benefitsPerc = parseFloat(document.getElementById('xlsBen').value) || 0;
+            currentEditingAPU.overheadPerc = parseFloat(document.getElementById('xlsOH').value) || 0;
+            currentEditingAPU.profitPerc = parseFloat(document.getElementById('xlsProfit').value) || 0;
+
+            let output = currentEditingAPU.output || 1;
+
+            // 1. Materiales (Directo a Unit Rate)
+            let totMatUnit = 0;
+            currentEditingAPU.materials.forEach(m => {
+                let res = globalResources.find(r => r.code && m.code && r.code.trim().toUpperCase() === m.code.trim().toUpperCase());
+                m.price = res ? (parseFloat(res.rate) || 0) : 0;
+                m.qty = parseFloat(m.qty) || 0;
+                m.total = m.qty * m.price;
+                totMatUnit += m.total;
+            });
+
+            // 2. Planta (Diario -> Unit Rate)
+            let totPlantDailyBase = 0;
+            currentEditingAPU.plant.forEach(p => {
+                let res = globalResources.find(r => r.code && p.code && r.code.trim().toUpperCase() === p.code.trim().toUpperCase());
+                p.price = res ? (parseFloat(res.rate) || 0) : 0;
+                p.qty = parseFloat(p.qty) || 0;
+                p.total = p.qty * p.price;
+                totPlantDailyBase += p.total;
+            });
+            let totPlantUnit = totPlantDailyBase / output;
+
+            // 3. Mano de Obra (Diario + Beneficios -> Unit Rate)
+            let totLabDailyBase = 0;
+            currentEditingAPU.labor.forEach(l => {
+                let res = globalResources.find(r => r.code && l.code && r.code.trim().toUpperCase() === l.code.trim().toUpperCase());
+                l.price = res ? (parseFloat(res.rate) || 0) : 0;
+                l.qty = parseFloat(l.qty) || 0;
+                l.total = l.qty * l.price;
+                totLabDailyBase += l.total;
+            });
+            let labBenDailyAmount = totLabDailyBase * (currentEditingAPU.benefitsPerc / 100);
+            let totLabDailyWithBen = totLabDailyBase + labBenDailyAmount;
+            let totLabUnit = totLabDailyWithBen / output;
+
+            // 4. Subtotales y Márgenes en Cascada
+            let directCostUnit = totMatUnit + totPlantUnit + totLabUnit;
+            let ohUnitAmount = directCostUnit * (currentEditingAPU.overheadPerc / 100);
+            let subtotalWithOH = directCostUnit + ohUnitAmount;
+            let profitUnitAmount = subtotalWithOH * (currentEditingAPU.profitPerc / 100);
+
+            // 5. Tasa Final
+            let finalRate = subtotalWithOH + profitUnitAmount;
+            currentEditingAPU.rate = finalRate;
+
+            let costPerHour = output > 0 ? (finalRate * output) / 8 : 0;
+
+            // Update UI Texts
+            const el2 = document.getElementById('xlsCostHour'); if (el2) el2.innerText = formatMoney(costPerHour);
+            const el3 = document.getElementById('xlsFinalRateTop'); if (el3) el3.innerText = "$" + formatMoney(finalRate);
+
+            const el4 = document.getElementById('totMat'); if (el4) el4.innerText = formatMoney(totMatUnit);
+            const el5 = document.getElementById('totPlantDaily'); if (el5) el5.innerText = formatMoney(totPlantDailyBase);
+            const el6 = document.getElementById('totPlantUnit'); if (el6) el6.innerText = formatMoney(totPlantUnit);
+
+            const el7 = document.getElementById('totLabDailyBase'); if (el7) el7.innerText = formatMoney(totLabDailyBase);
+            const el8 = document.getElementById('totLabBenAmount'); if (el8) el8.innerText = formatMoney(labBenDailyAmount);
+            const el9 = document.getElementById('totLabUnit'); if (el9) el9.innerText = formatMoney(totLabUnit);
+
+            const el10 = document.getElementById('totDirectCost'); if (el10) el10.innerText = formatMoney(directCostUnit);
+            const el11 = document.getElementById('totOHAmount'); if (el11) el11.innerText = formatMoney(ohUnitAmount);
+            const el12 = document.getElementById('totSubWithOH'); if (el12) el12.innerText = formatMoney(subtotalWithOH);
+            const el13 = document.getElementById('totProfitAmount'); if (el13) el13.innerText = formatMoney(profitUnitAmount);
+            const el14 = document.getElementById('xlsFinalRateBottom'); if (el14) el14.innerText = "$" + formatMoney(finalRate);
+
+            renderBlock('materials', 'tbMaterials', finalRate, output, false);
+            renderBlock('plant', 'tbPlant', finalRate, output, true);
+            renderBlock('labor', 'tbLabor', finalRate, output, true);
+        }
+
+        function renderBlock(arrayName, tBodyId, finalRate, output, isDaily) {
+            let html = '';
+            currentEditingAPU[arrayName].forEach((item, index) => {
+                let res = globalResources.find(r => r.code && item.code && r.code.trim().toUpperCase() === item.code.trim().toUpperCase());
+                let desc = res ? res.desc : '-'; let unit = res ? res.unit : '-';
+
+                let contributionPerUnit = isDaily ? (item.total / output) : item.total;
+                let incidence = finalRate > 0 ? (contributionPerUnit / finalRate) : 0;
+
+                html += `<tr>
+                    <td class="text-center font-mono">
+                        <select class="excel-select" onchange="updateRow('${arrayName}', ${index}, 'code', this.value)">
+                            <option value="${item.code}">${item.code}</option>
+                            ${globalResources.filter(r => r.code !== item.code).map(r => `<option value="${r.code}">${r.code}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td>${desc}</td><td class="text-center">${unit}</td>
+                    <td class="bg-yellow-edit"><input type="number" class="excel-input text-center text-blue-800 font-bold" value="${item.qty}" onchange="updateRow('${arrayName}', ${index}, 'qty', this.value)"></td>
+                    <td class="text-right font-mono text-slate-600">${formatMoney(item.price)}</td>
+                    <td class="text-right font-mono font-bold">${formatMoney(item.total)}</td>
+                    <td class="text-right font-mono text-slate-600">${(incidence * 100).toFixed(2)}%</td>
+                    <td class="text-center"><button type="button" onclick="deleteRow('${arrayName}', ${index})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+                </tr>`;
+            });
+            document.getElementById(tBodyId).innerHTML = html;
+        }
+
+        // --- SISTEMA BLINDADO CONTRA MEMORIA CORRUPTA ---
+        function updateRow(arr, idx, field, val) {
+            if (!currentEditingAPU || !Array.isArray(currentEditingAPU[arr])) return;
+            if (field === 'qty') currentEditingAPU[arr][idx].qty = parseFloat(val) || 0;
+            if (field === 'code') currentEditingAPU[arr][idx].code = val;
+            runEngine();
+        }
+
+        function addRow(arr) {
+            try {
+                if (!currentEditingAPU) return;
+                if (!globalResources || globalResources.length === 0) {
+                    alert("⚠️ Agrega Recursos a la Global Library primero.");
+                    return;
+                }
+
+                // Sana la memoria de forma ultra agresiva si es null o no es un array
+                if (!currentEditingAPU[arr] || !Array.isArray(currentEditingAPU[arr])) {
+                    currentEditingAPU[arr] = [];
+                }
+
+                currentEditingAPU[arr].push({
+                    code: globalResources[0].code,
+                    qty: 1,
+                    price: 0,
+                    total: 0
+                });
+
+                runEngine();
+            } catch (err) {
+                console.error("System Error en addRow:", err);
+                alert("Hubo un fallo insertando la fila. Borra el APU y créalo de nuevo.");
+            }
+        }
+
+        function deleteRow(arr, idx) {
+            if (!currentEditingAPU || !Array.isArray(currentEditingAPU[arr])) return;
+            currentEditingAPU[arr].splice(idx, 1);
+            runEngine();
+        }
+
+        function saveAPU() {
+            let apus = DataManager.get('civilmate_master_apus') || [];
+            let index = apus.findIndex(a => a.id === currentEditingAPU.id);
+            if (index !== -1) apus[index] = currentEditingAPU; else apus.push(currentEditingAPU);
+            DataManager.set('civilmate_master_apus', apus);
+            closeAPUModal(); renderAPUsTable();
+        }
+
+        function deleteAPU(id) { secureDelete(() => { let apus = DataManager.get('civilmate_master_apus') || []; apus = apus.filter(a => a.id !== id); DataManager.set('civilmate_master_apus', apus); renderAPUsTable(); }); }
+        function closeAPUModal() { document.getElementById('apuModal').classList.add('hidden'); document.getElementById('apuModal').classList.remove('flex'); currentEditingAPU = null; }
+
+        window.onload = function () {
+            // La validacion y sincronizacion con Firebase es manejada por civilmate_core.js
+            // renderResourcesTable y renderAPUsTable seran llamados autom. despues del sync
+            if (typeof firebase !== 'undefined') {
+                firebase.auth().onAuthStateChanged(function (user) {
+                    if (!user) window.location.href = 'index.html';
+                });
+            } else {
+                renderResourcesTable();
+                renderAPUsTable();
+            }
+        };
+    </script>
+</body>
+
+</html>

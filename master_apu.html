@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Master APU | CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="civilmate_core.js"></script>
+    <style>
+        .excel-header {
+            @apply bg-slate-900 text-slate-400 text-[10px] font-bold uppercase p-2 border border-slate-700;
+        }
+
+        .excel-cell {
+            @apply p-1 border border-slate-700 text-xs text-white;
+        }
+
+        .excel-input-qty {
+            @apply bg-black text-white font-bold border border-slate-600 rounded text-center text-xs w-full outline-none focus:border-blue-500;
+        }
+
+        .scroller::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroller::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        .scroller::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 font-sans text-slate-200 h-screen flex flex-col">
+
+    <header class="h-14 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="dashboard.html" class="text-slate-400 hover:text-white"><i class="fas fa-home"></i></a>
+            <h1 class="text-xl font-bold text-white">Master <span class="text-blue-500">APU Library</span></h1>
+        </div>
+        <nav class="flex bg-slate-800 rounded-lg p-1 gap-1">
+            <a href="resource_db.html"
+                class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm">1.
+                Resources</a>
+            <a href="#" class="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm">2. Master APU</a>
+            <a href="estimator.html"
+                class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm">3.
+                Budgets</a>
+        </nav>
+    </header>
+
+    <main class="flex-1 p-6 overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <input id="search" onkeyup="render()" type="text" placeholder="Search Templates..."
+                class="bg-slate-800 border border-slate-700 rounded p-2 text-sm w-64 text-white">
+            <button onclick="create()"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-bold"><i
+                    class="fas fa-plus"></i> New Template</button>
+        </div>
+        <div class="flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden overflow-y-auto"
+            id="listContainer"></div>
+    </main>
+
+    <div id="apuModal" class="fixed inset-0 bg-slate-900/95 hidden flex-col items-center justify-center z-50 p-4">
+        <div
+            class="bg-slate-800 w-full max-w-6xl h-full max-h-[95vh] rounded-xl border border-slate-700 flex flex-col shadow-2xl">
+            <div class="p-3 border-b border-slate-700 flex justify-between bg-slate-950 rounded-t-xl items-center">
+                <h3 class="font-bold text-white flex gap-2 items-center"><i class="fas fa-calculator text-blue-500"></i>
+                    Unit Rate Analysis</h3>
+                <div class="flex gap-4 items-center bg-slate-800 p-1 rounded border border-slate-700">
+                    <label class="text-[10px] uppercase font-bold text-slate-400 pl-2">Display:</label>
+                    <select id="pricingFormatSelector" onchange="updateFormatDisplay()"
+                        class="bg-slate-900 text-white text-xs border border-slate-600 rounded p-1">
+                        <option value="UNIT_PRICE">Unit Rate ($/Unit)</option>
+                        <option value="HOURLY">Hourly Rate ($/Hr)</option>
+                        <option value="LUMP_SUM">Lump Sum (Fixed)</option>
+                    </select>
+                    <div class="text-right px-3 border-l border-slate-600">
+                        <div class="text-[10px] uppercase font-bold text-slate-400">Displayed Price</div>
+                        <div id="displayPriceHeader" class="text-lg font-bold text-green-400">$0.00</div>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white px-2"><i
+                        class="fas fa-times fa-lg"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-8"><label
+                            class="text-xs text-slate-500 uppercase font-bold">Description</label><input id="mdDesc"
+                            class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-white font-bold"></div>
+                    <div class="col-span-2"><label class="text-xs text-slate-500 uppercase font-bold">Unit</label><input
+                            id="mdUnit"
+                            class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-center text-white">
+                    </div>
+                    <div class="col-span-2"><label
+                            class="text-xs text-slate-500 uppercase font-bold">Category</label><input id="mdCat"
+                            class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-center text-white">
+                    </div>
+                </div>
+                <div class="bg-slate-700/20 p-4 rounded border border-blue-900/50 grid grid-cols-12 gap-4 items-end">
+                    <div class="col-span-2"><label class="text-[10px] text-blue-400 uppercase font-bold">Daily
+                            Output</label><input type="number" id="mdOutput" onchange="recalc()"
+                            class="w-full bg-slate-800 border border-blue-500 p-2 rounded text-center text-white font-bold text-lg">
+                    </div>
+                    <div class="col-span-2"><label class="text-[10px] text-slate-400 uppercase font-bold">Shift
+                            Hours</label><input type="number" id="mdShift" value="8" onchange="recalc()"
+                            class="w-full bg-slate-800 border border-slate-600 p-2 rounded text-center text-white">
+                    </div>
+                    <div class="col-span-4 border-l border-slate-600 pl-4">
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Fully Loaded Hourly Rate</div>
+                        <div id="mdFullyLoadedHr" class="text-2xl font-mono text-green-400 font-bold">$0.00</div>
+                    </div>
+                    <div class="col-span-4 border-l border-slate-600 pl-4">
+                        <div class="text-[10px] text-slate-400 uppercase font-bold">Total Daily Cost</div>
+                        <div id="mdDailyCost" class="text-xl font-mono text-slate-200">$0.00</div>
+                    </div>
+                </div>
+
+                <div id="tablesContainer" class="space-y-6"></div>
+
+                <div class="grid grid-cols-2 gap-8 pt-4 border-t border-slate-700">
+                    <div></div>
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded shadow-lg">
+                        <div class="flex justify-between mb-1 text-sm"><span class="text-slate-400">Direct
+                                Cost:</span><span id="mdDirect" class="text-white font-bold">$0.00</span></div>
+                        <div class="flex justify-between items-center mb-1 text-sm"><span
+                                class="text-slate-400">Overheads (%):</span>
+                            <div class="flex items-center"><input type="number" id="mdOverhead" onchange="recalc()"
+                                    class="w-12 bg-slate-700 text-center rounded text-white text-xs mr-2"><span
+                                    id="pctOverhead" class="text-blue-300 w-16 text-right text-xs">0.00%</span></div>
+                        </div>
+                        <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-700 text-sm"><span
+                                class="text-slate-400">Profit (%):</span>
+                            <div class="flex items-center"><input type="number" id="mdProfit" onchange="recalc()"
+                                    class="w-12 bg-slate-700 text-center rounded text-white text-xs mr-2"><span
+                                    id="pctProfit" class="text-blue-300 w-16 text-right text-xs">0.00%</span></div>
+                        </div>
+                        <div class="flex justify-between text-xl mt-2"><span class="text-white font-bold">FINAL UNIT
+                                RATE:</span><span id="mdFinal" class="text-green-400 font-bold">$0.00</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-950 border-t border-slate-700 flex justify-end gap-3 rounded-b-xl">
+                <button onclick="closeModal()"
+                    class="px-6 py-2 text-slate-400 hover:text-white font-bold text-sm">Cancel</button>
+                <button onclick="save()"
+                    class="bg-green-600 hover:bg-green-500 text-white px-8 py-2 rounded font-bold text-sm shadow-lg">Save
+                    Analysis</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="picker" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[60]">
+        <div class="bg-slate-800 w-2/3 h-3/4 rounded-xl border border-slate-700 flex flex-col">
+            <div class="p-3 border-b border-slate-700 flex justify-between">
+                <h3 class="text-white font-bold">Select Resource</h3><button
+                    onclick="document.getElementById('picker').classList.add('hidden')" class="text-white">X</button>
+            </div>
+            <div class="p-2"><input id="pickerSearch" onkeyup="renderPicker()"
+                    class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white" placeholder="Search...">
+            </div>
+            <div class="flex-1 overflow-y-auto" id="pickerList"></div>
+        </div>
+    </div>
+
+    <script>
+        let apus = DataManager.get(DB_KEYS.MASTER_APU);
+        let resources = DataManager.get(DB_KEYS.RESOURCES);
+        let tempAPU = null;
+        let pickerType = '';
+        let calcResult = null;
+
+        function render() {
+            const c = document.getElementById('listContainer');
+            const q = document.getElementById('search').value.toLowerCase();
+            c.innerHTML = apus.filter(a => a.desc.toLowerCase().includes(q)).map(a => `
+                <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-700 hover:bg-slate-700 text-sm cursor-pointer items-center" onclick="edit('${a.id}')">
+                    <div class="col-span-2 text-blue-400 font-bold">${a.category}</div>
+                    <div class="col-span-6 text-white">${a.desc}</div>
+                    <div class="col-span-1 text-slate-400 text-center">${a.unit}</div>
+                    <div class="col-span-2 text-right text-green-400 font-mono">${Utils.fmtMoney(a.rate)}</div>
+                    <div class="col-span-1 text-center text-slate-500 text-xs">Edit</div>
+                </div>
+            `).join('');
+        }
+
+        function create() {
+            const id = Utils.generateID('APU');
+            apus.push({ id, category: 'General', desc: 'New Template', unit: 'ea', output: 1, shift: 8, materials: [], plant: [], labor: [], rate: 0 });
+            edit(id);
+        }
+
+        function edit(id) {
+            tempAPU = JSON.parse(JSON.stringify(apus.find(a => a.id === id)));
+            document.getElementById('mdDesc').value = tempAPU.desc;
+            document.getElementById('mdUnit').value = tempAPU.unit;
+            document.getElementById('mdCat').value = tempAPU.category;
+            document.getElementById('mdOutput').value = tempAPU.output || 1;
+            document.getElementById('mdShift').value = tempAPU.shift || 8;
+            document.getElementById('mdOverhead').value = tempAPU.overheadPerc || 10;
+            document.getElementById('mdProfit').value = tempAPU.profitPerc || 15;
+            document.getElementById('pricingFormatSelector').value = tempAPU.pricingFormat || 'UNIT_PRICE';
+            recalc();
+            document.getElementById('apuModal').classList.remove('hidden'); document.getElementById('apuModal').classList.add('flex');
+        }
+
+        function recalc() {
+            tempAPU.desc = document.getElementById('mdDesc').value;
+            tempAPU.output = parseFloat(document.getElementById('mdOutput').value) || 1;
+            tempAPU.shift = parseFloat(document.getElementById('mdShift').value) || 8;
+            tempAPU.overheadPerc = parseFloat(document.getElementById('mdOverhead').value) || 0;
+            tempAPU.profitPerc = parseFloat(document.getElementById('mdProfit').value) || 0;
+
+            if (document.getElementById('laborBenefitsPerc')) tempAPU.benefitsPerc = parseFloat(document.getElementById('laborBenefitsPerc').value) || 0;
+
+            calcResult = MathEngine.calculateAPU(tempAPU, resources);
+            tempAPU.rate = calcResult.finalUnitRate;
+
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = `
+                ${renderSectionTable('Materials', 'materials', calcResult.matList, 'Total Material Cost', calcResult.matTotal)}
+                ${renderSectionTable('Plant & Equipment', 'plant', calcResult.plantList, 'Total Plant Daily Cost', calcResult.plantDaily, true)}
+                ${renderSectionTable('Labour', 'labor', calcResult.laborList, 'Total Labour Unit Rate', calcResult.laborUnitCost, true, calcResult.benefitsIncidencePct)}
+            `;
+
+            document.getElementById('mdDirect').innerText = Utils.fmtMoney(calcResult.directCost);
+            document.getElementById('mdFinal').innerText = Utils.fmtMoney(calcResult.finalUnitRate);
+            document.getElementById('pctOverhead').innerText = Utils.fmtPct(calcResult.overheadIncidencePct);
+            document.getElementById('pctProfit').innerText = Utils.fmtPct(calcResult.profitIncidencePct);
+            document.getElementById('mdDailyCost').innerText = Utils.fmtMoney(calcResult.dailyTotalCost);
+            document.getElementById('mdFullyLoadedHr').innerText = Utils.fmtMoney(calcResult.fullyLoadedHourlyRate);
+
+            updateFormatDisplay();
+        }
+
+        function updateFormatDisplay() {
+            const format = document.getElementById('pricingFormatSelector').value;
+            tempAPU.pricingFormat = format;
+            let displayVal = (format === 'HOURLY') ? calcResult.fullyLoadedHourlyRate : calcResult.finalUnitRate;
+            document.getElementById('displayPriceHeader').innerText = Utils.fmtMoney(displayVal);
+        }
+
+        // --- FOOTERS WITH COLSPAN=5 ---
+        function renderSectionTable(title, key, list, footerLabel, footerValue, isDaily = false, benefitsPct = 0) {
+            const rows = RenderEngine.generateRows(list, key, 'updateQty', 'removeItem');
+
+            let footerRows = `<tr><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">${footerLabel}:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(footerValue)}</td><td colspan="2"></td></tr>`;
+
+            if (key === 'plant') {
+                footerRows = `
+                <tr class="bg-slate-800/50"><td colspan="5" class="text-right text-[10px] text-slate-400 p-1 uppercase">Total $:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(calcResult.plantDaily)}</td><td colspan="2"></td></tr>
+                <tr><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">Total Plant Unit Rate:</td><td class="text-right text-xs font-bold text-green-400 p-1">${Utils.fmtMoney(calcResult.plantUnitCost)}</td><td colspan="2"></td></tr>
+                `;
+            }
+            if (key === 'labor') {
+                const benP = tempAPU.benefitsPerc !== undefined ? tempAPU.benefitsPerc : 50;
+                const benVal = calcResult.benefitsVal;
+                footerRows = `
+                <tr class="bg-slate-800/50"><td colspan="5" class="text-right text-[10px] text-slate-400 p-1 uppercase">Total $:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(calcResult.laborBaseDaily)}</td><td colspan="2"></td></tr>
+                <tr class="bg-slate-800/50"><td colspan="4" class="text-right text-[10px] text-slate-400 p-1 uppercase">Benefits by law (%):</td><td class="text-center p-1"><input type="number" id="laborBenefitsPerc" value="${benP}" onchange="recalc()" class="w-16 bg-slate-700 text-center rounded text-white text-xs border border-slate-600"></td><td class="text-right text-xs font-bold text-slate-300 p-1">${Utils.fmtMoney(benVal)}</td><td colspan="2"></td></tr>
+                <tr class="bg-slate-800/50"><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">Total Labour:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(calcResult.laborTotalDaily)}</td><td colspan="2"></td></tr>
+                <tr><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">Total Labour Unit Rate:</td><td class="text-right text-xs font-bold text-green-400 p-1">${Utils.fmtMoney(calcResult.laborUnitCost)}</td><td colspan="2"></td></tr>`;
+            }
+
+            return `
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase">${title}</h4>
+                        <button type="button" onclick="openPicker('${key}')" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-white">+ Add Item</button>
+                    </div>
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 text-slate-400 text-[10px] uppercase font-bold"><th class="p-2 border border-slate-700 w-16">Code</th><th class="p-2 border border-slate-700">Description</th><th class="p-2 border border-slate-700 w-12">Unit</th><th class="p-2 border border-slate-700 w-20">Qty</th><th class="p-2 border border-slate-700 w-24 text-right">Rate</th><th class="p-2 border border-slate-700 w-24 text-right">Total</th><th class="p-2 border border-slate-700 w-24 text-right text-blue-300">Inc %</th><th class="p-2 border border-slate-700 w-10"></th></tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot>${footerRows}</tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
+        function updateQty(key, idx, val) { tempAPU[key][idx].qty = parseFloat(val); recalc(); }
+        function removeItem(key, idx) { tempAPU[key].splice(idx, 1); recalc(); }
+
+        function openPicker(key) {
+            pickerType = key;
+            const cat = key === 'materials' ? 'Material' : (key === 'plant' ? 'Plant' : 'Labour');
+            const list = document.getElementById('pickerList');
+            list.innerHTML = resources.filter(r => r.cat === cat).map(r => `
+                <div class="p-2 border-b border-slate-700 hover:bg-slate-700 cursor-pointer text-sm text-white flex justify-between" onclick="addItem('${r.code}')">
+                    <span>${r.desc}</span><span>${Utils.fmtMoney(r.rate)}</span>
+                </div>
+            `).join('');
+            document.getElementById('picker').classList.remove('hidden'); document.getElementById('picker').classList.add('flex');
+        }
+        function addItem(code) {
+            tempAPU[pickerType].push({ code, qty: 1 });
+            document.getElementById('picker').classList.add('hidden');
+            recalc();
+        }
+
+        function save() {
+            tempAPU.unit = document.getElementById('mdUnit').value;
+            tempAPU.category = document.getElementById('mdCat').value;
+            const idx = apus.findIndex(a => a.id === tempAPU.id);
+            if (idx >= 0) apus[idx] = tempAPU;
+            DataManager.set(DB_KEYS.MASTER_APU, apus);
+            document.getElementById('apuModal').classList.remove('flex'); document.getElementById('apuModal').classList.add('hidden');
+            render();
+        }
+        function closeModal() { document.getElementById('apuModal').classList.remove('flex'); document.getElementById('apuModal').classList.add('hidden'); }
+
+        render();
+    </script>
+</body>
+
+</html>

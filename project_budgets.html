@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Project Budgets | CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        if(!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="civilmate_core.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        .excel-header { @apply bg-slate-900 text-slate-400 text-[10px] font-bold uppercase p-2 border border-slate-700; }
+        .excel-cell { @apply p-1 border border-slate-700 text-xs text-white; }
+        .excel-input-qty { @apply bg-black text-white font-bold border border-slate-600 rounded text-center text-xs w-full outline-none focus:border-blue-500; }
+        body { overflow: hidden; height: 100vh; background-color: #0f172a; }
+        .scroller { overflow-y: auto; height: 100%; }
+        .scroller::-webkit-scrollbar { width: 6px; }
+        .scroller::-webkit-scrollbar-track { background: #1e293b; }
+        .scroller::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        .cursor-move { cursor: grab; user-select: none; }
+        .cursor-move:active { cursor: grabbing; }
+        .sortable-ghost { opacity: 0.4; background: #1e3a8a; border: 2px dashed #3b82f6; }
+        .item-row:hover { background-color: #1e293b; }
+    </style>
+</head>
+
+<body class="font-sans text-slate-200">
+
+    <div class="md:hidden fixed inset-0 bg-[#0f172a] z-[999] flex flex-col items-center justify-center p-8 text-center">
+        <div class="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-8">
+            <i class="fas fa-desktop text-4xl text-white"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-4">High-Precision Module</h2>
+        <p class="text-slate-400 text-sm leading-relaxed mb-10">
+            The CivilMate Pro Estimating & Budgeting engine requires a larger workspace to manage complex APU matrices and financial data. <br><br>
+            Please access this module from a Desktop or Laptop computer.
+        </p>
+        <a href="dashboard.html" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-bold border border-slate-700 transition w-full">
+            <i class="fas fa-arrow-left mr-2"></i> Return to Dashboard
+        </a>
+    </div>
+
+    <div class="hidden md:flex md:flex-col h-screen w-full relative">
+        <header class="h-16 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50">
+            <div class="flex items-center gap-4">
+                <a href="dashboard.html" class="text-slate-400 hover:text-white transition"><i class="fas fa-home"></i></a>
+                <h1 class="text-xl font-bold text-white">Project <span class="text-blue-500">Budgets</span></h1>
+            </div>
+            
+            <nav class="flex bg-slate-800 rounded-lg p-1 gap-1 items-center">
+                <a href="estimator.html" class="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm shadow">Budgets</a>
+                <a href="valuations.html" class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm transition">Valuations</a>
+                <a href="wip_report.html" class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm transition">WIP Report</a>
+                <div class="border-l border-slate-600 h-6 mx-1"></div>
+                <a href="master_apu.html" class="px-4 py-2 text-orange-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm transition"><i class="fas fa-database mr-1"></i> Master APUs</a>
+                <a href="resources.html" class="px-4 py-2 text-green-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm transition"><i class="fas fa-boxes mr-1"></i> Resources</a>
+            </nav>
+        </header>
+
+        <main class="flex-1 overflow-hidden relative">
+            <div id="viewRegistry" class="h-full flex flex-col p-6">
+                <div class="flex justify-between items-center mb-4 shrink-0">
+                    <h2 class="text-lg font-bold text-white">Active Projects</h2>
+                    <button onclick="createBudget()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold">New Budget</button>
+                </div>
+                <div class="flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-y-auto" id="budgetList"></div>
+            </div>
+
+            <div id="viewEditor" class="hidden h-full flex-col">
+                <div class="h-12 bg-slate-900 border-b border-slate-800 flex justify-between items-center px-4 shrink-0 z-40">
+                    <button onclick="closeEditor()" class="text-blue-400 text-sm hover:underline"><i class="fas fa-arrow-left"></i> Back</button>
+                    <div class="flex gap-2">
+                        <button onclick="openSettings()" class="bg-slate-700 text-slate-300 px-3 py-1 rounded text-sm hover:text-white" title="Settings"><i class="fas fa-cog"></i></button>
+                        <button onclick="createNewItem()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-sm font-bold"><i class="fas fa-plus"></i> New Item</button>
+                        <button onclick="addSection()" class="bg-slate-600 text-white px-3 py-1 rounded text-sm font-bold">+ Section</button>
+                        <button onclick="importFromMaster()" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-bold">Import from Library</button>
+                        <button onclick="openPrintOptions()" class="bg-slate-200 text-slate-900 px-3 py-1 rounded text-sm font-bold shadow-lg hover:bg-white"><i class="fas fa-file-pdf text-red-600 mr-1"></i> Print Quote</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto scroller p-6">
+                    <div class="bg-slate-800 p-6 rounded-t-xl border border-slate-700 mb-0">
+                        <div class="flex justify-between items-start border-b border-slate-700 pb-4 mb-4">
+                            <div class="w-1/2">
+                                <div class="text-xs text-slate-500 uppercase font-bold mb-1">From:</div>
+                                <div class="text-white font-bold text-lg" id="lblCompany">COMPANY</div>
+                                <div class="text-slate-400 text-xs" id="lblAddress">Address</div>
+                                <div class="text-slate-400 text-xs" id="lblContact">Contact</div>
+                            </div>
+                            <div class="text-right">
+                                <h1 class="text-3xl font-bold text-white tracking-widest">QUOTE</h1>
+                                <div class="text-slate-400 text-sm"># <span id="lblBudgetID">--</span></div>
+                                <div class="text-slate-400 text-sm">Date: <span id="lblDate">--</span></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-slate-500 uppercase font-bold block mb-1">To (Client):</label>
+                                <input id="bgClientName" onchange="saveHeader()" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm mb-2" placeholder="Client Name">
+                                <input id="bgClientContact" onchange="saveHeader()" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-xs" placeholder="Contact">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-500 uppercase font-bold block mb-1">Project:</label>
+                                <input id="bgName" onchange="saveHeader()" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm font-bold mb-2" placeholder="Project Name">
+                                <input id="bgSiteAddress" onchange="saveHeader()" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-xs" placeholder="Site Address">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 uppercase font-bold p-2 bg-slate-900 border-x border-slate-700">
+                        <div class="col-span-6">Description</div>
+                        <div class="col-span-1 text-center">Unit</div>
+                        <div class="col-span-2 text-center">Qty</div>
+                        <div class="col-span-1 text-right">Rate</div>
+                        <div class="col-span-1 text-right">Total</div>
+                        <div class="col-span-1 text-center">Action</div>
+                    </div>
+
+                    <div id="budget-items-container" class="border border-slate-700 rounded-b-xl bg-slate-800/50 mb-4 min-h-[100px]"></div>
+
+                    <div class="bg-slate-900 p-4 border border-slate-700 rounded-xl flex justify-between items-center mb-8">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400">Validity (Days):</span>
+                            <input type="number" id="bgValidity" onchange="saveHeader()" class="w-16 bg-slate-800 border border-slate-600 rounded text-center text-white text-xs" value="30">
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm text-slate-400 font-bold mr-4">GRAND TOTAL:</span>
+                            <span id="bgTotal" class="text-2xl font-bold text-green-400">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="printModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-[90]">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-[400px] shadow-2xl">
+            <h3 class="text-xl font-bold mb-2 text-white"><i class="fas fa-print text-blue-500 mr-2"></i> Print Options</h3>
+            <p class="text-slate-400 text-sm mb-6">Select format to print or save as PDF:</p>
+            <button type="button" onclick="executePrint(false)" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 px-4 rounded mb-3 flex justify-between items-center group">
+                <span>Summary Quote Only</span><i class="fas fa-file-alt text-slate-400 group-hover:text-white"></i>
+            </button>
+            <button type="button" onclick="executePrint(true)" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded mb-4 flex justify-between items-center group">
+                <span>Quote + Detailed Analysis</span><i class="fas fa-layer-group text-blue-200 group-hover:text-white"></i>
+            </button>
+            <div class="text-center"><button type="button" onclick="document.getElementById('printModal').classList.add('hidden')" class="text-slate-500 text-sm hover:text-white">Cancel</button></div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[80]">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-96 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4 text-white">Company Settings</h3>
+            <div class="space-y-3">
+                <input id="setCompName" placeholder="Company Name" class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm text-white">
+                <input id="setCompAddr" placeholder="Address" class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm text-white">
+                <input id="setCompCont" placeholder="Contact Info" class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm text-white">
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="text-slate-400 text-sm">Cancel</button>
+                <button onclick="saveSettings()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="apuModal" class="fixed inset-0 bg-slate-900/95 hidden flex-col items-center justify-center z-50 p-4">
+        <div class="bg-slate-800 w-full max-w-6xl h-full max-h-[95vh] rounded-xl border border-slate-700 flex flex-col shadow-2xl">
+            <div class="p-3 border-b border-slate-700 flex justify-between bg-slate-950 rounded-t-xl items-center">
+                <h3 class="font-bold text-white flex gap-2 items-center"><i class="fas fa-edit text-orange-500"></i> Edit Budget Item Analysis</h3>
+                <div class="flex gap-4 items-center bg-slate-800 p-1 rounded border border-slate-700">
+                    <select id="pricingFormatSelector" onchange="updateFormatDisplay()" class="bg-slate-900 text-white text-xs border border-slate-600 rounded p-1"><option value="UNIT_PRICE">Unit Rate</option><option value="HOURLY">Hourly Rate</option><option value="LUMP_SUM">Lump Sum</option></select>
+                    <div class="text-right px-3 border-l border-slate-600"><div class="text-[10px] uppercase font-bold text-slate-400">Price</div><div id="displayPriceHeader" class="text-lg font-bold text-green-400">$0.00</div></div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white px-2">X</button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <div class="grid grid-cols-12 gap-4">
+                    <div class="col-span-8"><label class="text-xs text-slate-500 uppercase font-bold">Description</label><input id="mdDesc" class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-white font-bold"></div>
+                    <div class="col-span-2"><label class="text-xs text-slate-500 uppercase font-bold">Unit</label><input id="mdUnit" class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-center text-white"></div>
+                    <div class="col-span-2"><label class="text-xs text-slate-500 uppercase font-bold">Category</label><input id="mdCat" class="w-full bg-slate-700 border border-slate-600 p-2 rounded text-center text-white"></div>
+                </div>
+                <div class="bg-slate-700/20 p-4 rounded border border-blue-900/50 grid grid-cols-12 gap-4 items-end">
+                    <div class="col-span-2"><label class="text-[10px] text-blue-400 uppercase font-bold">Daily Output</label><input type="number" id="mdOutput" onchange="recalc()" class="w-full bg-slate-800 border border-blue-500 p-2 rounded text-center text-white font-bold text-lg"></div>
+                    <div class="col-span-2"><label class="text-[10px] text-slate-400 uppercase font-bold">Shift Hours</label><input type="number" id="mdShift" value="8" onchange="recalc()" class="w-full bg-slate-800 border border-slate-600 p-2 rounded text-center text-white"></div>
+                    <div class="col-span-4 border-l border-slate-600 pl-4"><div class="text-[10px] text-slate-400 uppercase font-bold">Hourly Rate</div><div id="mdFullyLoadedHr" class="text-2xl font-mono text-green-400 font-bold">$0.00</div></div>
+                    <div class="col-span-4 border-l border-slate-600 pl-4"><div class="text-[10px] text-slate-400 uppercase font-bold">Daily Cost</div><div id="mdDailyCost" class="text-xl font-mono text-slate-200">$0.00</div></div>
+                </div>
+                <div id="tablesContainer" class="space-y-6"></div>
+                <div class="grid grid-cols-2 gap-8 pt-4 border-t border-slate-700">
+                    <div></div>
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded shadow-lg">
+                        <div class="flex justify-between mb-1 text-sm"><span class="text-slate-400">Direct Cost:</span><span id="mdDirect" class="text-white font-bold">$0.00</span></div>
+                        <div class="flex justify-between items-center mb-1 text-sm"><span class="text-slate-400">Overheads (%):</span><input type="number" id="mdOverhead" onchange="recalc()" class="w-12 bg-slate-700 text-center rounded text-white text-xs mr-2"><span id="pctOverhead" class="text-blue-300 w-16 text-right text-xs">0.00%</span></div>
+                        <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-700 text-sm"><span class="text-slate-400">Profit (%):</span><input type="number" id="mdProfit" onchange="recalc()" class="w-12 bg-slate-700 text-center rounded text-white text-xs mr-2"><span id="pctProfit" class="text-blue-300 w-16 text-right text-xs">0.00%</span></div>
+                        <div class="flex justify-between text-xl mt-2"><span class="text-white font-bold">FINAL UNIT RATE:</span><span id="mdFinal" class="text-green-400 font-bold">$0.00</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-950 border-t border-slate-700 flex justify-end gap-3 rounded-b-xl">
+                <button onclick="closeModal()" class="px-6 py-2 text-slate-400 hover:text-white font-bold text-sm">Cancel</button>
+                <button onclick="saveInstance()" class="bg-green-600 hover:bg-green-500 text-white px-8 py-2 rounded font-bold text-sm shadow-lg">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="picker" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[60]"><div class="bg-slate-800 w-2/3 h-3/4 rounded-xl border border-slate-700 flex flex-col shadow-2xl"><div class="p-3 border-b border-slate-700 flex justify-between items-center bg-slate-900 rounded-t-xl"><h3 class="text-white font-bold">Select Resource</h3><div class="flex gap-2"><button onclick="togglePickerMode('list')" id="btnPickList" class="px-3 py-1 bg-blue-600 text-white text-xs rounded font-bold">Select</button><button onclick="togglePickerMode('create')" id="btnPickCreate" class="px-3 py-1 bg-slate-700 text-slate-400 text-xs rounded font-bold hover:text-white">+ New Resource</button><button onclick="document.getElementById('picker').classList.add('hidden')" class="text-white ml-2">X</button></div></div><div id="pickerListView" class="flex-1 flex flex-col overflow-hidden"><div class="p-2 bg-slate-900"><input id="pickerSearch" onkeyup="renderPickerList()" class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white" placeholder="Search..."></div><div class="flex-1 overflow-y-auto" id="pickerList"></div></div><div id="pickerCreateView" class="flex-1 hidden flex-col p-6 space-y-4"><h4 class="text-white font-bold border-b border-slate-700 pb-2">Create Global Resource</h4><input id="newCode" placeholder="Code" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm"><input id="newDesc" placeholder="Description" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm"><div class="grid grid-cols-2 gap-4"><input id="newUnit" placeholder="Unit" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm"><input id="newRate" type="number" placeholder="Rate ($)" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm"></div><select id="newCat" class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm" disabled></select><div class="pt-4"><button onclick="saveNewResource()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded">Save to Database & Add</button></div></div></div></div>
+    <div id="importModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-[70]"><div class="bg-slate-800 w-1/2 h-3/4 rounded-xl border border-slate-700 flex flex-col"><div class="p-3 border-b border-slate-700"><h3 class="text-white font-bold">Select from Master APU</h3></div><div class="p-2"><input id="impSearch" onkeyup="renderImportList()" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="Search..."></div><div class="flex-1 overflow-y-auto p-2" id="importList"></div><button onclick="document.getElementById('importModal').classList.add('hidden')" class="p-3 bg-slate-900 text-slate-400">Cancel</button></div></div>
+
+    <script>
+        let budgets = DataManager.get(DB_KEYS.BUDGETS);
+        let masterAPUs = DataManager.get(DB_KEYS.MASTER_APU);
+        let resources = DataManager.get(DB_KEYS.RESOURCES);
+        let activeID = null, tempAPU = null, activeItemIndex = -1, pickerType = '', calcResult = null, sortableInstance = null;
+        let originalAPUString = "", isNewItem = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('budget-items-container');
+            if (container) {
+                container.addEventListener('click', function (e) {
+                    const editTrigger = e.target.closest('.action-edit');
+                    if (editTrigger) { const itemId = editTrigger.getAttribute('data-item-id'); if (itemId) editItemInstance(itemId); return; }
+                    const delTrigger = e.target.closest('.action-delete');
+                    if (delTrigger) { const itemId = delTrigger.getAttribute('data-item-id'); if (itemId) deleteItemById(itemId); return; }
+                    const cpyTrigger = e.target.closest('.action-copy');
+                    if (cpyTrigger) { const itemId = cpyTrigger.getAttribute('data-item-id'); if (itemId) copyItemById(itemId); return; }
+                });
+            }
+        });
+
+        function renderRegistry() {
+            const c = document.getElementById('budgetList');
+            const contracts = DataManager.get(DB_KEYS.CONTRACTS) || [];
+
+            c.innerHTML = budgets.map(b => {
+                let total = b.items.reduce((acc, i) => { if (i.type === 'SECTION') return acc; const calc = MathEngine.calculateAPU(i, resources); return acc + (calc.finalUnitRate * (i.qty || 0)); }, 0);
+                let isContracted = contracts.some(con => con.budgetId === b.id);
+                let statusIcon = isContracted ? '<i class="fas fa-lock text-slate-400"></i>' : '<i class="fas fa-check-circle fa-lg"></i>';
+                let statusColor = isContracted ? 'text-slate-500 hover:text-slate-400' : 'text-green-500 hover:text-green-300';
+                let statusTitle = isContracted ? 'Locked (Contract Created)' : 'Approve & Create Contract';
+                let displayStatus = isContracted ? 'Approved & Locked' : (b.status || 'Draft');
+
+                return `<div class="grid grid-cols-12 gap-2 p-4 border-b border-slate-700 hover:bg-slate-700 items-center"><div class="col-span-5 font-bold text-white cursor-pointer" onclick="openBudget('${b.id}')">${b.name} <span class="text-xs text-blue-400 font-normal ml-2">${displayStatus}</span></div><div class="col-span-2 text-slate-400">${new Date(b.created).toLocaleDateString()}</div><div class="col-span-2 text-right text-green-400 font-mono">${Utils.fmtMoney(total)}</div><div class="col-span-3 text-right flex gap-3 justify-end">
+                    <button onclick="approveBudget('${b.id}')" class="${statusColor}" title="${statusTitle}">${statusIcon}</button>
+                    <button onclick="openBudget('${b.id}')" class="text-blue-500 hover:text-white" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                    <button onclick="copyBudget('${b.id}')" class="text-slate-400 hover:text-white" title="Copy"><i class="fas fa-copy"></i></button>
+                    <button onclick="deleteBudget('${b.id}')" class="text-red-500 hover:text-red-300" title="Delete"><i class="fas fa-trash"></i></button>
+                </div></div>`;
+            }).join('');
+        }
+
+        function approveBudget(id) {
+            const contracts = DataManager.get(DB_KEYS.CONTRACTS) || [];
+            if (contracts.some(c => c.budgetId === id)) { alert("This budget is already approved and locked as a Contract Schedule."); return; }
+            if (confirm("Approve this budget? This will freeze the rates and create a Contract Schedule in the Valuations module. This action cannot be undone.")) {
+                if (DataManager.createContractFromBudget(id)) {
+                    alert("Contract Schedule Created Successfully!");
+                    budgets = DataManager.get(DB_KEYS.BUDGETS);
+                    renderRegistry();
+                } else { alert("Error creating Contract Schedule."); }
+            }
+        }
+
+        function openBudget(id) { activeID = id; document.getElementById('viewRegistry').classList.add('hidden'); document.getElementById('viewEditor').classList.remove('hidden'); document.getElementById('viewEditor').classList.add('flex'); renderEditor(); }
+
+        function renderEditor() {
+            const b = budgets.find(x => x.id === activeID);
+            const settings = DataManager.getSettings();
+            document.getElementById('lblCompany').innerText = settings.companyName;
+            document.getElementById('lblAddress').innerText = settings.companyAddress;
+            document.getElementById('lblContact').innerText = settings.companyContact;
+            document.getElementById('bgName').value = b.name;
+            document.getElementById('bgClientName').value = b.clientName || '';
+            document.getElementById('bgClientContact').value = b.clientContact || '';
+            document.getElementById('bgSiteAddress').value = b.siteAddress || '';
+            document.getElementById('bgValidity').value = b.validityDays || 30;
+            document.getElementById('lblBudgetID').innerText = b.id.substring(4, 12);
+            document.getElementById('lblDate').innerText = new Date(b.created).toLocaleDateString();
+
+            let grandTotal = 0, sectionTotal = 0, hasSection = false;
+            const c = document.getElementById('budget-items-container');
+            let html = '';
+
+            b.items.forEach((item, idx) => {
+                if (item.type === 'SECTION') {
+                    if (hasSection) html += `<div class="bg-slate-800 p-2 text-right text-xs font-bold text-slate-400 border-b border-slate-600 italic cursor-default">Subtotal: ${Utils.fmtMoney(sectionTotal)}</div>`;
+                    html += `<div class="grid grid-cols-12 gap-2 p-3 bg-slate-800 border-b border-slate-700 mt-4 group" data-id="${item.id}"><div class="col-span-10 flex items-center"><i class="fas fa-grip-vertical text-slate-500 cursor-move handle mr-3"></i><input value="${item.desc}" onchange="updateDesc(${idx}, this.value)" class="bg-transparent text-yellow-500 font-bold w-full uppercase outline-none placeholder-yellow-700" placeholder="SECTION TITLE"></div><div class="col-span-2 text-right"><button class="text-red-500 hover:text-red-300 action-delete" data-item-id="${item.id}"><i class="fas fa-trash"></i></button></div></div>`;
+                    sectionTotal = 0; hasSection = true;
+                } else {
+                    const calc = MathEngine.calculateAPU(item, resources);
+                    const disp = MathEngine.getDisplayValues(calc, item.pricingFormat, item.qty);
+                    sectionTotal += disp.total; grandTotal += disp.total;
+                    let u = item.unit; if (item.pricingFormat === 'HOURLY') u = 'Hr'; if (item.pricingFormat === 'LUMP_SUM') u = 'LS';
+
+                    html += `<div class="grid grid-cols-12 gap-2 p-2 bg-slate-900 border-b border-slate-800 items-center text-sm hover:bg-slate-800 group item-row" data-id="${item.id}">
+                        <div class="col-span-6 flex items-center overflow-hidden"><i class="fas fa-grip-vertical text-slate-500 cursor-move handle mr-2 opacity-50 group-hover:opacity-100"></i><div class="text-white truncate cursor-pointer hover:text-blue-400 action-edit" data-item-id="${item.id}">${item.desc}</div></div>
+                        <div class="col-span-1 text-slate-400 text-center">${u}</div><div class="col-span-2 text-center"><input type="number" value="${item.qty}" onchange="updateQty(${idx}, this.value)" class="w-20 bg-slate-800 border border-slate-600 rounded text-center text-white"></div>
+                        <div class="col-span-1 text-right text-slate-400">${Utils.fmtMoney(disp.rate)}</div><div class="col-span-1 text-right text-green-400 font-bold">${Utils.fmtMoney(disp.total)}</div>
+                        <div class="col-span-1 text-right flex gap-2 justify-end"><button class="text-blue-500 hover:text-white action-edit" data-item-id="${item.id}" title="Edit APU"><i class="fas fa-pencil-alt"></i></button><button class="text-slate-500 hover:text-white action-copy" data-item-id="${item.id}"><i class="fas fa-copy"></i></button><button class="text-red-500 hover:text-red-300 action-delete" data-item-id="${item.id}"><i class="fas fa-trash"></i></button></div></div>`;
+                }
+            });
+            if (hasSection) html += `<div class="bg-slate-800 p-2 text-right text-xs font-bold text-slate-400 border-b border-slate-600 italic cursor-default">Subtotal: ${Utils.fmtMoney(sectionTotal)}</div>`;
+            c.innerHTML = html;
+            document.getElementById('bgTotal').innerText = Utils.fmtMoney(grandTotal);
+            initSortable();
+        }
+
+        function openPrintOptions() { document.getElementById('printModal').classList.remove('hidden'); document.getElementById('printModal').classList.add('flex'); }
+        function executePrint(details) { document.getElementById('printModal').classList.add('hidden'); document.getElementById('printModal').classList.remove('flex'); try { PDFEngine.exportBudget(activeID, details); } catch (err) { alert("Hubo un error iniciando la impresión: " + err.message); console.error(err); } }
+        function editItemInstance(itemId) { const b = budgets.find(x => x.id === activeID); const idx = b.items.findIndex(i => i.id === itemId); if (idx === -1) return; activeItemIndex = idx; tempAPU = JSON.parse(JSON.stringify(b.items[idx])); originalAPUString = JSON.stringify(tempAPU); isNewItem = false; loadModalData(); }
+        function copyItemById(itemId) { const b = budgets.find(x => x.id === activeID); const idx = b.items.findIndex(i => i.id === itemId); if (idx === -1) return; const cp = JSON.parse(JSON.stringify(b.items[idx])); cp.id = Utils.generateID('INS'); b.items.splice(idx + 1, 0, cp); DataManager.set(DB_KEYS.BUDGETS, budgets); renderEditor(); }
+        function deleteItemById(itemId) { const b = budgets.find(x => x.id === activeID); const idx = b.items.findIndex(i => i.id === itemId); if (idx === -1) return; b.items.splice(idx, 1); DataManager.set(DB_KEYS.BUDGETS, budgets); renderEditor(); }
+        function openSettings() { const s = DataManager.getSettings(); document.getElementById('setCompName').value = s.companyName; document.getElementById('setCompAddr').value = s.companyAddress; document.getElementById('setCompCont').value = s.companyContact; document.getElementById('settingsModal').classList.remove('hidden'); document.getElementById('settingsModal').classList.add('flex'); } function saveSettings() { const s = { companyName: document.getElementById('setCompName').value, companyAddress: document.getElementById('setCompAddr').value, companyContact: document.getElementById('setCompCont').value }; DataManager.saveSettings(s); document.getElementById('settingsModal').classList.add('hidden'); renderEditor(); }
+        function createNewItem() { activeItemIndex = -1; isNewItem = true; tempAPU = { id: Utils.generateID('INS'), category: 'General', desc: 'New Budget Item', unit: 'ea', output: 1, qty: 1, pricingFormat: 'UNIT_PRICE', materials: [], plant: [], labor: [], benefitsCoeff: 50, overheadPerc: 10, profitPerc: 15 }; loadModalData(); }
+        function loadModalData() { document.getElementById('mdDesc').value = tempAPU.desc; document.getElementById('mdUnit').value = tempAPU.unit; document.getElementById('mdCat').value = tempAPU.category; document.getElementById('mdOutput').value = tempAPU.output || 1; document.getElementById('mdShift').value = tempAPU.shift || 8; document.getElementById('mdOverhead').value = tempAPU.overheadPerc || 10; document.getElementById('mdProfit').value = tempAPU.profitPerc || 15; document.getElementById('pricingFormatSelector').value = tempAPU.pricingFormat || 'UNIT_PRICE'; recalc(); document.getElementById('apuModal').classList.remove('hidden'); document.getElementById('apuModal').classList.add('flex'); }
+        function saveInstance() { tempAPU.unit = document.getElementById('mdUnit').value; tempAPU.category = document.getElementById('mdCat').value; tempAPU.pricingFormat = document.getElementById('pricingFormatSelector').value; const b = budgets.find(x => x.id === activeID); if (isNewItem) { b.items.push(tempAPU); if (confirm("Add to Master?")) { DataManager.addMasterAPU(tempAPU); } } else { b.items[activeItemIndex] = tempAPU; const currentStr = JSON.stringify(tempAPU); if (currentStr !== originalAPUString && tempAPU.originID) { if (confirm("Update Master?")) { const m = JSON.parse(JSON.stringify(tempAPU)); m.id = tempAPU.originID; delete m.originID; delete m.qty; const idx = masterAPUs.findIndex(x => x.id === m.id); if (idx >= 0) masterAPUs[idx] = m; DataManager.set(DB_KEYS.MASTER_APU, masterAPUs); } } } DataManager.set(DB_KEYS.BUDGETS, budgets); closeModal(); renderEditor(); }
+        function recalc() {
+            tempAPU.desc = document.getElementById('mdDesc').value; tempAPU.output = parseFloat(document.getElementById('mdOutput').value) || 1; tempAPU.shift = parseFloat(document.getElementById('mdShift').value) || 8; tempAPU.overheadPerc = parseFloat(document.getElementById('mdOverhead').value) || 0; tempAPU.profitPerc = parseFloat(document.getElementById('mdProfit').value) || 0; if (document.getElementById('laborBenefitsPerc')) tempAPU.benefitsPerc = parseFloat(document.getElementById('laborBenefitsPerc').value) || 0; calcResult = MathEngine.calculateAPU(tempAPU, resources); tempAPU.rate = calcResult.finalUnitRate;
+            document.getElementById('tablesContainer').innerHTML = `${renderSectionTable('Materials', 'materials', calcResult.matList, 'Total Material Cost', calcResult.matTotal)}${renderSectionTable('Plant & Equipment', 'plant', calcResult.plantList, 'Total Plant Daily Cost', calcResult.plantDaily, true)}${renderSectionTable('Labour', 'labor', calcResult.laborList, 'Total Labour Unit Rate', calcResult.laborUnitCost, true, calcResult.benefitsIncidencePct)}`;
+            document.getElementById('mdDirect').innerText = Utils.fmtMoney(calcResult.directCost); document.getElementById('mdFinal').innerText = Utils.fmtMoney(calcResult.finalUnitRate); document.getElementById('pctOverhead').innerText = Utils.fmtPct(calcResult.overheadIncidencePct); document.getElementById('pctProfit').innerText = Utils.fmtPct(calcResult.profitIncidencePct); document.getElementById('mdDailyCost').innerText = Utils.fmtMoney(calcResult.dailyTotalCost); document.getElementById('mdFullyLoadedHr').innerText = Utils.fmtMoney(calcResult.fullyLoadedHourlyRate); updateFormatDisplay();
+        }
+        function renderSectionTable(t, k, l, fl, fv, d = false, bp = 0) {
+            const r = RenderEngine.generateRows(l, k, 'updateAPUQty', 'removeAPUItem');
+            let footer = `<tr><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">${fl}:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(fv)}</td><td colspan="2"></td></tr>`;
+            if (k === 'plant') { footer = `<tr class="bg-slate-800/50"><td colspan="5" class="text-right text-[10px] text-slate-400 p-1 uppercase">Total $:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(calcResult.plantDaily)}</td><td colspan="2"></td></tr><tr><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">Total Plant Unit Rate:</td><td class="text-right text-xs font-bold text-green-400 p-1">${Utils.fmtMoney(calcResult.plantUnitCost)}</td><td colspan="2"></td></tr>`; }
+            if (k === 'labor') { const benP = tempAPU.benefitsPerc !== undefined ? tempAPU.benefitsPerc : 50; const benVal = calcResult.benefitsVal; footer = `<tr class="bg-slate-800/50"><td colspan="5" class="text-right text-[10px] text-slate-400 p-1 uppercase">Total $:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(calcResult.laborBaseDaily)}</td><td colspan="2"></td></tr><tr class="bg-slate-800/50"><td colspan="4" class="text-right text-[10px] text-slate-400 p-1 uppercase">Benefits by law (%):</td><td class="text-center p-1"><input type="number" id="laborBenefitsPerc" value="${benP}" onchange="recalc()" class="w-16 bg-slate-700 text-center rounded text-white text-xs border border-slate-600"></td><td class="text-right text-xs font-bold text-slate-300 p-1">${Utils.fmtMoney(benVal)}</td><td colspan="2"></td></tr><tr class="bg-slate-800/50"><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">Total Labour:</td><td class="text-right text-xs font-bold text-white p-1 border-t border-slate-600">${Utils.fmtMoney(calcResult.laborTotalDaily)}</td><td colspan="2"></td></tr><tr><td colspan="5" class="text-right text-[10px] text-slate-500 p-1 uppercase font-bold">Total Labour Unit Rate:</td><td class="text-right text-xs font-bold text-green-400 p-1">${Utils.fmtMoney(calcResult.laborUnitCost)}</td><td colspan="2"></td></tr>`; }
+            return `<div class="mb-4"><div class="flex justify-between items-center mb-1"><h4 class="text-xs font-bold text-blue-400 uppercase">${t}</h4><button onclick="openPicker('${k}')" class="text-[10px] bg-slate-700 px-2 rounded text-white">+ Add Item</button></div><table class="w-full border-collapse"><thead><tr class="bg-slate-900 text-slate-400 text-[10px] uppercase font-bold"><th class="p-2 border border-slate-700 w-16">Code</th><th class="p-2 border border-slate-700">Desc</th><th class="p-2 border border-slate-700 w-12">Unit</th><th class="p-2 border border-slate-700 w-20">Qty</th><th class="p-2 border border-slate-700 w-24 text-right">Rate</th><th class="p-2 border border-slate-700 w-24 text-right">Total</th><th class="p-2 border border-slate-700 w-24 text-right text-blue-300">Inc %</th><th class="p-2 border border-slate-700 w-10"></th></tr></thead><tbody>${r}</tbody><tfoot>${footer}</tfoot></table></div>`;
+        }
+        function updateAPUQty(k, i, v) { tempAPU[k][i].qty = parseFloat(v); recalc(); } function removeAPUItem(k, i) { tempAPU[k].splice(i, 1); recalc(); } function closeModal() { document.getElementById('apuModal').classList.remove('flex'); document.getElementById('apuModal').classList.add('hidden'); }
+        function initSortable() { const el = document.getElementById('budget-items-container'); if (sortableInstance) sortableInstance.destroy(); sortableInstance = new Sortable(el, { handle: '.handle', animation: 150, ghostClass: 'sortable-ghost', group: 'budgetItems', onEnd: function (evt) { if (evt.oldIndex !== evt.newIndex) { DataManager.reorderBudgetItems(activeID, evt.oldIndex, evt.newIndex); renderEditor(); } } }); }
+        function addSection() { const b = budgets.find(x => x.id === activeID); b.items.push({ type: 'SECTION', desc: 'New Section' }); DataManager.set(DB_KEYS.BUDGETS, budgets); renderEditor(); } function updateDesc(i, v) { budgets.find(x => x.id === activeID).items[i].desc = v; DataManager.set(DB_KEYS.BUDGETS, budgets); } function updateQty(i, v) { budgets.find(x => x.id === activeID).items[i].qty = parseFloat(v); DataManager.set(DB_KEYS.BUDGETS, budgets); renderEditor(); } function copyItem(i) { const b = budgets.find(x => x.id === activeID); const cp = JSON.parse(JSON.stringify(b.items[i])); cp.id = Utils.generateID('INS'); b.items.splice(i + 1, 0, cp); DataManager.set(DB_KEYS.BUDGETS, budgets); renderEditor(); } function deleteItem(i) { budgets.find(x => x.id === activeID).items.splice(i, 1); DataManager.set(DB_KEYS.BUDGETS, budgets); renderEditor(); } function saveHeader() { const b = budgets.find(x => x.id === activeID); b.name = document.getElementById('bgName').value; b.clientName = document.getElementById('bgClientName').value; b.clientContact = document.getElementById('bgClientContact').value; b.siteAddress = document.getElementById('bgSiteAddress').value; b.validityDays = document.getElementById('bgValidity').value; DataManager.set(DB_KEYS.BUDGETS, budgets); }
+        function importFromMaster() { document.getElementById('importModal').classList.remove('hidden'); document.getElementById('importModal').classList.add('flex'); renderImportList(); } function renderImportList() { const q = document.getElementById('impSearch').value.toLowerCase(); document.getElementById('importList').innerHTML = masterAPUs.filter(a => a.desc.toLowerCase().includes(q)).map(a => `<div class="p-2 border-b border-slate-700 hover:bg-slate-700 cursor-pointer text-sm text-white flex justify-between" onclick="doImport('${a

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Button Test</title>
+</head>
+
+<body>
+    <h1>Testing Add New Resource Button</h1>
+    <button onclick="testFunction()" style="padding: 10px; background: blue; color: white;">Test Button</button>
+    <div id="output"></div>
+
+    <script>
+        function testFunction() {
+            document.getElementById('output').innerText = "Button works! Function was called.";
+            alert("Test function executed successfully");
+        }
+
+        // Now test if we can call addNewResource - this will help us see if it's defined
+        window.onload = function () {
+            if (typeof addNewResource === 'function') {
+                document.getElementById('output').innerText += "\naddNewResource function is defined";
+            } else {
+                document.getElementById('output').innerText += "\nERROR: addNewResource is NOT defined";
+            }
+        };
+    </script>
+</body>
+
+</html>

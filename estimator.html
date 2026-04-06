@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivilMate Estimator | V11.0 NZ Compliance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        window.getStorage = getStorage;
+        window.storageRef = ref;
+        window.uploadBytes = uploadBytes;
+        window.getDownloadURL = getDownloadURL;
+        window.doc = function (dbRef, ...paths) { return dbRef.doc(paths.join('/')); };
+        window.getDoc = async function (docRef) { return await docRef.get(); };
+
+        window.initModularStorage = function (config) {
+            const modApp = initializeApp(config, "StorageApp");
+            window.storage = getStorage(modApp);
+        };
+    </script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        if (!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        let tenantInfo = null;
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+        }
+
+        .scroller::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroller::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        .scroller::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+
+        /* Excel-like Inputs */
+        .excel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        .excel-table th {
+            background: #1e293b;
+            color: #94a3b8;
+            text-transform: uppercase;
+            padding: 6px;
+            text-align: left;
+            border: 1px solid #334155;
+            font-weight: 700;
+        }
+
+        .excel-table td {
+            border: 1px solid #334155;
+            padding: 4px;
+            color: #e2e8f0;
+        }
+
+        .excel-input {
+            background: transparent;
+            border: none;
+            width: 100%;
+            color: white;
+            outline: none;
+            font-family: monospace;
+        }
+
+        .excel-input:focus {
+            background: #334155;
+        }
+
+        .excel-subtotal {
+            background: #1e293b;
+            font-weight: bold;
+            color: #fbbf24;
+        }
+
+        /* Print Layout helpers */
+        .print-header-input {
+            background: transparent;
+            border-bottom: 1px dashed #475569;
+            color: white;
+            padding: 2px;
+            width: 100%;
+            outline: none;
+        }
+
+        .print-header-input:focus {
+            border-bottom: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center gap-3">
+            <a href="dashboard.html" class="text-slate-400 hover:text-white text-sm"><i class="fas fa-arrow-left"></i>
+                Dashboard</a>
+            <div class="h-4 w-px bg-slate-700"></div>
+            <h1 class="text-lg font-bold text-white">Estimator <span class="text-blue-500">Pro</span></h1>
+        </div>
+        <div class="flex bg-slate-800 p-1 rounded">
+            <button onclick="switchTab('apu')" id="btn-apu"
+                class="px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white shadow">1. APU Master</button>
+            <button onclick="switchTab('budget')" id="btn-budget"
+                class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">2. Budgets</button>
+            <button onclick="switchTab('resources')" id="btn-resources"
+                class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">3. Resources</button>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-hidden relative p-4">
+
+        <div id="view-apu" class="h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xl font-bold text-white">Master APU Database</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="apuSearch" onkeyup="renderAPUs()" placeholder="Search..."
+                        class="bg-slate-800 border border-slate-600 rounded px-3 py-1 text-xs text-white w-64 outline-none">
+                    <button onclick="createNewAPU()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold"><i
+                            class="fas fa-plus mr-1"></i>New Item</button>
+                </div>
+            </div>
+            <div class="flex-1 bg-slate-800 rounded border border-slate-700 overflow-hidden flex flex-col">
+                <div
+                    class="grid grid-cols-12 gap-2 p-3 bg-slate-900 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase">
+                    <div class="col-span-2">Category</div>
+                    <div class="col-span-5">Description</div>
+                    <div class="col-span-1 text-center">Unit</div>
+                    <div class="col-span-2 text-right">Unit Price</div>
+                    <div class="col-span-2 text-center">Actions</div>
+                </div>
+                <div id="apuList" class="flex-1 overflow-y-auto scroller"></div>
+            </div>
+        </div>
+
+        <div id="view-budget" class="h-full flex flex-col hidden">
+            <div id="budget-registry" class="h-full flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xl font-bold text-white">Budget Registry</h2>
+                    <div class="flex items-center gap-3">
+                        <input type="text" id="budgetSearch" onkeyup="renderBudgetRegistry()" placeholder="Search Project or Client..." class="bg-slate-800 border border-slate-600 rounded px-3 py-1 text-xs text-white w-64 outline-none">
+                        <button onclick="createNewBudget()"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold"><i
+                                class="fas fa-plus mr-1"></i>New Budget</button>
+                    </div>
+                </div>
+                <div class="flex-1 bg-slate-800 rounded border border-slate-700 overflow-hidden flex flex-col">
+                    <div
+                        class="grid grid-cols-12 gap-2 p-3 bg-slate-900 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase">
+                        <div class="col-span-4">Project Name</div>
+                        <div class="col-span-2">Client</div>
+                        <div class="col-span-2 text-right">Total</div>
+                        <div class="col-span-2 text-center">Status</div>
+                        <div class="col-span-2 text-center">Actions</div>
+                    </div>
+                    <div id="budgetList" class="flex-1 overflow-y-auto scroller"></div>
+                </div>
+            </div>
+
+            <div id="budget-editor" class="h-full flex flex-col hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <button onclick="closeBudgetEditor()" class="text-blue-400 hover:underline text-xs"><i
+                            class="fas fa-arrow-left"></i> Back to Registry</button>
+                    <div class="flex gap-2">
+                        <button onclick="openAPUPicker('BUDGET_ADD')"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold"><i
+                                class="fas fa-plus mr-1"></i> Add Item</button>
+                        <button onclick="exportBudgetPDF()"
+                            class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs font-bold"><i
+                                class="fas fa-file-pdf mr-1"></i> Print / PDF</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 p-6 rounded-t-xl border border-slate-700 shadow-xl">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="w-1/3">
+                            <div
+                                class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xl font-bold mb-2">
+                                <i class="fas fa-hard-hat"></i>
+                            </div>
+                            <div class="text-white font-bold text-lg" id="companyNameDisplay">Your Company Name</div>
+                            <div class="text-slate-400 text-xs mt-1" id="companyAddressDisplay">123 Construction Rd,
+                                Auckland</div>
+                            <div class="text-slate-400 text-xs" id="companyPhoneDisplay">Ph: 0800 BUILD IT</div>
+                        </div>
+
+                        <div class="w-1/3 text-right">
+                            <h2 class="text-3xl font-bold text-white uppercase tracking-wider mb-4">Quote</h2>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="text-slate-500 font-bold">DATE:</div>
+                                <div><input type="date" id="bgDate" onchange="saveCurrentBudget()"
+                                        class="print-header-input text-right"></div>
+                                <div class="text-slate-500 font-bold">EXPIRY:</div>
+                                <div><input type="date" id="bgExpiry" onchange="saveCurrentBudget()"
+                                        class="print-header-input text-right"></div>
+                                <div class="text-slate-500 font-bold">REF #:</div>
+                                <div><input type="text" id="bgRef" onchange="saveCurrentBudget()"
+                                        class="print-header-input text-right" placeholder="Q-2026-001"></div>
+                                <div class="text-slate-500 font-bold">GST #:</div>
+                                <div><input type="text" id="bgGst" onchange="saveCurrentBudget()"
+                                        class="print-header-input text-right" placeholder="123-456-789"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-8 border-t border-slate-700 pt-4">
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-bold uppercase mb-1">Bill To (Client)</div>
+                            <input type="text" id="bgClient" onchange="saveCurrentBudget()"
+                                class="print-header-input text-lg font-bold mb-1" placeholder="Client Name / Company">
+                            <input type="text" id="bgClientAddress" onchange="saveCurrentBudget()"
+                                class="print-header-input text-sm" placeholder="Client Billing Address">
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 font-bold uppercase mb-1">Project / Site</div>
+                            <input type="text" id="bgProject" onchange="saveCurrentBudget()"
+                                class="print-header-input text-lg font-bold mb-1" placeholder="Project Title">
+                            <input type="text" id="bgSiteAddress" onchange="saveCurrentBudget()"
+                                class="print-header-input text-sm" placeholder="Site Address">
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="flex-1 bg-slate-800/50 rounded-b-xl border-x border-b border-slate-700 overflow-hidden flex flex-col">
+                    <div
+                        class="grid grid-cols-12 gap-2 p-3 bg-slate-900 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase">
+                        <div class="col-span-1 text-center">Item</div>
+                        <div class="col-span-4">Description</div>
+                        <div class="col-span-2 text-center">Format</div>
+                        <div class="col-span-1 text-center">Unit</div>
+                        <div class="col-span-1 text-center">Qty / Hrs</div>
+                        <div class="col-span-1 text-right">Rate</div>
+                        <div class="col-span-2 text-right">Total</div>
+                    </div>
+                    <div id="editorItems" class="flex-1 overflow-y-auto scroller p-1 space-y-1"></div>
+                    <div class="bg-slate-900 p-4 border-t border-slate-700">
+                        <div class="flex justify-end gap-12">
+                            <div class="text-right">
+                                <div class="text-xs text-slate-500 font-bold">SUBTOTAL</div>
+                                <div class="text-xl font-mono text-white" id="editorSubtotal">$0.00</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-slate-500 font-bold">GST (15%)</div>
+                                <div class="text-xl font-mono text-white" id="editorGst">$0.00</div>
+                            </div>
+                            <div class="text-right border-l border-slate-700 pl-8">
+                                <div class="text-xs text-slate-500 font-bold">TOTAL (Incl. GST)</div>
+                                <div class="text-2xl font-mono text-green-400 font-bold" id="editorTotal">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-resources" class="h-full flex flex-col hidden">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xl font-bold text-white">Resource Database</h2>
+                <div class="flex items-center gap-4">
+                    <input type="text" id="resSearch" onkeyup="renderResources()" placeholder="Search Code or Desc..." class="bg-slate-800 border border-slate-600 rounded px-3 py-1 text-xs text-white w-64 outline-none">
+                    
+                    <div class="flex bg-slate-800 p-1 rounded">
+                        <button onclick="renderResources('All')" class="px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded mr-1" id="catBtnAll">All</button>
+                        <button onclick="renderResources('Material')" class="px-3 py-1 text-xs font-bold text-slate-400 hover:text-white" id="catBtnMaterial">Mat</button>
+                        <button onclick="renderResources('Plant')" class="px-3 py-1 text-xs font-bold text-slate-400 hover:text-white" id="catBtnPlant">Plant</button>
+                        <button onclick="renderResources('Labor')" class="px-3 py-1 text-xs font-bold text-slate-400 hover:text-white" id="catBtnLabor">Labor</button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 bg-slate-800 rounded border border-slate-700 overflow-hidden flex flex-col">
+                <div
+                    class="grid grid-cols-12 gap-2 p-3 bg-slate-900 border-b border-slate-700 text-xs font-bold text-slate-400 uppercase">
+                    <div class="col-span-2">Code</div>
+                    <div class="col-span-2">Category</div>
+                    <div class="col-span-4">Description</div>
+                    <div class="col-span-1">Unit</div>
+                    <div class="col-span-1 text-right">Price</div>
+                    <div class="col-span-2 text-center">Actions</div>
+                </div>
+                <div id="resourceList" class="flex-1 overflow-y-auto scroller"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="apuModal" class="fixed inset-0 bg-slate-900/95 z-50 hidden flex-col items-center justify-center p-4">
+        <div class="bg-slate-800 w-full max-w-5xl h-[90vh] rounded-xl border border-slate-700 flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-700 flex justify-between items-start bg-slate-900 rounded-t-xl">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2"><i
+                        class="fas fa-table text-green-500"></i> Unit Rate Analysis</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i
+                        class="fas fa-times fa-lg"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto scroller p-6">
+                <div class="grid grid-cols-12 gap-4 mb-6">
+                    <div class="col-span-8">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Description</label>
+                        <input type="text" id="modalDesc"
+                            class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white font-bold outline-none">
+                    </div>
+                    <div class="col-span-2"><label
+                            class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unit</label><input
+                            type="text" id="modalUnit"
+                            class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white text-center">
+                    </div>
+                    <div class="col-span-2"><label
+                            class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Category</label><input
+                            type="text" id="modalCategory"
+                            class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white text-center">
+                    </div>
+                </div>
+                <div class="bg-slate-700/30 p-3 rounded mb-6 border border-slate-600/50 grid grid-cols-4 gap-4">
+                    <div><label class="block text-[10px] text-slate-400 uppercase">Daily Output</label><input
+                            type="number" id="modalOutput" onchange="recalcModal()"
+                            class="w-full bg-slate-800 border border-blue-500 rounded p-1 text-white text-center font-bold">
+                    </div>
+                    <div><label class="block text-[10px] text-slate-400 uppercase">Shift Hours</label><input
+                            type="number" id="modalShift" value="8" onchange="recalcModal()"
+                            class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-white text-center">
+                    </div>
+                    <div class="text-right">
+                        <div class="block text-[10px] text-slate-400 uppercase">Cost / Hour</div>
+                        <div id="dispCostHour" class="text-sm font-mono text-slate-300">$0.00</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="block text-[10px] text-slate-400 uppercase">Daily Cost</div>
+                        <div id="dispDailyCost" class="text-sm font-mono text-slate-300">$0.00</div>
+                    </div>
+                </div>
+                <div id="apuTablesContainer">
+                </div>
+                <div class="bg-slate-900 border border-slate-700 p-4 rounded-lg max-w-sm ml-auto mt-4">
+                    <div class="grid grid-cols-2 gap-2 text-sm mb-2">
+                        <div class="text-right text-slate-400">Direct Cost:</div>
+                        <div class="text-right text-white font-bold" id="sumDirect">$0.00</div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-sm mb-2 items-center">
+                        <div class="text-right text-slate-400">Overheads:</div><input type="number" id="percOverhead"
+                            value="10" onchange="recalcModal()"
+                            class="bg-slate-700 text-white w-12 text-center rounded border border-slate-600 text-xs">
+                        <div class="text-right text-white" id="valOverhead">$0.00</div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-sm mb-2 items-center pb-2 border-b border-slate-700">
+                        <div class="text-right text-slate-400">Gross Profit:</div><input type="number" id="percProfit"
+                            value="15" onchange="recalcModal()"
+                            class="bg-slate-700 text-white w-12 text-center rounded border border-slate-600 text-xs">
+                        <div class="text-right text-white" id="valProfit">$0.00</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-lg font-bold mt-2">
+                        <div class="text-right text-slate-400">UNIT RATE:</div>
+                        <div class="text-right text-green-400" id="sumFinal">$0.00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-700 bg-slate-900 rounded-b-xl flex justify-end gap-3">
+                <button onclick="closeModal()"
+                    class="px-6 py-2 text-slate-400 font-bold hover:text-white">Cancel</button>
+                <button onclick="saveModal()"
+                    class="px-8 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded shadow-lg">Save
+                    Analysis</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pickerModal" class="fixed inset-0 bg-black/80 z-[60] hidden items-center justify-center p-4">
+        <div class="bg-slate-800 w-full max-w-2xl h-[70vh] rounded-xl border border-slate-700 flex flex-col shadow-2xl">
+            <div class="p-3 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-white">Select Resource</h3><button onclick="closePicker()"
+                    class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex border-b border-slate-700">
+                <button onclick="switchPickerView('select')" id="tabPickSelect"
+                    class="flex-1 py-2 text-xs font-bold text-white bg-slate-700">Select Existing</button>
+                <button onclick="switchPickerView('create')" id="tabPickCreate"
+                    class="flex-1 py-2 text-xs font-bold text-slate-400 hover:text-white">Create New</button>
+            </div>
+            <div id="viewPickSelect" class="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div class="p-2 bg-slate-900"><input type="text" id="pickerSearch" onkeyup="renderPickerList()"
+                        placeholder="Search..."
+                        class="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-xs outline-none">
+                </div>
+                <div id="pickerList" class="flex-1 overflow-y-auto scroller"></div>
+            </div>
+            <div id="viewPickCreate" class="hidden flex-1 p-6 space-y-4">
+                <h4 class="text-white font-bold">New Resource Details</h4>
+                <input type="text" id="newResCode" placeholder="Code"
+                    class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                <input type="text" id="newResDesc" placeholder="Description"
+                    class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                <div class="grid grid-cols-2 gap-4"><input type="text" id="newResUnit" placeholder="Unit"
+                        class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm"><input
+                        type="number" id="newResRate" placeholder="Price ($)"
+                        class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm"></div>
+                <button onclick="createAndAddResource()"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded mt-4">Save &
+                    Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="resEditModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-4">
+        <div class="bg-slate-800 w-96 rounded-xl border border-slate-700 p-6 shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-4">Edit Resource</h3>
+            <input type="hidden" id="editResIndex">
+            <div class="space-y-3">
+                <input type="text" id="editResCode" placeholder="Code"
+                    class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                <input type="text" id="editResDesc" placeholder="Description"
+                    class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                <select id="editResCat"
+                    class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                    <option value="Material">Material</option>
+                    <option value="Plant">Plant & Equipment</option>
+                    <option value="Labor">Labour</option>
+                </select>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="editResUnit" placeholder="Unit"
+                        class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                    <input type="number" id="editResRate" placeholder="Rate"
+                        class="w-full bg-slate-900 border border-slate-600 p-2 rounded text-white text-sm">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="document.getElementById('resEditModal').classList.add('hidden')"
+                    class="text-slate-400 hover:text-white text-sm font-bold">Cancel</button>
+                <button onclick="saveResourceEdit()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template A Modal -->
+    <div id="templateAModal" class="hidden fixed inset-0 bg-black/60 flex justify-center items-center z-50">
+        <div class="bg-white rounded w-11/12 max-w-6xl max-h-[95vh] overflow-y-auto shadow-2xl font-sans text-sm">
+            <div class="bg-green-700 p-3 flex justify-between items-center sticky top-0 z-10 text-white">
+                <div class="flex items-center gap-2">
+                    <div class="bg-white text-green-700 font-bold px-2 py-0.5 rounded text-xs">&nbsp;</div>
+                    <h2 class="text-white text-lg font-bold">Unit Rate Analisys Sheet - Live Editor</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="saveTemplateAApu()" class="bg-white text-green-700 font-bold px-4 py-1.5 rounded hover:bg-green-50 shadow text-xs flex items-center gap-2"><i class="fas fa-save"></i> Save Master APU</button>
+                    <button onclick="closeTemplateAModal()" class="bg-red-600 text-white font-bold px-3 py-1.5 rounded hover:bg-red-500 shadow">&times;</button>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <!-- Header Info -->
+                <input type="hidden" id="tplAId">
+                <input type="hidden" id="tplASource">
+                
+                <table class="w-full border-collapse border border-slate-300 mb-6 text-sm text-slate-800">
+                    <tbody>
+                        <tr>
+                            <td class="font-bold bg-slate-50 border border-slate-300 p-2 w-[15%]">Description</td>
+                            <td class="border border-slate-300 p-2 text-blue-600 font-bold" id="tplADescContainer" colspan="4"><input type="text" id="tplADesc" class="w-full bg-transparent focus:outline-none"></td>
+                            <td class="font-bold bg-green-100 text-green-900 border border-slate-300 p-2 w-[15%] hidden" id="tplAQtyLabel">Budget Qty</td>
+                            <td class="border border-slate-300 p-2 bg-yellow-100 hidden" id="tplAQtyContainer"><input type="number" step="0.01" id="tplABudgetQty" onchange="calcTemplateA()" class="w-full bg-transparent text-center font-bold text-blue-700 focus:outline-none"></td>
+                        </tr>
+                        <tr><td class="font-bold bg-slate-50 border border-slate-300 p-2">Unit</td><td class="border border-slate-300 p-2" colspan="2"><input type="text" id="tplAUnit" class="w-full focus:outline-none"></td><td class="bg-green-100 text-green-800 font-bold text-center border border-slate-300 p-2 w-[15%]">Unit Rate</td><td class="bg-green-100 text-green-800 font-bold text-right border border-slate-300 p-2 w-[15%]" id="tplAHeaderRate">$0.00</td></tr>
+                        <tr><td class="font-bold bg-slate-50 border border-slate-300 p-2">Costs</td><td class="bg-slate-50 font-bold border border-slate-300 p-2 w-[15%]">Cost per Hour</td><td class="border border-slate-300 p-2 text-right text-red-600 font-bold w-[15%]" id="tplACostHour">0.00</td><td class="font-bold bg-slate-100 text-center border border-slate-300 p-2 text-xs">Output per Unit/Day<br><span class="text-slate-500 font-normal">(8 hours Shift)</span></td><td class="bg-yellow-100 border border-slate-300 p-2 text-center text-blue-700 font-bold text-lg"><input type="number" id="tplAOutput" onchange="calcTemplateA()" class="w-20 bg-transparent text-center focus:outline-none outline-none" value="15"></td></tr>
+                    </tbody>
+                </table>
+                <div id="tplAResourcesContainer" class="space-y-6"></div>
+                <div class="grid grid-cols-2 gap-6 mt-8"><div class="col-span-1"></div><div class="col-span-1"><table class="w-full border-collapse border border-slate-300 text-sm text-slate-800"><tbody>
+                    <tr class="bg-slate-50"><td class="font-bold border border-slate-300 p-2 text-right" colspan="2">DIRECT COST SUBTOTAL (Mat + Plant + Labour)</td><td class="border border-slate-300 p-2 text-right w-1/4" id="tplADirectCost">0.00</td></tr>
+                    <tr><td class="font-bold border border-slate-300 p-2 text-right w-1/2">Company Overheads (%)</td><td class="border border-slate-300 p-2 text-center bg-yellow-100 text-purple-700 font-bold w-1/4"><input type="number" id="tplAOverhead" onchange="calcTemplateA()" class="w-16 bg-transparent text-center focus:outline-none outline-none" value="10"></td><td class="border border-slate-300 p-2 text-right text-slate-600" id="tplAOverheadAmount">0.00</td></tr>
+                    <tr class="bg-slate-50"><td class="font-bold border border-slate-300 p-2 text-right" colspan="2">UNIT RATE + OVERHEADS SUBTOTAL</td><td class="border border-slate-300 p-2 text-right font-bold text-slate-700" id="tplASubtotalRate">0.00</td></tr>
+                    <tr><td class="font-bold border border-slate-300 p-2 text-right">Profit Margin (%)</td><td class="border border-slate-300 p-2 text-center bg-yellow-100 text-green-700 font-bold"><input type="number" id="tplAProfit" onchange="calcTemplateA()" class="w-16 bg-transparent text-center focus:outline-none outline-none" value="15"></td><td class="border border-slate-300 p-2 text-right text-slate-600" id="tplAProfitAmount">0.00</td></tr>
+                    <tr class="bg-green-200"><td class="font-bold border border-slate-400 p-3 text-right text-green-900 text-lg" colspan="2">FINAL UNIT RATE</td><td class="border border-slate-400 p-3 text-right font-bold text-green-900 text-xl" id="tplAFinalRate">$0.00</td></tr>
+                    <tr class="bg-blue-100 hidden" id="tplABudgetTotalRow"><td class="font-bold border border-blue-300 p-3 text-right text-blue-900 text-lg" colspan="2">BUDGET TOTAL</td><td class="border border-blue-300 p-3 text-right font-bold text-blue-900 text-xl" id="tplABudgetTotal">$0.00</td></tr>
+                </tbody></table></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- STATE & DATA ---
+        let masterAPUs = [];
+        let resources = [];
+        let budgets = [];
+
+        let activeBudgetID = null;
+        let currentResCategory = 'All';
+        let tempAPU = null;
+        let pickerType = '';
+        let isEditingBudget = false;
+
+        window.onload = function () {
+            if (window.initModularStorage) { window.initModularStorage(firebaseConfig); }
+            firebase.auth().onAuthStateChanged(async (user) => {
+                if (user) {
+                    tenantInfo = user.uid;
+
+                    try {
+                        const tenantRef = window.doc(db, 'tenants', user.uid);
+                        const tenantSnap = await window.getDoc(tenantRef);
+                        if (tenantSnap.exists) {
+                            const data = tenantSnap.data();
+                            const nd = document.getElementById('companyNameDisplay'); if (nd) nd.innerText = data.legalName || 'DT Constructors Limited';
+                            const ad = document.getElementById('companyAddressDisplay'); if (ad) ad.innerText = data.address || '';
+                            const pd = document.getElementById('companyPhoneDisplay'); if (pd) pd.innerText = data.phone ? 'Ph: ' + data.phone : '';
+                        }
+                    } catch (err) {
+                        console.error("Error cargando perfil:", err);
+                    }
+
+                    await fetchMasterData(user);
+                    await fetchBudgets();
+                    renderBudgetRegistry();
+                    switchTab('budget');
+                } else {
+                    window.location.replace("index.html");
+                }
+            });
+        };
+
+        async function fetchMasterData(user) {
+            try {
+                // 1. Obtener APUs de la ruta correcta: tenants/{uid}/appData/civilmate_master_apus
+                const apuRef = doc(db, 'tenants', user.uid, 'appData', 'civilmate_master_apus');
+                const apuSnap = await getDoc(apuRef);
+                if (apuSnap.exists && apuSnap.data().payload) {
+                    // El payload se guardó como un JSON stringificado en la Fase 1
+                    masterAPUs = JSON.parse(apuSnap.data().payload);
+                } else {
+                    masterAPUs = [];
+                }
+
+                // 2. Obtener Recursos de la ruta correcta: tenants/{uid}/appData/civilmate_resources
+                const resRef = doc(db, 'tenants', user.uid, 'appData', 'civilmate_resources');
+                const resSnap = await getDoc(resRef);
+                if (resSnap.exists && resSnap.data().payload) {
+                    resources = JSON.parse(resSnap.data().payload);
+                } else {
+                    // Si no hay recursos, cargar los de por defecto
+                    resources = [
+                        { code: "L01", category: "Labor", desc: "Laborer", unit: "hr", rate: 35 },
+                        { code: "M01", category: "Material", desc: "Concrete 20MPa", unit: "m3", rate: 245 },
+                        { code: "P01", category: "Plant", desc: "Excavator 5T", unit: "hr", rate: 95 }
+                    ];
+                }
+
+                // 3. Renderizar las tablas en la UI
+                renderAPUs();
+                renderResources('All');
+
+            } catch (error) {
+                console.error("Error fetching master data:", error);
+            }
+        }
+
+        async function fetchBudgets() {
+            try {
+                const budSnap = await db.collection("tenants").doc(tenantInfo).collection("budgets").get();
+                budgets = [];
+                budSnap.forEach(doc => budgets.push({ id: doc.id, ...doc.data() }));
+            } catch (error) {
+                console.error("Error fetching budgets:", error);
+            }
+        }
+
+        function seedResources() {
+            resources = [{ code: "L01", category: "Labor", desc: "Laborer", unit: "hr", rate: 35 }, { code: "M01", category: "Material", desc: "Concrete 20MPa", unit: "m3", rate: 245 }, { code: "P01", category: "Plant", desc: "Excavator 5T", unit: "hr", rate: 95 }];
+            localStorage.setItem('civilmate_resources', JSON.stringify(resources));
+        }
+
+        // --- MATH ENGINE (Standardized for V11) ---
+        function calculateAPU(apu) {
+            let matTotal = 0, plantDaily = 0, laborBaseDaily = 0;
+            if (apu.materials) apu.materials.forEach(m => { const r = resources.find(x => x.code === m.code); if (r) matTotal += r.rate * m.qty; });
+            if (apu.plant) apu.plant.forEach(p => { const r = resources.find(x => x.code === p.code); if (r) plantDaily += r.rate * p.qty; });
+            if (apu.labor) apu.labor.forEach(l => { const r = resources.find(x => x.code === l.code); if (r) laborBaseDaily += r.rate * l.qty; });
+
+            const benefitsVal = laborBaseDaily * (apu.benefitsCoeff || 0.5);
+            const laborTotalDaily = laborBaseDaily + benefitsVal;
+            const output = apu.output || 1;
+
+            const directCost = matTotal + (plantDaily / output) + (laborTotalDaily / output);
+            const overheadVal = directCost * ((apu.overheadPerc || 0) / 100);
+            const profitVal = directCost * ((apu.profitPerc || 0) / 100);
+
+            apu.rate = parseFloat((directCost + overheadVal + profitVal).toFixed(2));
+            return { matTotal, plantDaily, laborBaseDaily, benefitsVal, laborTotalDaily, directCost, overheadVal, profitVal };
+        }
+
+        // --- TAB 2: BUDGETS (REACTIVITY LOGIC) ---
+        function renderBudgetEditor() {
+            const b = budgets.find(x => x.id === activeBudgetID);
+            const isApp = b.status === 'Approved';
+
+            // Populate Header
+            document.getElementById('bgClient').value = b.clientName || '';
+            document.getElementById('bgProject').value = b.name || '';
+            document.getElementById('bgDate').value = b.issueDate || '';
+            document.getElementById('bgExpiry').value = b.expiryDate || '';
+            document.getElementById('bgClientAddress').value = b.clientAddress || '';
+            document.getElementById('bgSiteAddress').value = b.siteAddress || '';
+            document.getElementById('bgGst').value = b.gstNum || '';
+            document.getElementById('bgRef').value = b.projectRef || '';
+            
+            document.getElementById('bgClient').disabled = isApp;
+            document.getElementById('bgProject').disabled = isApp;
+            document.getElementById('bgDate').disabled = isApp;
+            document.getElementById('bgExpiry').disabled = isApp;
+            document.getElementById('bgClientAddress').disabled = isApp;
+            document.getElementById('bgSiteAddress').disabled = isApp;
+            document.getElementById('bgGst').disabled = isApp;
+            document.getElementById('bgRef').disabled = isApp;
+
+            const list = document.getElementById('editorItems');
+            list.innerHTML = '';
+            if (isApp) {
+                list.innerHTML = `<div class="col-span-12 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4 font-bold">
+                    <i class="fas fa-lock mr-2"></i> CONTRACT LOCKED - READ ONLY. No edits natively allowed under NZS3910.
+                </div>`;
+            }
+
+            let subtotal = 0;
+
+            b.items.forEach((item, idx) => {
+                // Reactive Calculation
+                let displayRate = item.rate || 0;
+                
+                if (!isApp && item.type !== 'SECTION') {
+                    MathEngine.calculateAPU(item, resources);
+                    displayRate = item.rate;
+                } else if (isApp) {
+                    displayRate = item.frozenRate || item.rate || 0;
+                }
+
+                let displayQty = item.qty; // Source Physical Quantity
+                let lineTotal = 0;
+                let unitLabel = item.unit;
+                let isQtyEditable = true;
+
+                if (item.pricingFormat === 'LUMP_SUM') {
+                    // Lump Sum: Rate = physical_rate * physical_qty. Qty = 1.
+                    displayRate = item.rate * item.qty;
+                    displayQty = 1;
+                    unitLabel = 'LS';
+                    isQtyEditable = false; // "La cantidad en Lump sum debe siempre uno"
+                } else if (item.pricingFormat === 'HOURLY') {
+                    // Hourly: Price = (UnitRate * Output) / Shift. Qty = (PhysicalQty * Shift) / Output.
+                    const output = item.output || 15;
+                    const shift = item.shift || 8;
+                    displayRate = (item.rate * output) / shift;
+                    displayQty = (item.qty * shift) / output;
+                    unitLabel = 'Hrs';
+                } else {
+                    // Unit Rate
+                    displayRate = item.rate;
+                }
+
+                // Explicitly calculate lineTotal as Qty * Rate rounded, to perfectly match user visual expectation
+                const roundQty = Number(parseFloat(displayQty).toFixed(2));
+                const roundRate = Number(parseFloat(displayRate).toFixed(2));
+                lineTotal = roundQty * roundRate;
+                
+                subtotal += lineTotal;
+
+                const div = document.createElement('div');
+                div.className = "grid grid-cols-12 gap-2 p-2 bg-slate-900 border-b border-slate-800 items-center text-sm group hover:bg-slate-800 transition-colors";
+
+                // Quantity Input: Editable for Unit and Hourly, Read-only (1) for Lump Sum
+                const qtyInput = `<span class="w-20 inline-block text-center text-slate-300 font-mono bg-slate-800/50 border border-transparent rounded">${roundQty}</span>`;
+                
+                const itemFormatSelect = isApp 
+                    ? `<span class="text-xs text-slate-300 font-bold">${item.pricingFormat === 'LUMP_SUM' ? 'Lump Sum' : (item.pricingFormat === 'HOURLY' ? 'Hourly' : 'Unit Rate')}</span>`
+                    : `<select onchange="updateLineFormat('${item.id}', this.value)" class="bg-slate-800 border border-slate-600 rounded text-xs text-slate-300 p-1">
+                            <option value="UNIT_PRICE" ${item.pricingFormat === 'UNIT_PRICE' ? 'selected' : ''}>Unit Rate</option>
+                            <option value="LUMP_SUM" ${item.pricingFormat === 'LUMP_SUM' ? 'selected' : ''}>Lump Sum</option>
+                            <option value="HOURLY" ${item.pricingFormat === 'HOURLY' ? 'selected' : ''}>Hourly</option>
+                        </select>`;
+
+                div.innerHTML = `
+                    <div class="col-span-1 text-center text-slate-500">${idx + 1}</div>
+                    <div class="col-span-3 font-medium text-white ${isApp ? '' : 'hover:text-blue-400 cursor-pointer'} truncate" ${isApp ? '' : `onclick="openExactApuSheet('${item.id}', 'budget')"`}>${item.desc}</div>
+                    <div class="col-span-2 text-center">
+                        ${itemFormatSelect}
+                    </div>
+                    <div class="col-span-1 text-center text-slate-400">${unitLabel}</div>
+                    <div class="col-span-1 text-center">${qtyInput}</div>
+                    <div class="col-span-1 text-right text-slate-400 font-mono">$${displayRate.toFixed(2)}</div>
+                    <div class="col-span-2 text-right font-bold text-green-400 font-mono">$${lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div class="col-span-1 flex justify-end gap-3 text-sm opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                         ${isApp ? '' : `<button onclick="openExactApuSheet('${item.id}', 'budget')" title="Edit" class="text-blue-400 hover:text-white"><i class="fas fa-pencil-alt"></i></button>
+                         <button onclick="duplicateBudgetItem('${item.id}')" title="Duplicate" class="text-green-400 hover:text-white"><i class="fas fa-copy"></i></button>
+                         <button onclick="removeBudgetItem('${item.id}')" title="Delete" class="text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>`}
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+
+            // Footer
+            const gst = subtotal * 0.15;
+            document.getElementById('editorSubtotal').innerText = fmtMoney(subtotal);
+            document.getElementById('editorGst').innerText = fmtMoney(gst);
+            document.getElementById('editorTotal').innerText = fmtMoney(subtotal + gst);
+        }
+
+        function updateLineFormat(id, format) {
+            const b = budgets.find(x => x.id === activeBudgetID);
+            const item = b.items.find(x => x.id === id);
+            item.pricingFormat = format;
+            saveBudgets();
+            renderBudgetEditor(); // Re-render triggers reactive math
+        }
+
+        function updateLineQty(id, val) {
+            const b = budgets.find(x => x.id === activeBudgetID);
+            const item = b.items.find(x => x.id === id);
+            
+            const editedQty = parseFloat(val);
+            if (item.pricingFormat === 'HOURLY') {
+                const output = item.output || 15;
+                const shift = item.shift || 8;
+                // Reverse math: item.qty = (hours_qty * output) / shift
+                item.qty = (editedQty * output) / shift;
+            } else {
+                item.qty = editedQty; // Physical quantity direct update
+            }
+            saveBudgets();
+            renderBudgetEditor(); // Re-render triggers reactive math
+        }
+
+        function duplicateBudgetItem(id) {
+            const b = budgets.find(x => x.id === activeBudgetID);
+            const item = b.items.find(x => x.id === id);
+            if (!item) return;
+            const duplicate = JSON.parse(JSON.stringify(item));
+            duplicate.id = 'INST-' + Date.now();
+            b.items.push(duplicate);
+            saveBudgets();
+            renderBudgetEditor();
+        }
+
+        function removeBudgetItem(id) {
+            if (!confirm("Remove this item from the quote?")) return;
+            const b = budgets.find(x => x.id === activeBudgetID);
+            b.items = b.items.filter(x => x.id !== id);
+            saveBudgets();
+            renderBudgetEditor();
+        }
+
+        async function saveCurrentBudget() {
+            const b = budgets.find(x => x.id === activeBudgetID);
+            // Header Fields
+            b.name = document.getElementById('bgProject').value;
+            b.clientName = document.getElementById('bgClient').value;
+            b.clientAddress = document.getElementById('bgClientAddress').value;
+            b.siteAddress = document.getElementById('bgSiteAddress').value;
+            b.issueDate = document.getElementById('bgDate').value;
+            b.expiryDate = document.getElementById('bgExpiry').value;
+            b.gstNum = document.getElementById('bgGst').value;
+            b.projectRef = document.getElementById('bgRef').value;
+            try {
+                await saveBudgets();
+            } catch (err) {
+                console.error("Error saving current budget:", err);
+            }
+        }
+
+        // --- BUDGET REGISTRY ACTIONS ---
+        function renderBudgetRegistry() {
+            const list = document.getElementById('budgetList');
+            list.innerHTML = '';
+
+            const searchEl = document.getElementById('budgetSearch');
+            const q = searchEl ? searchEl.value.toLowerCase() : '';
+
+            let filtered = budgets.filter(b => {
+                const matchName = b.name && b.name.toLowerCase().includes(q);
+                const matchClient = b.clientName && b.clientName.toLowerCase().includes(q);
+                return matchName || matchClient;
+            });
+
+            filtered.sort((a, b) => {
+                const nameA = (a.name || '').toLowerCase();
+                const nameB = (b.name || '').toLowerCase();
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+            });
+
+            filtered.forEach(b => {
+                const total = b.items.reduce((acc, i) => acc + (i.rate * i.qty), 0);
+                const isApp = b.status === 'Approved';
+                
+                const approveBtn = isApp 
+                    ? `<button disabled title="Locked" class="bg-slate-800 text-slate-500 cursor-not-allowed p-1.5 rounded transition"><i class="fas fa-lock"></i></button>`
+                    : `<button onclick="approveBudget('${b.id}')" title="Approve" class="bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white p-1.5 rounded transition"><i class="fas fa-check"></i></button>`;
+                    
+                const editBtn = isApp
+                    ? `<button onclick="openBudget('${b.id}')" title="View Schedule" class="bg-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white p-1.5 rounded transition"><i class="fas fa-eye"></i></button>`
+                    : `<button onclick="openBudget('${b.id}')" title="Edit" class="bg-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white p-1.5 rounded transition"><i class="fas fa-pen"></i></button>`;
+                    
+                const div = document.createElement('div');
+                div.className = "grid grid-cols-12 gap-2 p-3 border-b border-slate-700 hover:bg-slate-700/50 items-center text-sm";
+                div.innerHTML = `
+                    <div class="col-span-4 font-bold text-white ${isApp ? '' : 'hover:text-blue-400 cursor-pointer'}" ${isApp ? '' : `onclick="openBudget('${b.id}')"`}>${b.name}</div>
+                    <div class="col-span-2 text-slate-400">${b.clientName || '-'}</div>
+                    <div class="col-span-2 text-right text-green-400 font-mono">${fmtMoney(total)}</div>
+                    <div class="col-span-2 text-center text-slate-500">${b.status || 'Draft'}</div>
+                    <div class="col-span-2 text-center flex justify-center gap-2">
+                         ${approveBtn}
+                         ${editBtn}
+                         <button onclick="copyBudget('${b.id}')" title="Copy" class="bg-slate-600/20 text-slate-400 hover:bg-slate-600 hover:text-white p-1.5 rounded transition"><i class="fas fa-copy"></i></button>
+                         <button onclick="deleteBudget('${b.id}')" title="Delete" class="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white p-1.5 rounded transition"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // --- RESOURCE ACTIONS ---
+        function renderResources(cat) {
+            if (cat) currentResCategory = cat; // Actualizar solo si se hace clic en un botón
+            
+            // Actualizar estilos de los botones para reflejar la categoría activa
+            ['All', 'Material', 'Plant', 'Labor'].forEach(c => {
+                const btn = document.getElementById('catBtn' + c);
+                if (btn) {
+                    btn.className = (c === currentResCategory) 
+                        ? "px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded mr-1" 
+                        : "px-3 py-1 text-xs font-bold text-slate-400 hover:text-white";
+                }
+            });
+
+            const searchEl = document.getElementById('resSearch');
+            const q = searchEl ? searchEl.value.toLowerCase() : '';
+            const list = document.getElementById('resourceList');
+            list.innerHTML = '';
+
+            // 1. Filtrar por Categoría y Búsqueda
+            let filtered = resources.filter(r => {
+                const matchCat = currentResCategory === 'All' || r.category === currentResCategory;
+                const matchSearch = (r.desc && r.desc.toLowerCase().includes(q)) || (r.code && r.code.toLowerCase().includes(q));
+                return matchCat && matchSearch;
+            });
+
+            // 2. Ordenar Alfabéticamente por Descripción
+            filtered.sort((a, b) => {
+                const descA = (a.desc || '').toLowerCase();
+                const descB = (b.desc || '').toLowerCase();
+                if (descA < descB) return -1;
+                if (descA > descB) return 1;
+                return 0;
+            });
+
+            // 3. Renderizar (Usando el índice original para no romper edit/delete)
+            filtered.forEach(r => {
+                // Encontrar el índice original en el arreglo maestro para pasarlo a los botones
+                const originalIdx = resources.findIndex(res => res.code === r.code && res.desc === r.desc);
+                
+                const displayCat = (r.category && String(r.category) !== "undefined") ? r.category : '<span class="text-red-400">Needs Update</span>';
+                const div = document.createElement('div');
+                div.className = "grid grid-cols-12 gap-2 p-2 border-b border-slate-700 text-sm hover:bg-slate-800/50";
+                let c = r.category === 'Labor' ? 'text-blue-400' : (r.category === 'Plant' ? 'text-orange-400' : 'text-indigo-400');
+                div.innerHTML = `
+                      <div class="col-span-2 text-slate-500 font-mono">${r.code}</div>
+                      <div class="col-span-2 ${c} font-bold">${displayCat}</div>
+                      <div class="col-span-4 text-white">${r.desc}</div>
+                      <div class="col-span-1 text-slate-400">${r.unit}</div>
+                      <div class="col-span-1 text-right text-white font-mono">$${r.rate}</div>
+                      <div class="col-span-2 text-center flex justify-center gap-2">
+                           <button onclick="editResource(${originalIdx})" class="text-blue-400 hover:text-white" title="Edit"><i class="fas fa-pen"></i></button>
+                           <button onclick="copyResource(${originalIdx})" class="text-slate-400 hover:text-white" title="Duplicate"><i class="fas fa-copy"></i></button>
+                           <button onclick="deleteResource(${originalIdx})" class="text-red-400 hover:text-red-300" title="Delete"><i class="fas fa-trash"></i></button>
+                      </div>
+                  `;
+                list.appendChild(div);
+            });
+        }
+
+        function deleteResource(idx) { if (confirm("Delete Resource?")) { resources.splice(idx, 1); saveResources(); persistResourcesToCloud(); renderResources('All'); } }
+        function copyResource(idx) {
+            const cp = { ...resources[idx], code: resources[idx].code + '-CPY' };
+            resources.push(cp); saveResources(); persistResourcesToCloud(); renderResources('All');
+        }
+        function editResource(idx) {
+            const r = resources[idx];
+            document.getElementById('editResIndex').value = idx;
+            document.getElementById('editResCode').value = r.code;
+            document.getElementById('editResDesc').value = r.desc;
+
+            const catField = document.getElementById('editResCat');
+            if (r.category && String(r.category) !== "undefined") {
+                catField.value = r.category;
+            } else {
+                catField.value = 'Material';
+            }
+
+            document.getElementById('editResUnit').value = r.unit;
+            document.getElementById('editResRate').value = r.rate;
+            document.getElementById('resEditModal').classList.remove('hidden');
+            document.getElementById('resEditModal').classList.add('flex');
+        }
+        function saveResourceEdit() {
+            const idx = document.getElementById('editResIndex').value;
+            resources[idx].code = document.getElementById('editResCode').value;
+            resources[idx].desc = document.getElementById('editResDesc').value;
+            resources[idx].category = document.getElementById('editResCat').value;
+            resources[idx].unit = document.getElementById('editResUnit').value;
+            resources[idx].rate = parseFloat(document.getElementById('editResRate').value);
+            saveResources();
+            persistResourcesToCloud();
+            document.getElementById('resEditModal').classList.add('hidden');
+            renderResources('All');
+        }
+        function saveResources() { localStorage.setItem('civilmate_resources', JSON.stringify(resources)); }
+
+        async function persistResourcesToCloud() {
+            const user = firebase.auth().currentUser;
+            if (!user) return;
+            try {
+                const resRef = db.collection('tenants').doc(user.uid).collection('appData').doc('civilmate_resources');
+                await resRef.set({ payload: JSON.stringify(resources) }, { merge: true });
+                console.log("Recursos guardados exitosamente en la nube.");
+            } catch (error) {
+                console.error("Error guardando recursos:", error);
+            }
+        }
+
+        function fmtMoney(n) { return '$' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        async function saveBudgets() {
+            if (activeBudgetID) {
+                const b = budgets.find(x => x.id === activeBudgetID);
+                if (b) {
+                    try {
+                        await db.collection("tenants").doc(tenantInfo).collection("budgets").doc(b.id).set(b);
+                    } catch (err) {
+                        console.error("Firestore error saving budget:", err);
+                    }
+                }
+            }
+        }
+
+        async function createNewBudget() {
+            const b = { id: Date.now().toString(), name: 'New Project', items: [], status: 'Draft', created: new Date().toISOString() };
+            budgets.unshift(b);
+            openBudget(b.id);
+            try {
+                await db.collection("tenants").doc(tenantInfo).collection("budgets").doc(b.id).set(b);
+            } catch (err) {
+                console.error("Firestore error creating new budget:", err);
+            }
+        }
+
+        function openBudget(id) { activeBudgetID = id; document.getElementById('budget-registry').classList.add('hidden'); document.getElementById('budget-editor').classList.remove('hidden'); renderBudgetEditor(); }
+        function closeBudgetEditor() { document.getElementById('budget-editor').classList.add('hidden'); document.getElementById('budget-registry').classList.remove('hidden'); activeBudgetID = null; renderBudgetRegistry(); }
+
+        async function approveBudget(id) {
+            if (confirm("Lock and Approve this Budget? Once approved, rates and scopes will be frozen and it will act as your definitive Contract Schedule.")) {
+                const b = budgets.find(x => x.id === id);
+                b.status = 'Approved';
+                
+                // --- FREEZE RATES ---
+                if (b.items) {
+                    for (let i = 0; i < b.items.length; i++) {
+                        let item = b.items[i];
+                        if (item.type !== 'SECTION') {
+                            const calc = MathEngine.calculateAPU(item, resources);
+                            const disp = MathEngine.getDisplayValues(calc, item.pricingFormat, item.qty);
+                            item.frozenRate = disp.rate;
+                            item.rate = disp.rate;
+                        }
+                    }
+                }
+
+                renderBudgetRegistry();
+                try {
+                    await db.collection("tenants").doc(tenantInfo).collection("budgets").doc(id).set(b);
+                } catch (err) {
+                    console.error("Firestore error approving budget:", err);
+                }
+            }
+        }
+
+        async function deleteBudget(id) {
+            if (confirm("Delete Budget?")) {
+                budgets = budgets.filter(x => x.id !== id);
+                renderBudgetRegistry();
+                try {
+                    await db.collection("tenants").doc(tenantInfo).collection("budgets").doc(id).delete();
+                } catch (err) {
+                    console.error("Firestore error deleting budget:", err);
+                }
+            }
+        }
+
+        async function copyBudget(id) {
+            const o = budgets.find(x => x.id === id);
+            const cp = JSON.parse(JSON.stringify(o));
+            cp.id = Date.now().toString(); cp.name += ' (Copy)'; cp.status = 'Draft';
+            budgets.unshift(cp);
+            renderBudgetRegistry();
+            try {
+                await db.collection("tenants").doc(tenantInfo).collection("budgets").doc(cp.id).set(cp);
+            } catch (err) {
+                console.error("Firestore error copying budget:", err);
+            }
+        }
+
+        function switchTab(t) {
+            ['apu', 'budget', 'resources'].forEach(x => { document.getElementById('view-' + x).classList.add('hidden'); document.getElementById('btn-' + x).className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white"; });
+            document.getElementById('view-' + t).classList.remove('hidden');
+            document.getElementById('btn-' + t).className = "px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white shadow";
+            if (t === 'budget') closeBudgetEditor();
+        }
+
+        // --- APU & PICKER (Simplified for V11 Integration - Preserved from V10) ---
+        let tplAData = null;
+
+        function openExactApuSheet(apuId, source = 'library') {
+            let apuTarget = null;
+            if (source === 'library') {
+                apuTarget = masterAPUs.find(a => a.id === apuId);
+            } else if (source === 'budget' && activeBudgetID) {
+                const currentBudget = budgets.find(x => x.id === activeBudgetID);
+                if (currentBudget) apuTarget = currentBudget.items.find(a => a.id === apuId);
+            }
+            if (!apuTarget) return;
+            
+            tplAData = JSON.parse(JSON.stringify(apuTarget));
+            if (!tplAData.materials) tplAData.materials = [];
+            if (!tplAData.plant) tplAData.plant = [];
+            if (!tplAData.labor) tplAData.labor = [];
+            
+            document.getElementById('tplAId').value = tplAData.id;
+            document.getElementById('tplASource').value = source;
+            document.getElementById('tplADesc').value = tplAData.desc || '';
+            document.getElementById('tplAUnit').value = tplAData.unit || 'LS';
+            document.getElementById('tplAOutput').value = tplAData.output || 15;
+            document.getElementById('tplAOverhead').value = tplAData.overhead || 10;
+            document.getElementById('tplAProfit').value = tplAData.profit || 15;
+            
+            if(tplAData.benefitsPerc === undefined) {
+                tplAData.benefitsPerc = tplAData.benefitsCoeff ? tplAData.benefitsCoeff * 100 : 50; 
+            }
+            
+            if (source === 'budget') {
+                document.getElementById('tplADescContainer').colSpan = 2;
+                document.getElementById('tplAQtyLabel').classList.remove('hidden');
+                document.getElementById('tplAQtyContainer').classList.remove('hidden');
+                document.getElementById('tplABudgetTotalRow').classList.remove('hidden');
+                document.getElementById('tplABudgetQty').value = tplAData.qty || 1;
+            } else {
+                document.getElementById('tplADescContainer').colSpan = 4;
+                document.getElementById('tplAQtyLabel').classList.add('hidden');
+                document.getElementById('tplAQtyContainer').classList.add('hidden');
+                document.getElementById('tplABudgetTotalRow').classList.add('hidden');
+            }
+
+            renderTemplateATables();
+            document.getElementById('templateAModal').classList.remove('hidden');
+        }
+
+        function closeTemplateAModal() {
+            document.getElementById('templateAModal').classList.add('hidden');
+            tplAData = null;
+        }
+
+        function updateTplAData() {
+            if(!tplAData) return;
+            tplAData.desc = document.getElementById('tplADesc').value;
+            tplAData.unit = document.getElementById('tplAUnit').value;
+            tplAData.output = Number(document.getElementById('tplAOutput').value) || 1;
+            tplAData.overhead = Number(document.getElementById('tplAOverhead').value) || 0;
+            tplAData.profit = Number(document.getElementById('tplAProfit').value) || 0;
+            const bInput = document.getElementById('tplALaborBenefits');
+            if(bInput) tplAData.benefitsPerc = Number(bInput.value) || 0;
+        }
+
+        function renderAPUs() {
+            const l = document.getElementById('apuList'); l.innerHTML = '';
+            const searchEl = document.getElementById('apuSearch');
+            const q = searchEl ? searchEl.value.toLowerCase() : '';
+            
+            let filtered = masterAPUs.filter(a => {
+                const matchDesc = a.desc && a.desc.toLowerCase().includes(q);
+                const matchCode = (a.code && a.code.toLowerCase().includes(q)) || (a.id && a.id.toLowerCase().includes(q));
+                return matchDesc || matchCode;
+            });
+
+            filtered.sort((a, b) => {
+                const descA = (a.desc || '').toLowerCase();
+                const descB = (b.desc || '').toLowerCase();
+                if (descA < descB) return -1;
+                if (descA > descB) return 1;
+                return 0;
+            });
+
+            filtered.forEach(a => {
+                const safeRate = a.rate ? Number(a.rate).toFixed(2) : "0.00";
+                const div = document.createElement('div'); div.className = "grid grid-cols-12 gap-2 p-3 border-b border-slate-700 hover:bg-slate-700/50 items-center text-sm group";
+                div.innerHTML = `<div class="col-span-2 text-blue-400 font-bold truncate">${a.category}</div><div class="col-span-5 font-medium text-white cursor-pointer hover:underline" onclick="openExactApuSheet('${a.id}','library')">${a.desc}</div><div class="col-span-1 text-center text-slate-400">${a.unit}</div><div class="col-span-2 text-right text-green-400 font-mono">$${safeRate}</div><div class="col-span-2 text-center opacity-0 group-hover:opacity-100"><button onclick="openExactApuSheet('${a.id}','library')" title="View Details" class="text-blue-400 hover:text-white mr-3"><i class="fas fa-eye"></i></button><button onclick="deleteAPU('${a.id}')" title="Delete" class="text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button></div>`;
+                l.appendChild(div);
+            });
+        }
+        function createNewAPU() { const id = 'APU-' + Date.now(); masterAPUs.push({ id, category: 'General', desc: 'New Item', unit: 'ea', output: 15, materials: [], plant: [], labor: [], rate: 0 }); openExactApuSheet(id, 'library'); }
+        function deleteAPU(id) { if (confirm("Delete?")) { masterAPUs = masterAPUs.filter(a => a.id !== id); localStorage.setItem('civilmate_master_apus', JSON.stringify(masterAPUs)); renderAPUs(); } }
+
+        function renderTemplateATables() {
+            if(!tplAData) return;
+            let html = '';
+            
+            let matLineData = []; let totalMat = 0;
+            tplAData.materials.forEach(item => {
+                const res = resources.find(r => r.code === item.code); 
+                const p = res ? Number(res.rate) : Number(item.price || 0);
+                const t = Number(item.qty) * p;
+                totalMat += t;
+                matLineData.push({ ...item, actualPrice: p, total: t });
+            });
+            
+            let plantLineData = []; let totalPlantDaily = 0;
+            tplAData.plant.forEach(item => {
+                const res = resources.find(r => r.code === item.code); 
+                const p = res ? Number(res.rate) : Number(item.price || 0);
+                const t = Number(item.qty) * p;
+                totalPlantDaily += t;
+                plantLineData.push({ ...item, actualPrice: p, total: t });
+            });
+            
+            let laborLineData = []; let totalLaborDaily = 0;
+            tplAData.labor.forEach(item => {
+                const res = resources.find(r => r.code === item.code); 
+                const p = res ? Number(res.rate) : Number(item.price || 0);
+                const t = Number(item.qty) * p;
+                totalLaborDaily += t;
+                laborLineData.push({ ...item, actualPrice: p, total: t });
+            });
+
+            const currentOutput = Number(document.getElementById('tplAOutput').value) || 15;
+            const laborBenefitsVal = totalLaborDaily * ((tplAData.benefitsPerc || 0) / 100);
+            
+            const matUnitRate = totalMat;
+            const plantUnitRate = totalPlantDaily / currentOutput;
+            const laborUnitRate = (totalLaborDaily + laborBenefitsVal) / currentOutput;
+            const totalUnitRate = matUnitRate + plantUnitRate + laborUnitRate;
+            
+            const buildAddBtn = (cat) => `<button onclick="openResourcePickerTemplateA('${cat}')" class="text-green-600 font-bold hover:text-green-800"><i class="fas fa-plus"></i></button>`;
+
+            html += `
+            <div class="mb-4">
+                <div class="bg-slate-100 font-bold p-2 text-sm border border-slate-300 border-b-0 text-slate-800">Materials</div>
+                <table class="w-full text-center text-sm border-collapse border border-slate-300 text-slate-800">
+                    <thead class="bg-slate-50 font-bold text-xs text-slate-800">
+                        <tr><td class="p-2 border border-slate-300 w-1/12">Cod</td><td class="p-2 border border-slate-300 w-1/3">Description</td><td class="p-2 border border-slate-300 w-1/12">Unit</td><td class="p-2 border border-slate-300 w-1/12">Qty</td><td class="p-2 border border-slate-300 w-1/12">Price</td><td class="p-2 border border-slate-300 w-1/12">Total</td><td class="p-2 border border-slate-300 w-1/6">Incidence Over Unit Rate</td><td class="p-2 border border-slate-300 w-1/12">${buildAddBtn('materials')}</td></tr>
+                    </thead>
+                    <tbody>`;
+            matLineData.forEach((m, idx) => {
+                const inc = totalUnitRate > 0 ? ((m.total / totalUnitRate) * 100).toFixed(2) : '0.00';
+                html += `<tr>
+                    <td class="p-2 border border-slate-300">${m.code}</td><td class="p-2 border border-slate-300 text-left">${m.desc || m.code}</td><td class="p-1 border border-slate-300"><input type="text" value="${m.unit || 'ea'}" onchange="updateTplAUnit('materials', ${idx}, this.value)" class="w-16 border rounded text-center text-slate-700 p-1"></td>
+                    <td class="p-1 border border-slate-300"><input type="number" step="0.01" value="${m.qty}" onchange="updateTplAQty('materials', ${idx}, this.value)" class="w-16 border rounded text-center text-blue-700 font-bold p-1"></td>
+                    <td class="p-2 border border-slate-300 text-slate-500">${m.actualPrice.toFixed(2)}</td><td class="p-2 border border-slate-300 font-bold">${m.total.toFixed(2)}</td><td class="p-2 border border-slate-300 text-slate-500">${inc}%</td>
+                    <td class="p-2 border border-slate-300"><button onclick="removeTplAItem('materials', ${idx})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+                </tr>`;
+            });
+            html += `<tr><td colspan="5" class="p-2 border border-slate-300 text-right font-bold text-slate-700">Total Material Unit Rate</td><td class="p-2 border border-slate-300 font-bold text-slate-800">${totalMat.toFixed(2)}</td><td colspan="2" class="border border-slate-300 bg-slate-50"></td></tr>`;
+            html += `</tbody></table></div>`;
+
+            html += `
+            <div class="mb-4">
+                <div class="bg-slate-100 font-bold p-2 text-sm border border-slate-300 border-b-0 text-slate-800">Plant Equipment</div>
+                <table class="w-full text-center text-sm border-collapse border border-slate-300 text-slate-800">
+                    <thead class="bg-slate-50 font-bold text-xs text-slate-800">
+                        <tr><td class="p-2 border border-slate-300 w-1/12">Cod</td><td class="p-2 border border-slate-300 w-1/3">Description</td><td class="p-2 border border-slate-300 w-1/12">Unit</td><td class="p-2 border border-slate-300 w-1/12">Qty</td><td class="p-2 border border-slate-300 w-1/12">Price</td><td class="p-2 border border-slate-300 w-1/12">Total $</td><td class="p-2 border border-slate-300 w-1/6">Incidence Over Unit Rate</td><td class="p-2 border border-slate-300 w-1/12">${buildAddBtn('plant')}</td></tr>
+                    </thead>
+                    <tbody>`;
+            plantLineData.forEach((m, idx) => {
+                const inc = totalUnitRate > 0 ? (((m.total/currentOutput) / totalUnitRate) * 100).toFixed(2) : '0.00';
+                html += `<tr>
+                    <td class="p-2 border border-slate-300">${m.code}</td><td class="p-2 border border-slate-300 text-left">${m.desc || m.code}</td><td class="p-1 border border-slate-300"><input type="text" value="${m.unit || 'hr'}" onchange="updateTplAUnit('plant', ${idx}, this.value)" class="w-16 border rounded text-center text-slate-700 p-1"></td>
+                    <td class="p-1 border border-slate-300"><input type="number" step="0.01" value="${m.qty}" onchange="updateTplAQty('plant', ${idx}, this.value)" class="w-16 border rounded text-center text-blue-700 font-bold p-1"></td>
+                    <td class="p-2 border border-slate-300 text-slate-500">${m.actualPrice.toFixed(2)}</td><td class="p-2 border border-slate-300 font-bold">${m.total.toFixed(2)}</td><td class="p-2 border border-slate-300 text-slate-500">${inc}%</td>
+                    <td class="p-2 border border-slate-300"><button onclick="removeTplAItem('plant', ${idx})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+                </tr>`;
+            });
+            html += `<tr><td colspan="5" class="p-2 border border-slate-300 text-right font-bold text-slate-700">Total $ (Daily Plant)</td><td class="p-2 border border-slate-300 font-bold text-slate-800">${totalPlantDaily.toFixed(2)}</td><td colspan="2" class="border border-slate-300 bg-slate-50"></td></tr>`;
+            html += `<tr><td colspan="5" class="p-2 border border-slate-300 text-right font-bold text-slate-700">Total Plant Unit Rate</td><td class="p-2 border border-slate-300 font-bold text-slate-800">${plantUnitRate.toFixed(2)}</td><td colspan="2" class="p-2 border border-slate-300 bg-slate-50 text-slate-400 text-xs text-center italic">=(Total $ / Output)</td></tr>`;
+            html += `</tbody></table></div>`;
+
+            html += `
+            <div class="mb-4">
+                <div class="bg-slate-100 font-bold p-2 text-sm border border-slate-300 border-b-0 text-slate-800">Labour</div>
+                <table class="w-full text-center text-sm border-collapse border border-slate-300 text-slate-800">
+                    <thead class="bg-slate-50 font-bold text-xs text-slate-800">
+                        <tr><td class="p-2 border border-slate-300 w-1/12">Cod</td><td class="p-2 border border-slate-300 w-1/3">Description</td><td class="p-2 border border-slate-300 w-1/12">Unit</td><td class="p-2 border border-slate-300 w-1/12">Qty</td><td class="p-2 border border-slate-300 w-1/12">Price</td><td class="p-2 border border-slate-300 w-1/12">Total $</td><td class="p-2 border border-slate-300 w-1/6">Incidence Over Unit Rate</td><td class="p-2 border border-slate-300 w-1/12">${buildAddBtn('labor')}</td></tr>
+                    </thead>
+                    <tbody>`;
+            laborLineData.forEach((m, idx) => {
+                const ben = m.total * ((tplAData.benefitsPerc || 0)/100);
+                const inc = totalUnitRate > 0 ? ((((m.total+ben)/currentOutput) / totalUnitRate) * 100).toFixed(2) : '0.00';
+                html += `<tr>
+                    <td class="p-2 border border-slate-300">${m.code}</td><td class="p-2 border border-slate-300 text-left">${m.desc || m.code}</td><td class="p-1 border border-slate-300"><input type="text" value="${m.unit || 'hr'}" onchange="updateTplAUnit('labor', ${idx}, this.value)" class="w-16 border rounded text-center text-slate-700 p-1"></td>
+                    <td class="p-1 border border-slate-300"><input type="number" step="0.01" value="${m.qty}" onchange="updateTplAQty('labor', ${idx}, this.value)" class="w-16 border rounded text-center text-blue-700 font-bold p-1"></td>
+                    <td class="p-2 border border-slate-300 text-slate-500">${m.actualPrice.toFixed(2)}</td><td class="p-2 border border-slate-300 font-bold">${m.total.toFixed(2)}</td><td class="p-2 border border-slate-300 text-slate-500">${inc}%</td>
+                    <td class="p-2 border border-slate-300"><button onclick="removeTplAItem('labor', ${idx})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+                </tr>`;
+            });
+            html += `<tr><td colspan="5" class="p-2 border border-slate-300 text-right font-bold text-slate-700">Base Daily Labour $</td><td class="p-2 border border-slate-300 font-bold text-slate-800">${totalLaborDaily.toFixed(2)}</td><td colspan="2" class="border border-slate-300 bg-slate-50"></td></tr>`;
+            html += `<tr><td colspan="4" class="p-2 border border-slate-300 text-right font-bold text-slate-700">Labor Benefits (%)</td><td class="p-2 border border-slate-300 font-bold bg-yellow-100 text-blue-700"><input type="number" id="tplALaborBenefits" value="${tplAData.benefitsPerc || 50}" onchange="updateTplAData(); calcTemplateA();" class="w-12 bg-transparent text-center focus:outline-none outline-none"></td><td class="p-2 border border-slate-300 font-bold text-blue-600">${laborBenefitsVal.toFixed(2)}</td><td colspan="2" class="border border-slate-300 bg-slate-50"></td></tr>`;
+            html += `<tr><td colspan="5" class="p-2 border border-slate-300 text-right font-bold text-slate-700">Total Labour Unit Rate (Incl. Benefits)</td><td class="p-2 border border-slate-300 font-bold text-blue-700">${laborUnitRate.toFixed(2)}</td><td colspan="2" class="p-2 border border-slate-300 bg-slate-50 text-slate-400 text-xs text-center italic">=(Base + Benefits) / Output</td></tr>`;
+            html += `</tbody></table></div>`;
+
+            document.getElementById('tplAResourcesContainer').innerHTML = html;
+        }
+
+        function updateTplAQty(cat, idx, val) {
+            updateTplAData();
+            tplAData[cat][idx].qty = Number(val);
+            calcTemplateA();
+        }
+
+        function updateTplAUnit(cat, idx, val) {
+            updateTplAData();
+            tplAData[cat][idx].unit = val;
+            calcTemplateA();
+        }
+
+        function removeTplAItem(cat, idx) {
+            updateTplAData();
+            tplAData[cat].splice(idx, 1);
+            calcTemplateA();
+        }
+
+        function calcTemplateA() {
+            if(!tplAData) return;
+            updateTplAData();
+            
+            let totalMat = 0;
+            tplAData.materials.forEach(item => {
+                const res = resources.find(r => r.code === item.code); 
+                const p = res ? Number(res.rate) : Number(item.price || 0);
+                totalMat += Number(item.qty) * p;
+            });
+            
+            let totalPlantDaily = 0;
+            tplAData.plant.forEach(item => {
+                const res = resources.find(r => r.code === item.code); 
+                const p = res ? Number(res.rate) : Number(item.price || 0);
+                totalPlantDaily += Number(item.qty) * p;
+            });
+            
+            let totalLaborDaily = 0;
+            tplAData.labor.forEach(item => {
+                const res = resources.find(r => r.code === item.code); 
+                const p = res ? Number(res.rate) : Number(item.price || 0);
+                totalLaborDaily += Number(item.qty) * p;
+            });
+
+            const currentOutput = tplAData.output || 15;
+            const laborBenefitsVal = totalLaborDaily * ((tplAData.benefitsPerc || 0) / 100);
+            
+            const matUnitRate = totalMat;
+            const plantUnitRate = totalPlantDaily / currentOutput;
+            const laborUnitRate = (totalLaborDaily + laborBenefitsVal) / currentOutput;
+            
+            const directCost = matUnitRate + plantUnitRate + laborUnitRate;
+            
+            const ohPerc = tplAData.overhead / 100;
+            const ohAmount = directCost * ohPerc;
+            
+            const subtotalRate = directCost + ohAmount;
+            
+            const profitPerc = tplAData.profit / 100;
+            const profitAmount = subtotalRate * profitPerc;
+            
+            const finalRate = subtotalRate + profitAmount;
+            
+            const targetCostHour = totalLaborDaily > 0 ? (totalLaborDaily / 8) : 0;
+
+            document.getElementById('tplAHeaderRate').innerText = '$' + finalRate.toFixed(2);
+            document.getElementById('tplACostHour').innerText = targetCostHour.toFixed(2);
+            
+            document.getElementById('tplADirectCost').innerText = directCost.toFixed(2);
+            document.getElementById('tplAOverheadAmount').innerText = ohAmount.toFixed(2);
+            document.getElementById('tplASubtotalRate').innerText = subtotalRate.toFixed(2);
+            document.getElementById('tplAProfitAmount').innerText = profitAmount.toFixed(2);
+            document.getElementById('tplAFinalRate').innerText = '$' + finalRate.toFixed(2);
+            
+            tplAData.rate = finalRate;
+
+            if (document.getElementById('tplASource').value === 'budget') {
+                tplAData.qty = parseFloat(document.getElementById('tplABudgetQty').value) || 0;
+                let displayRate = finalRate;
+                let displayQty = tplAData.qty;
+                let addInfo = '';
+
+                if (tplAData.pricingFormat === 'HOURLY') {
+                    const shift = tplAData.shift || 8;
+                    displayRate = (finalRate * currentOutput) / shift;
+                    displayQty = (tplAData.qty * shift) / currentOutput;
+                    addInfo = `<div class="text-xs text-blue-700 font-normal mt-1">(${displayQty.toFixed(2)} Hrs)</div>`;
+                } else if (tplAData.pricingFormat === 'LUMP_SUM') {
+                    displayRate = finalRate * tplAData.qty;
+                    displayQty = 1;
+                    addInfo = `<div class="text-xs text-blue-700 font-normal mt-1">(1 LS)</div>`;
+                }
+
+                const totalCost = Number(parseFloat(displayRate).toFixed(2)) * Number(parseFloat(displayQty).toFixed(2));
+                document.getElementById('tplABudgetTotal').innerHTML = '$' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + addInfo;
+            }
+
+            renderTemplateATables();
+        }
+
+        async function saveTemplateAApu() {
+            updateTplAData();
+            const source = document.getElementById('tplASource').value;
+            const user = firebase.auth().currentUser;
+            if (!user) return alert("Error: User not authenticated.");
+
+            // 1. AUDITORÍA DE UNIDADES (Detectar cambios vs Master Resources)
+            let resourcesChanged = false;
+            ['materials', 'plant', 'labor'].forEach(cat => {
+                const items = tplAData[cat] || [];
+                items.forEach(item => {
+                    const masterRes = resources.find(r => r.code === item.code);
+                    if (masterRes && masterRes.unit !== item.unit) {
+                        masterRes.unit = item.unit; 
+                        resourcesChanged = true;
+                    }
+                });
+            });
+
+            if (resourcesChanged) {
+                const updateRes = confirm("Se detectaron cambios en las UNIDADES de algunos recursos.\n¿Desea actualizar permanentemente la Base de Datos de Recursos (Master Resources) en Firebase?");
+                if (updateRes) {
+                    try {
+                        const resRef = db.collection('tenants').doc(user.uid).collection('appData').doc('civilmate_resources');
+                        await resRef.set({ payload: JSON.stringify(resources) }, { merge: true });
+                        if(typeof renderResources === 'function') renderResources('All');
+                    } catch(e) { console.error("Error updating resources:", e); }
+                }
+            }
+
+            // 2. GUARDAR EN EL CONTEXTO ACTUAL (Presupuesto o Librería)
+            if (source === 'budget' && activeBudgetID) {
+                const currentBudget = budgets.find(x => x.id === activeBudgetID);
+                if (currentBudget) {
+                    const bIndex = currentBudget.items.findIndex(a => a.id === tplAData.id);
+                    if(bIndex !== -1) currentBudget.items[bIndex] = tplAData;
+                    renderBudgetEditor();
+                    saveBudgets();
+                }
+            } else {
+                const mIndex = masterAPUs.findIndex(a => a.id === tplAData.id);
+                if(mIndex !== -1) masterAPUs[mIndex] = tplAData;
+                localStorage.setItem('civilmate_master_apus', JSON.stringify(masterAPUs));
+                renderAPUs();
+            }
+
+            // 3. SINCRONIZAR MASTER APU
+            const updateMaster = confirm("Do you want to update this APU in the Master Library in Firebase as well?");
+            
+            if (updateMaster) {
+                try {
+                    const mIndex = masterAPUs.findIndex(a => a.id === tplAData.id);
+                    if(mIndex !== -1) { masterAPUs[mIndex] = tplAData; } 
+                    else { masterAPUs.push(tplAData); }
+                    
+                    const apuRef = db.collection('tenants').doc(user.uid).collection('appData').doc('civilmate_master_apus');
+                    await apuRef.set({ payload: JSON.stringify(masterAPUs) }, { merge: true });
+                    alert("Master Library updated successfully in Firebase.");
+                } catch(e) {
+                    console.error("Firebase Error:", e);
+                    alert("There was an error saving to Firebase.");
+                }
+            }
+            
+            closeTemplateAModal();
+        }
+
+        function openResourcePickerTemplateA(cat) {
+            pickerType = cat === 'materials' ? 'Material' : (cat === 'plant' ? 'Plant' : 'Labor');
+            document.getElementById('pickerModal').classList.remove('hidden'); 
+            document.getElementById('pickerModal').classList.add('flex'); 
+            switchPickerView('select'); 
+            renderPickerList();
+        }
+
+        // Picker Utils
+        function openPicker(t) { pickerType = t; document.getElementById('pickerModal').classList.remove('hidden'); document.getElementById('pickerModal').classList.add('flex'); switchPickerView('select'); renderPickerList(); }
+        function openAPUPicker(mode) { pickerType = 'APU'; document.getElementById('pickerModal').classList.remove('hidden'); document.getElementById('pickerModal').classList.add('flex'); switchPickerView('select'); renderPickerList(); }
+        function closePicker() { document.getElementById('pickerModal').classList.add('hidden'); document.getElementById('pickerModal').classList.remove('flex'); }
+        function switchPickerView(v) {
+            document.getElementById('viewPickSelect').classList.toggle('hidden', v !== 'select');
+            document.getElementById('viewPickCreate').classList.toggle('hidden', v !== 'create');
+            document.getElementById('tabPickSelect').className = v === 'select' ? "flex-1 py-2 text-xs font-bold text-white bg-slate-700" : "flex-1 py-2 text-xs font-bold text-slate-400 hover:text-white";
+            document.getElementById('tabPickCreate').className = v === 'create' ? "flex-1 py-2 text-xs font-bold text-white bg-slate-700" : "flex-1 py-2 text-xs font-bold text-slate-400 hover:text-white";
+        }
+        function renderPickerList() {
+            const l = document.getElementById('pickerList'); l.innerHTML = '';
+            const q = document.getElementById('pickerSearch').value.toLowerCase();
+            if (pickerType === 'APU') {
+                masterAPUs.filter(a => a.desc.toLowerCase().includes(q)).forEach(a => {
+                    const d = document.createElement('div'); d.className = "p-2 border-b border-slate-700 hover:bg-slate-700 cursor-pointer flex justify-between text-xs text-white";
+                    d.innerHTML = `<span>${a.desc}</span><span class="text-green-400">$${Number(a.rate || 0).toFixed(2)}</span>`;
+                    d.onclick = () => {
+                        const b = budgets.find(x => x.id === activeBudgetID);
+                        const cp = JSON.parse(JSON.stringify(a)); cp.id = 'INST-' + Date.now(); cp.qty = 1; cp.pricingFormat = 'UNIT_PRICE';
+                        b.items.push(cp); saveBudgets(); renderBudgetEditor(); closePicker();
+                    };
+                    l.appendChild(d);
+                });
+            } else {
+                resources.filter(r => r.category === pickerType && r.desc.toLowerCase().includes(q)).forEach(r => {
+                    const d = document.createElement('div'); d.className = "p-2 border-b border-slate-700 hover:bg-slate-700 cursor-pointer flex justify-between text-xs text-white";
+                    d.innerHTML = `<span>${r.desc}</span><span class="text-green-400">$${r.rate}</span>`;
+                    d.onclick = () => {
+                        const k = pickerType === 'Material' ? 'materials' : (pickerType === 'Plant' ? 'plant' : 'labor');
+                        if (tplAData) {
+                            tplAData[k].push({ code: r.code, desc: r.desc, unit: r.unit, qty: 1, price: r.rate });
+                            calcTemplateA();
+                        } else if (typeof tempAPU !== 'undefined' && tempAPU) {
+                            tempAPU[k].push({ code: r.code, qty: 1 }); recalcModal();
+                        }
+                        closePicker();
+                    };
+                    l.appendChild(d);
+                });
+            }
+        }
+        function createAndAddResource() {
+            const code = document.getElementById('newResCode').value, desc = document.getElementById('newResDesc').value, unit = document.getElementById('newResUnit').value, rate = parseFloat(document.getElementById('newResRate').value);
+            if (code && desc) {
+                if (pickerType === 'APU') {
+                    const b = budgets.find(x => x.id === activeBudgetID);
+                    const newApuId = 'INST-' + Date.now();
+                    const cp = {
+                        id: newApuId,
+                        desc: desc,
+                        unit: unit || 'LS',
+                        qty: 1,
+                        pricingFormat: 'UNIT_PRICE',
+                        materials: [], plant: [], labor: [],
+                        output: 15,
+                        overhead: 10,
+                        profit: 15,
+                        rate: rate || 0
+                    };
+                    b.items.push(cp);
+                    saveBudgets(); renderBudgetEditor(); closePicker();
+                    openExactApuSheet(newApuId, 'budget');
+                } else {
+                    resources.push({ code, category: pickerType, desc, unit, rate });
+                    localStorage.setItem('civilmate_resources', JSON.stringify(resources));
+                    persistResourcesToCloud();
+                    const k = pickerType === 'Material' ? 'materials' : (pickerType === 'Plant' ? 'plant' : 'labor');
+                    if (tplAData) {
+                        tplAData[k].push({ code: code, desc: desc, unit: unit, qty: 1, price: rate });
+                        calcTemplateA();
+                    }
+                    closePicker(); renderResources('All');
+                }
+            }
+        }
+
+        async function exportBudgetPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const b = budgets.find(x => x.id === activeBudgetID);
+
+            // Logo placeholder
+            doc.setFillColor(37, 99, 235);
+            doc.rect(14, 15, 10, 10, 'F');
+            doc.setFontSize(16); doc.text(document.getElementById('companyNameDisplay').innerText, 28, 22);
+
+            doc.setFontSize(10);
+            doc.text("QUOTE", 180, 20, { align: 'right' });
+            doc.text(`Ref: ${b.projectRef || '-'}`, 180, 25, { align: 'right' });
+
+            doc.text(`Client: ${b.clientName || '-'}`, 14, 40);
+            doc.text(`Project: ${b.name || '-'}`, 14, 45);
+
+            const data = b.items.map(i => {
+                let displayQty = i.qty;
+                if (i.pricingFormat === 'HOURLY') displayQty = (i.qty * (i.shift || 8)) / (i.output || 1);
+                if (i.pricingFormat === 'LUMP_SUM') displayQty = 1;
+                let displayRate = (i.rate * i.qty) / displayQty;
+
+                return [i.desc, i.unit, displayQty.toFixed(2), `$${displayRate.toFixed(2)}`, `$${(i.rate * i.qty).toFixed(2)}`]
+            });
+
+            doc.autoTable({
+                startY: 55,
+                head: [['Description', 'Unit', 'Qty', 'Rate', 'Total']],
+                body: data,
+                foot: [['', '', '', 'TOTAL (ex GST)', `$${b.items.reduce((a, x) => a + (x.rate * x.qty), 0).toFixed(2)}`]]
+            });
+
+            doc.save('Quote.pdf');
+
+            try {
+                const pdfBlob = doc.output('blob');
+                const fileRef = window.storageRef(window.storage, `tenants/${tenantInfo}/budgets/${b.id}_Quote.pdf`);
+                await window.uploadBytes(fileRef, pdfBlob);
+                const pdfUrl = await window.getDownloadURL(fileRef);
+
+                await db.collection("tenants").doc(tenantInfo).collection("budgets").doc(b.id).set({ pdfUrl: pdfUrl }, { merge: true });
+                console.log("PDF uploaded and Firestore updated:", pdfUrl);
+            } catch (err) {
+                console.error("Error uploading PDF:", err);
+            }
+        }
+
+    </script>
+</body>
+
+</html>

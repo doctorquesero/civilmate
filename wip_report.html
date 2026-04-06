@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WIP Report - CivilMate Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        if(!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="civilmate_core.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; }
+        .scroller { overflow-y: auto; height: 100%; }
+        .scroller::-webkit-scrollbar { width: 6px; }
+        .scroller::-webkit-scrollbar-track { background: #1e293b; }
+        .scroller::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        
+        /* Ajuste para que el Sticky Header funcione perfecto */
+        table.wip-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        
+        /* ENCABEZADOS PEGAJOSOS (Sticky) */
+        table.wip-table th { 
+            position: sticky; 
+            top: 0; 
+            z-index: 20; 
+            background-color: #f1f5f9; 
+            color: #475569; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            font-size: 10px; 
+            padding: 12px 8px; 
+            border-bottom: 2px solid #cbd5e1; 
+            text-align: left; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        table.wip-table td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        table.wip-table tr:hover td { background-color: #f8fafc; }
+        
+        .input-mod { width: 70px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-weight: bold; font-size: 12px; }
+        .input-mod:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        
+        /* Progress Bar Styles */
+        .progress-bg { width: 100%; background-color: #e2e8f0; border-radius: 999px; height: 8px; overflow: hidden; margin-top: 4px; }
+        .progress-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+        .progress-normal { background-color: #3b82f6; }
+        .progress-warning { background-color: #f59e0b; }
+        .progress-danger { background-color: #ef4444; }
+
+        /* --- MODO IMPRESIÓN Y PDF PERFECTO --- */
+        @media print {
+            @page { 
+                size: landscape; 
+                margin: 10mm; 
+            }
+            body { height: auto; overflow: visible; background-color: white !important; }
+            
+            header, button, .no-print { display: none !important; } 
+            
+            #viewReport { display: block !important; height: auto !important; background: white !important; }
+            .scroller { overflow: visible !important; height: auto !important; padding: 0 !important; }
+            
+            .max-w-7xl { max-width: 100% !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
+            
+            table.wip-table { font-size: 10px !important; }
+            table.wip-table th, table.wip-table td { padding: 6px 4px !important; }
+            
+            .input-mod { border: none !important; background: transparent !important; padding: 0 !important; width: auto !important; }
+            
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
+            
+            tr, .grid > div { page-break-inside: avoid !important; } 
+            
+            .grid { display: flex !important; gap: 20px !important; margin-top: 20px !important; }
+            .grid > div { width: 50% !important; border: 1px solid #cbd5e1 !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 font-sans text-slate-200 flex flex-col">
+
+    <header class="h-16 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 no-print">
+        <div class="flex items-center gap-4">
+            <a href="dashboard.html" class="text-slate-400 hover:text-white transition"><i class="fas fa-home"></i></a>
+            <h1 class="text-xl font-bold text-white">Project <span class="text-purple-500">WIP Report</span></h1>
+        </div>
+        <nav class="flex bg-slate-800 rounded-lg p-1 gap-1">
+            <a href="estimator.html" class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm transition">Budgets</a>
+            <a href="valuations.html" class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm transition">Valuations</a>
+            <a href="#" class="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow">WIP Report</a>
+        </nav>
+    </header>
+
+    <main class="flex-1 overflow-hidden relative">
+        <div id="viewRegistry" class="h-full flex flex-col p-6">
+            <h2 class="text-lg font-bold text-white mb-2"><i class="fas fa-chart-pie text-purple-500 mr-2"></i> Work In Progress (WIP)</h2>
+            <p class="text-sm text-slate-400 mb-6">Select a project to view the Final Scrutiny and Remaining Works schedule.</p>
+            <div id="contractList" class="flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-y-auto p-4 space-y-2"></div>
+        </div>
+
+        <div id="viewReport" class="hidden h-full flex-col bg-slate-100">
+            <div class="h-16 bg-white border-b border-slate-300 flex justify-between items-center px-6 shrink-0 shadow-sm no-print">
+                <button onclick="closeReport()" class="text-slate-500 hover:text-slate-800 font-bold text-sm transition"><i class="fas fa-arrow-left mr-1"></i> Back</button>
+                <div class="text-center">
+                    <h2 class="text-xl font-bold text-slate-800" id="projName">Project Name</h2>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Final Scrutiny & Remaining Works Schedule</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="window.print()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-slate-300 transition"><i class="fas fa-print mr-1"></i> Print / PDF</button>
+                    <button onclick="saveWIP()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-purple-500 transition"><i class="fas fa-save mr-1"></i> Save Changes</button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto scroller p-6">
+                <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden mb-8">
+                    
+                    <div class="overflow-x-auto">
+                        <table class="wip-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">Item Description</th>
+                                    <th class="text-center" style="width: 5%;">Unit</th>
+                                    <th class="text-center bg-slate-50" style="width: 8%;">Orig. Qty<br><span class="text-[9px] font-normal text-slate-400">(Contract)</span></th>
+                                    <th class="text-center bg-green-50 text-green-700" style="width: 9%;">Additions (+)<br><span class="text-[9px] font-normal text-green-600/70">(Approved Extra)</span></th>
+                                    <th class="text-center bg-red-50 text-red-700" style="width: 9%;">Omissions (-)<br><span class="text-[9px] font-normal text-red-600/70">(Deducted)</span></th>
+                                    <th class="text-center bg-blue-50 text-blue-800 border-l border-blue-200" style="width: 9%;">Revised Qty<br><span class="text-[9px] font-normal text-blue-600/70">(New Target)</span></th>
+                                    <th class="text-center bg-slate-50" style="width: 10%;">Qty To Date<br><span class="text-[9px] font-normal text-slate-400">(Executed)</span></th>
+                                    <th class="text-center bg-purple-50 text-purple-800 font-bold border-l border-purple-200" style="width: 10%;">Remaining<br><span class="text-[9px] font-normal text-purple-600/70">(To Complete)</span></th>
+                                    <th style="width: 15%;">Progress (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wipTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="max-w-7xl mx-auto grid grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4"><i class="fas fa-plus-circle text-purple-500 mr-2"></i>Global Approved Variations</h3>
+                        <div id="wipVariations" class="text-sm text-slate-600 space-y-2"></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4"><i class="fas fa-minus-circle text-red-500 mr-2"></i>Global Engineer Deductions</h3>
+                        <div id="wipDeductions" class="text-sm text-slate-600 space-y-2"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let contracts = DataManager.get(DB_KEYS.CONTRACTS) || [];
+        let activeProject = null;
+
+        document.addEventListener('DOMContentLoaded', renderRegistry);
+
+        function renderRegistry() {
+            const list = document.getElementById('contractList');
+            contracts = DataManager.get(DB_KEYS.CONTRACTS) || []; 
+
+            if(!contracts || contracts.length === 0) {
+                list.innerHTML = `<div class="p-4 bg-purple-900/20 text-purple-400 border border-purple-800 rounded font-bold"><i class="fas fa-info-circle"></i> No approved projects found to analyze.</div>`;
+                return;
+            }
+
+            list.innerHTML = contracts.map(con => {
+                return `
+                <div class="flex justify-between items-center p-4 border border-slate-600 bg-slate-700 rounded hover:bg-slate-600 transition shadow-sm mb-2 cursor-pointer" onclick="openWIP('${con.id}')">
+                    <div>
+                        <div class="font-bold text-white text-lg">${con.name}</div>
+                        <div class="text-slate-400 text-sm"><i class="fas fa-user mr-1"></i> ${con.clientName || 'No Client'}</div>
+                    </div>
+                    <div class="bg-purple-600/20 text-purple-300 px-4 py-2 rounded-lg font-bold text-sm border border-purple-500/30 hover:bg-purple-500 hover:text-white transition">
+                        View WIP Report <i class="fas fa-arrow-right ml-1"></i>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function openWIP(id) {
+            activeProject = contracts.find(x => x.id === id);
+            
+            document.getElementById('viewRegistry').classList.add('hidden');
+            document.getElementById('viewReport').classList.remove('hidden');
+            document.getElementById('viewReport').classList.add('flex');
+            
+            document.getElementById('projName').innerText = activeProject.name;
+            
+            renderWIPTable();
+            renderGlobalFinancials();
+        }
+
+        function closeReport() {
+            document.getElementById('viewReport').classList.add('hidden');
+            document.getElementById('viewReport').classList.remove('flex');
+            document.getElementById('viewRegistry').classList.remove('hidden');
+            renderRegistry();
+        }
+
+        function updateMod(idx, field, value) {
+            let val = parseFloat(value) || 0;
+            if(val < 0) val = 0; 
+            activeProject.items[idx][field] = val;
+            renderWIPTable();
+        }
+
+        function renderWIPTable() {
+            const tbody = document.getElementById('wipTableBody');
+            let html = '';
+            
+            activeProject.items.forEach((item, idx) => {
+                if (item.type === 'SECTION') {
+                    html += `<tr class="bg-slate-200/50"><td colspan="9" class="py-2 px-3 font-bold text-slate-800 uppercase text-xs tracking-wider border-y border-slate-300">${item.desc}</td></tr>`;
+                } else {
+                    let origQty = parseFloat(item.contractQty) || 0;
+                    let adds = parseFloat(item.wipAdditions) || 0;
+                    let omis = parseFloat(item.wipOmissions) || 0;
+                    let qtyToDate = parseFloat(item.qtyToDate) || 0;
+                    
+                    let revisedQty = origQty + adds - omis;
+                    let remaining = revisedQty - qtyToDate;
+                    
+                    let pct = 0;
+                    if(revisedQty > 0) {
+                        pct = (qtyToDate / revisedQty) * 100;
+                    } else if (qtyToDate > 0) {
+                        pct = 100; 
+                    }
+
+                    let barClass = 'progress-normal';
+                    let textClass = 'text-slate-600';
+                    let remainClass = 'text-purple-700';
+
+                    if(pct >= 100) {
+                        barClass = pct > 100 ? 'progress-danger' : 'bg-green-500';
+                        textClass = pct > 100 ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+                        remainClass = pct > 100 ? 'text-red-600 font-bold' : 'text-slate-400';
+                    } else if (pct > 80) {
+                        barClass = 'progress-warning';
+                    }
+
+                    let visualPct = pct > 100 ? 100 : pct;
+
+                    html += `
+                    <tr>
+                        <td class="font-bold text-slate-700">${item.desc}</td>
+                        <td class="text-center text-slate-500 font-mono text-xs">${item.unit}</td>
+                        <td class="text-center font-bold text-slate-600 bg-slate-50">${origQty}</td>
+                        <td class="text-center bg-green-50/50">
+                            <input type="number" step="0.01" min="0" value="${adds || ''}" placeholder="0" onchange="updateMod(${idx}, 'wipAdditions', this.value)" class="input-mod text-green-700 bg-white">
+                        </td>
+                        <td class="text-center bg-red-50/50">
+                            <input type="number" step="0.01" min="0" value="${omis || ''}" placeholder="0" onchange="updateMod(${idx}, 'wipOmissions', this.value)" class="input-mod text-red-700 bg-white">
+                        </td>
+                        <td class="text-center font-bold text-blue-800 bg-blue-50/50 border-l border-blue-200 text-sm">${revisedQty.toFixed(2)}</td>
+                        <td class="text-center font-bold text-slate-700 bg-slate-50">${qtyToDate.toFixed(2)}</td>
+                        <td class="text-center font-bold bg-purple-50/50 border-l border-purple-200 ${remainClass}">${remaining.toFixed(2)}</td>
+                        <td>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[10px] font-bold ${textClass}">${pct.toFixed(1)}%</span>
+                                ${pct > 100 ? '<span class="text-[9px] bg-red-100 text-red-700 px-1 rounded font-bold uppercase">Over-run</span>' : ''}
+                            </div>
+                            <div class="progress-bg">
+                                <div class="progress-fill ${barClass}" style="width: ${visualPct}%;"></div>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        function renderGlobalFinancials() {
+            const varDiv = document.getElementById('wipVariations');
+            const dedDiv = document.getElementById('wipDeductions');
+            const fmt = (num) => "$" + parseFloat(num).toLocaleString('en-NZ', {minimumFractionDigits:2});
+
+            let vars = activeProject.variations || [];
+            if(vars.length === 0) {
+                varDiv.innerHTML = '<p class="italic text-slate-400 text-xs">No global variations recorded in Valuations.</p>';
+            } else {
+                varDiv.innerHTML = vars.map(v => `<div class="flex justify-between border-b border-slate-100 py-1"><span>${v.desc || 'Unnamed Var'}</span><span class="font-bold text-slate-800">${fmt(v.amount)}</span></div>`).join('');
+            }
+
+            let deds = activeProject.deductions || [];
+            if(deds.length === 0) {
+                dedDiv.innerHTML = '<p class="italic text-slate-400 text-xs">No deductions applied in Valuations.</p>';
+            } else {
+                dedDiv.innerHTML = deds.map(d => `<div class="flex justify-between border-b border-slate-100 py-1"><span>${d.desc || 'Unnamed Ded'}</span><span class="font-bold text-red-600">-${fmt(d.amount)}</span></div>`).join('');
+            }
+        }
+
+        function saveWIP() {
+            const idx = contracts.findIndex(x => x.id === activeProject.id); 
+            contracts[idx] = activeProject;
+            DataManager.set(DB_KEYS.CONTRACTS, contracts); 
+            
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check mr-1"></i> Saved!';
+            btn.classList.remove('bg-purple-600', 'hover:bg-purple-500');
+            btn.classList.add('bg-green-600', 'hover:bg-green-500');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+                btn.classList.add('bg-purple-600', 'hover:bg-purple-500');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

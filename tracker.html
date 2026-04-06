@@ -1,50 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Site Tracker - CivilMate</title>
+    <title>Site Tracker - CivilMate Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background-color: #0f172a; font-family: 'Segoe UI', sans-serif; color: white; touch-action: manipulation; }
-        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px; width: 100%; padding: 12px; outline: none; }
-        .input-dark:focus { border-color: #3b82f6; }
-        .btn-primary { background: #2563eb; color: white; font-weight: bold; padding: 15px; border-radius: 8px; width: 100%; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: transform 0.1s; }
-        .btn-primary:active { transform: scale(0.98); }
-        
-        /* ESTILOS FIRMA DIGITAL */
-        canvas { background-color: white; border-radius: 0.5rem; cursor: crosshair; touch-action: none; width: 100%; }
-        
-        /* GRID DE FOTOS */
-        .photo-thumb { position: relative; width: 100%; height: 80px; border-radius: 8px; overflow: hidden; border: 1px solid #475569; }
-        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-del { position: absolute; top: 0; right: 0; background: rgba(220, 38, 38, 0.9); color: white; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-bottom-left-radius: 8px; cursor: pointer; }
+        body {
+            background-color: #0f172a;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            touch-action: manipulation;
+        }
+
+        .input-dark {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 8px;
+            width: 100%;
+            padding: 12px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-dark:focus {
+            border-color: #3b82f6;
+        }
+
+        .input-locked {
+            background: #0f172a;
+            color: #94a3b8;
+            border-color: #1e293b;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+        }
+
+        canvas {
+            background-color: white;
+            border-radius: 0.5rem;
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+        }
+
+        .photo-thumb {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #475569;
+        }
+
+        .photo-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-del {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom-left-radius: 8px;
+            cursor: pointer;
+        }
+
+        input::-webkit-calendar-picker-indicator[list] {
+            display: none !important;
+        }
+
+        /* Ocultar las flechas feas de los inputs numéricos */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
     </style>
 </head>
-<body class="p-4 max-w-md mx-auto min-h-screen flex flex-col pb-24">
+
+<body class="p-4 max-w-md mx-auto min-h-screen flex flex-col pb-24 relative">
 
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-xl font-bold text-yellow-500"><i class="fas fa-hard-hat mr-2"></i>Site Tracker</h1>
             <p class="text-xs text-slate-400">Supervisor Daily Log</p>
         </div>
-        <button onclick="window.location.href='index.html'" class="bg-slate-700 text-xs px-3 py-1 rounded hover:bg-slate-600">Exit</button>
+        <button onclick="window.location.href='index.html'"
+            class="bg-slate-700 text-xs px-3 py-1 rounded hover:bg-slate-600">Exit</button>
     </div>
 
     <div class="mb-4">
         <label class="text-[10px] font-bold text-slate-500 uppercase">Select Active Project</label>
-        <select id="projectSelect" onchange="changeProject()" class="w-full bg-slate-800 p-3 rounded-lg border border-blue-900 mt-1 font-bold text-lg text-white outline-none focus:border-blue-500">
-            <option value="">Loading Projects...</option>
+        <select id="projectSelect" onchange="changeProject()"
+            class="w-full bg-slate-800 p-3 rounded-lg border border-blue-900 mt-1 font-bold text-lg text-white outline-none focus:border-blue-500">
+            <option value="">Authenticating...</option>
         </select>
     </div>
 
     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 mb-4">
-        <div class="flex justify-between items-center mb-2">
-            <label class="text-[10px] font-bold text-blue-400 uppercase"><i class="fas fa-cloud mr-1"></i> Weather Conditions</label>
-            <input type="date" id="logDate" class="bg-transparent text-xs text-slate-300 outline-none text-right">
+        <div class="flex justify-between items-center mb-3">
+            <label class="text-[10px] font-bold text-blue-400 uppercase"><i class="fas fa-cloud mr-1"></i> Weather &
+                Date</label>
+            <input type="date" id="logDate"
+                class="bg-slate-700 text-xs text-white px-3 py-2 rounded border border-slate-600 outline-none cursor-pointer focus:border-blue-500 transition"
+                onchange="loadTodayLogs()">
         </div>
         <div class="grid grid-cols-2 gap-3">
             <select id="weatherSelect" class="input-dark text-sm py-2">
@@ -58,67 +157,101 @@
     </div>
 
     <div class="space-y-4 flex-1">
-        
+
         <div>
             <label class="text-[10px] font-bold text-slate-500 uppercase">What are you working on?</label>
             <select id="itemSelect" class="input-dark mt-1" onchange="updateUnitLabel()">
                 <option value="">-- First Select Project --</option>
             </select>
-            <p class="text-right mt-1"><a href="#" onclick="toggleExtraWork()" class="text-xs text-yellow-500 hover:underline">+ Report Unforeseen / Extra Work</a></p>
+            <p class="text-right mt-1"><a href="#" onclick="toggleExtraWork()"
+                    class="text-xs text-yellow-500 hover:underline">+ Report Unforeseen / Extra Work</a></p>
         </div>
 
         <div id="extraWorkArea" class="hidden bg-yellow-900/20 p-3 rounded border border-yellow-700/50">
             <label class="text-[10px] font-bold text-yellow-500 uppercase">Extra Work Description</label>
-            <input type="text" id="extraDesc" class="input-dark mt-1 border-yellow-700" placeholder="e.g. Broken pipe repair">
+            <input type="text" id="extraDesc" class="input-dark mt-1 border-yellow-700"
+                placeholder="e.g. Gap 7 for temporary footpath">
         </div>
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label class="text-[10px] font-bold text-green-500 uppercase">Qty Completed Today</label>
-                <input type="number" id="qtyInput" class="input-dark mt-1 text-2xl font-bold text-center text-green-400 border-green-900 bg-green-900/10" placeholder="0">
+                <label class="text-[10px] font-bold text-green-500 uppercase">Qty Completed</label>
+                <input type="number" id="qtyInput" step="any"
+                    class="input-dark mt-1 text-2xl font-bold text-center text-green-400 border-green-900 bg-green-900/10"
+                    placeholder="0">
             </div>
             <div>
                 <label class="text-[10px] font-bold text-slate-500 uppercase">Unit</label>
-                <input type="text" id="unitDisplay" class="input-dark mt-1 text-center text-slate-400" readonly placeholder="-">
+                <input type="text" id="unitDisplay" class="input-dark input-locked mt-1 text-center font-bold" readonly
+                    placeholder="-">
+            </div>
+        </div>
+
+        <div>
+            <label class="text-[10px] font-bold text-slate-500 uppercase">Dimensions / Calculation (Optional)</label>
+            <input type="text" id="dimensionsInput" class="input-dark mt-1 text-sm text-slate-300"
+                placeholder="e.g. 10m x 2m x 0.15m">
+        </div>
+
+        <div class="bg-slate-800/80 p-3 rounded border border-red-900/50 mb-4 shadow-inner">
+            <div class="flex justify-between items-center mb-3">
+                <label class="text-[10px] font-bold text-red-400 uppercase"><i class="fas fa-coins mr-1"></i> Resources
+                    Used (Daily Cost)</label>
+                <button type="button" onclick="addResourceLog()"
+                    class="text-[10px] bg-red-900/40 text-red-400 hover:text-white hover:bg-red-600 px-2 py-1 rounded border border-red-800 transition">+
+                    Add Resource</button>
+            </div>
+
+            <div id="dailyResourcesContainer" class="space-y-3">
+                <p class="text-xs text-slate-500 italic text-center py-2" id="emptyResourcesMsg">Add daily labor, plant
+                    or materials here.</p>
             </div>
         </div>
 
         <div>
             <div class="flex justify-between items-end mb-2">
-                <label class="text-[10px] font-bold text-slate-500 uppercase">Evidence (Max 10 Photos)</label>
+                <label class="text-[10px] font-bold text-slate-500 uppercase">Evidence (Site Photos & Dockets)</label>
                 <span id="photoCount" class="text-[9px] text-slate-400">0/10</span>
             </div>
-            
+
             <div class="grid grid-cols-2 gap-2 mb-3">
-                <label class="bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-3 flex flex-col items-center justify-center cursor-pointer shadow active:scale-95 transition">
+                <label
+                    class="bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-3 flex flex-col items-center justify-center cursor-pointer shadow active:scale-95 transition">
                     <i class="fas fa-camera text-xl mb-1"></i>
                     <span class="text-[10px] font-bold uppercase">Take Photo</span>
-                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden"
+                        onchange="handleFileSelect(event)">
                 </label>
 
-                <label class="bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg py-3 flex flex-col items-center justify-center cursor-pointer shadow active:scale-95 transition">
+                <label
+                    class="bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg py-3 flex flex-col items-center justify-center cursor-pointer shadow active:scale-95 transition">
                     <i class="fas fa-images text-xl mb-1"></i>
                     <span class="text-[10px] font-bold uppercase">Gallery</span>
-                    <input type="file" id="galleryInput" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+                    <input type="file" id="galleryInput" accept="image/*" multiple class="hidden"
+                        onchange="handleFileSelect(event)">
                 </label>
             </div>
 
-            <textarea id="notesInput" class="input-dark h-20 text-xs resize-none mb-3" placeholder="Add specific details (Location, gridline, issues)..."></textarea>
+            <textarea id="notesInput" class="input-dark h-20 text-xs resize-none mb-3"
+                placeholder="Add specific details (Location, gridline, issues)..."></textarea>
 
             <div id="photoGrid" class="grid grid-cols-4 gap-2">
-                </div>
+            </div>
         </div>
 
         <div class="pt-4 border-t border-slate-800">
             <label class="text-[10px] font-bold text-slate-500 uppercase">Certified By (Site Engineer)</label>
-            <input type="text" id="signerName" class="input-dark mt-1 mb-3 py-2 text-sm" placeholder="Enter your full name">
-            
+            <input type="text" id="signerName" class="input-dark mt-1 mb-3 py-2 text-sm"
+                placeholder="Enter your full name">
+
             <label class="text-[10px] font-bold text-slate-500 uppercase">Digital Signature</label>
             <div class="relative rounded-lg overflow-hidden border border-slate-600 mt-1 bg-white">
                 <canvas id="sigCanvas" height="120"></canvas>
-                <button onclick="clearSig()" class="absolute top-1 right-1 text-[10px] bg-slate-200 text-slate-800 px-2 py-1 rounded shadow hover:bg-slate-300">Clear</button>
+                <button onclick="clearSig()"
+                    class="absolute top-1 right-1 text-[10px] bg-slate-200 text-slate-800 px-2 py-1 rounded shadow hover:bg-slate-300">Clear</button>
             </div>
-            <p class="text-[9px] text-slate-500 mt-1 italic text-center">I certify this measurement is accurate per NZS 3910.</p>
+            <p class="text-[9px] text-slate-500 mt-1 italic text-center">I certify this measurement is accurate per NZS
+                3910.</p>
         </div>
 
     </div>
@@ -126,51 +259,289 @@
     <button onclick="saveLog()" id="btnSave" class="btn-primary py-4 mt-6 text-lg shadow-blue-900/50 mb-8">
         <i class="fas fa-save mr-2"></i> Save Daily Log
     </button>
+
     <p id="statusMsg" class="text-center text-xs mt-2 text-slate-500 mb-4"></p>
 
     <div class="border-t border-slate-800 pt-4">
-        <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Today's Logs</h3>
+        <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Logs for selected date</h3>
         <div id="todayList" class="space-y-2 text-sm text-slate-400">
             <p class="italic opacity-50">Loading logs...</p>
         </div>
     </div>
 
+    <div id="quickAddModal"
+        class="fixed inset-0 bg-slate-950/90 hidden flex-col items-center justify-center z-[100] p-4">
+        <div class="bg-slate-800 w-full max-w-sm rounded-xl border border-slate-600 shadow-2xl overflow-hidden">
+            <div class="bg-blue-600 p-3 flex justify-between items-center">
+                <h3 class="text-white font-bold text-sm"><i class="fas fa-plus-circle mr-2"></i>Report Unplanned
+                    Resource</h3>
+                <button onclick="closeQuickAdd()" class="text-white/70 hover:text-white"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <div class="p-5 space-y-4">
+                <input type="hidden" id="qaRowIndex">
+
+                <div>
+                    <label class="text-[10px] text-slate-400 font-bold uppercase">Category</label>
+                    <select id="qaCat"
+                        class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500">
+                        <option value="Labour">Labour</option>
+                        <option value="Plant">Plant</option>
+                        <option value="Material">Material</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-slate-400 font-bold uppercase">Description / Name</label>
+                    <input type="text" id="qaDesc" placeholder="e.g. 10 Ton Payloader"
+                        class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-slate-400 font-bold uppercase">Unit</label>
+                    <input type="text" id="qaUnit" value="hr"
+                        class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm outline-none focus:border-blue-500">
+                </div>
+
+                <div class="bg-blue-900/20 border border-blue-800/50 p-3 rounded flex gap-3 items-start mt-2">
+                    <i class="fas fa-info-circle text-blue-400 mt-0.5"></i>
+                    <p class="text-[10px] text-blue-300">This resource will be flagged for the Project Manager to assign
+                        a cost during the valuation process.</p>
+                </div>
+            </div>
+            <div class="bg-slate-900 p-3 flex justify-end gap-2 border-t border-slate-700">
+                <button onclick="closeQuickAdd()"
+                    class="text-xs text-slate-400 hover:text-white px-3 py-2 font-bold">Cancel</button>
+                <button onclick="saveQuickAdd()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-xs font-bold shadow transition">Add
+                    to Log</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let currentPid = localStorage.getItem('civilmate_current_project_id'); 
-        let photoEvidence = []; // Array para múltiples fotos
+        let currentPid = localStorage.getItem('civilmate_current_project_id');
+        let photoEvidence = [];
         let contractItems = [];
+        let isExtraWork = false;
+        let dailyResources = [];
+        let currentUserUid = null;
 
-        // SIGNATURE CANVAS SETUP
+        // Base de Datos Maestra
+        let globalResources = JSON.parse(localStorage.getItem('civilmate_resources') || '[]');
+
+        function addResourceLog() {
+            document.getElementById('emptyResourcesMsg')?.classList.add('hidden');
+            const id = Date.now();
+            dailyResources.push({ id, cat: 'Material', code: '', searchString: '', qty: 0, tempResource: null });
+            renderDailyResources();
+        }
+
+        function renderDailyResources() {
+            const container = document.getElementById('dailyResourcesContainer');
+            Array.from(container.children).forEach(c => {
+                if (c.id !== 'emptyResourcesMsg') c.remove();
+            });
+
+            if (dailyResources.length === 0) {
+                document.getElementById('emptyResourcesMsg')?.classList.remove('hidden');
+                return;
+            }
+
+            dailyResources.forEach((res, index) => {
+                const div = document.createElement('div');
+                div.className = "flex flex-col gap-2 bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-sm relative";
+
+                let catColor = res.cat === 'Labour' ? 'text-blue-400' : (res.cat === 'Plant' ? 'text-orange-400' : 'text-indigo-400');
+
+                let filteredRes = globalResources.filter(r => {
+                    let rCat = r.category || r.cat;
+                    if (res.cat === 'Labour') return rCat === 'Labour' || rCat === 'Labor';
+                    return rCat === res.cat;
+                });
+
+                let dataListHtml = `<datalist id="dl_${index}">`;
+                filteredRes.forEach(r => {
+                    dataListHtml += `<option value="${r.desc} (${r.code})"></option>`;
+                });
+                dataListHtml += `</datalist>`;
+
+                // LÓGICA PARA ENCONTRAR LA UNIDAD A MOSTRAR
+                let displayUnit = '...';
+                if (res.code) {
+                    if (res.code.startsWith('TEMP-') && res.tempResource) {
+                        displayUnit = res.tempResource.unit || '--';
+                    } else {
+                        let found = globalResources.find(r => r.code === res.code);
+                        if (found) displayUnit = found.unit || '--';
+                    }
+                }
+
+                let validLabel = `<p class="text-[9px] text-red-400 text-right italic">⚠️ Required: Select from list</p>`;
+                if (res.code) {
+                    if (res.code.startsWith('TEMP-')) {
+                        validLabel = `<p class="text-[9px] text-amber-400 text-right"><i class="fas fa-clock"></i> Pending Pricing by PM</p>`;
+                    } else {
+                        validLabel = `<p class="text-[9px] text-green-400 text-right"><i class="fas fa-check-circle"></i> Code: ${res.code}</p>`;
+                    }
+                }
+
+                div.innerHTML = `
+                    <div class="flex gap-2 items-center">
+                        <select onchange="updateDailyResource(${index}, 'cat', this.value)" class="w-1/3 bg-slate-800 text-[10px] ${catColor} font-bold rounded border border-slate-600 p-2 outline-none focus:border-blue-500">
+                            <option value="Material" ${res.cat === 'Material' ? 'selected' : ''}>Material</option>
+                            <option value="Plant" ${res.cat === 'Plant' ? 'selected' : ''}>Plant</option>
+                            <option value="Labour" ${res.cat === 'Labour' ? 'selected' : ''}>Labour</option>
+                        </select>
+                        
+                        <div class="flex w-1/3 bg-slate-800 border border-slate-600 rounded focus-within:border-blue-500 overflow-hidden">
+                            <input type="number" step="any" onchange="updateDailyResource(${index}, 'qty', this.value)" value="${res.qty || ''}" placeholder="Qty" class="w-2/3 bg-transparent text-xs text-center text-white p-2 outline-none">
+                            <div class="w-1/3 bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-400 uppercase border-l border-slate-600 select-none cursor-not-allowed" title="Unit from Master Library">${displayUnit}</div>
+                        </div>
+
+                        <button onclick="removeDailyResource(${index})" class="w-1/3 bg-slate-800 text-slate-500 hover:bg-red-900/50 hover:text-red-400 hover:border-red-500 rounded border border-slate-600 p-2 transition"><i class="fas fa-trash"></i></button>
+                    </div>
+                    
+                    <div class="flex gap-2 w-full">
+                        <div class="relative flex-1">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-slate-500 text-xs"></i>
+                            </div>
+                            <input type="text" list="dl_${index}" onchange="updateDailyResource(${index}, 'searchString', this.value)" value="${res.searchString}" placeholder="Search ${res.cat}..." class="w-full pl-8 bg-slate-800 text-xs text-white border border-slate-600 rounded p-2 outline-none focus:border-blue-500">
+                            ${dataListHtml}
+                        </div>
+                        <button onclick="openQuickAdd(${index}, '${res.cat}')" class="bg-slate-700 hover:bg-blue-600 text-white px-3 rounded border border-slate-600 transition" title="Report Unplanned Resource"><i class="fas fa-plus"></i></button>
+                    </div>
+                    ${validLabel}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateDailyResource(idx, field, value) {
+            if (field === 'qty') {
+                dailyResources[idx][field] = parseFloat(value) || 0;
+            } else if (field === 'cat') {
+                dailyResources[idx].cat = value;
+                dailyResources[idx].code = '';
+                dailyResources[idx].searchString = '';
+                dailyResources[idx].tempResource = null;
+                renderDailyResources();
+            } else if (field === 'searchString') {
+                dailyResources[idx].searchString = value;
+                let match = value.match(/\(([^)]+)\)$/);
+                if (match) {
+                    dailyResources[idx].code = match[1];
+                    dailyResources[idx].tempResource = null;
+                } else {
+                    dailyResources[idx].code = '';
+                }
+                renderDailyResources();
+            }
+        }
+
+        function removeDailyResource(idx) {
+            dailyResources.splice(idx, 1);
+            renderDailyResources();
+        }
+
+        function openQuickAdd(index, category) {
+            document.getElementById('qaRowIndex').value = index;
+            document.getElementById('qaCat').value = category;
+            document.getElementById('qaDesc').value = '';
+            document.getElementById('qaUnit').value = category === 'Material' ? 'ea' : 'hr';
+
+            document.getElementById('quickAddModal').classList.remove('hidden');
+            document.getElementById('quickAddModal').classList.add('flex');
+        }
+
+        function closeQuickAdd() {
+            document.getElementById('quickAddModal').classList.add('hidden');
+            document.getElementById('quickAddModal').classList.remove('flex');
+        }
+
+        function saveQuickAdd() {
+            const idx = document.getElementById('qaRowIndex').value;
+            const cat = document.getElementById('qaCat').value;
+            const desc = document.getElementById('qaDesc').value.trim();
+            const unit = document.getElementById('qaUnit').value.trim();
+
+            if (!desc) return alert("Description is required.");
+
+            let newCode = 'TEMP-' + Date.now();
+            let newResourceObj = {
+                code: newCode,
+                cat: cat,
+                desc: desc,
+                unit: unit,
+                rate: 0,
+                isPendingPrice: true
+            };
+
+            dailyResources[idx].cat = cat;
+            dailyResources[idx].searchString = `${desc} (${newCode})`;
+            dailyResources[idx].code = newCode;
+            dailyResources[idx].tempResource = newResourceObj;
+
+            closeQuickAdd();
+            renderDailyResources();
+        }
+
         const canvas = document.getElementById('sigCanvas');
         const ctx = canvas.getContext('2d');
         let drawing = false;
 
-        // INIT
         document.getElementById('logDate').valueAsDate = new Date();
-        setupCanvas(); // Configurar firma
-        loadAllActiveProjects(); 
+        setupCanvas();
 
-        // --- 1. PROJECT LOGIC ---
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                currentUserUid = user.uid;
+                loadAllActiveProjects();
+            } else {
+                document.getElementById('projectSelect').innerHTML = '<option value="">Error: User not authenticated</option>';
+            }
+        });
+
         function loadAllActiveProjects() {
             const select = document.getElementById('projectSelect');
-            select.innerHTML = '<option value="">Loading...</option>';
+            select.innerHTML = '<option value="">Loading Projects...</option>';
 
-            db.collection('projects').where('status', 'in', ['Active', 'Pending', 'Won']).get().then(snap => {
-                select.innerHTML = '<option value="">-- Select Project --</option>';
-                if (snap.empty) { select.innerHTML = '<option value="">No Active Projects</option>'; return; }
+            if (!currentUserUid) return;
 
-                snap.forEach(doc => {
-                    const p = doc.data();
-                    const isSelected = doc.id === currentPid ? 'selected' : '';
-                    select.innerHTML += `<option value="${doc.id}" ${isSelected}>${p.name}</option>`;
+            db.collection('tenants').doc(currentUserUid).collection('budgets')
+                .get()
+                .then(snap => {
+                    select.innerHTML = '<option value="">-- Select Project --</option>';
+                    if (snap.empty) {
+                        select.innerHTML = '<option value="">No Projects found in Database</option>';
+                        return;
+                    }
+
+                    snap.forEach(doc => {
+                        const p = doc.data();
+                        const isSelected = doc.id === currentPid ? 'selected' : '';
+                        const displayName = p.name || p.clientName || 'Unnamed Project';
+                        select.innerHTML += `<option value="${doc.id}" ${isSelected}>${displayName}</option>`;
+                    });
+
+                    if (currentPid) loadProjectData(currentPid);
+                })
+                .catch(error => {
+                    console.error("Firebase Error loading projects:", error);
+                    select.innerHTML = '<option value="">Error Loading. Check Console.</option>';
                 });
-
-                if (currentPid) loadProjectData(currentPid);
-            });
         }
 
         function changeProject() {
@@ -185,43 +556,63 @@
         }
 
         function loadProjectData(id) {
-            db.collection('projects').doc(id).get().then(doc => {
-                if(doc.exists) {
+            const itemSel = document.getElementById('itemSelect');
+            itemSel.innerHTML = '<option value="">Loading schedule...</option>';
+
+            if (!currentUserUid) return;
+
+            db.collection('tenants').doc(currentUserUid).collection('budgets').doc(id).get().then(doc => {
+                if (doc.exists) {
                     const p = doc.data();
-                    contractItems = p.schedule || p.items || [];
-                    const itemSel = document.getElementById('itemSelect');
+                    contractItems = p.items || [];
                     itemSel.innerHTML = '<option value="">-- Select Schedule Item --</option>';
-                    
+
                     if (contractItems.length === 0) {
                         itemSel.innerHTML = '<option value="">(No Items found)</option>';
                     } else {
                         contractItems.forEach((item, idx) => {
-                            const name = item.desc || item.name || `Item #${idx+1}`;
+                            const name = item.desc || item.name || `Item #${idx + 1}`;
                             itemSel.innerHTML += `<option value="${idx}">${name}</option>`;
                         });
                     }
                 }
+            }).catch(error => {
+                console.error("Error loading project data:", error);
+                itemSel.innerHTML = '<option value="">Error loading items</option>';
             });
+
             loadTodayLogs();
         }
 
         function updateUnitLabel() {
             const idx = document.getElementById('itemSelect').value;
-            if(idx !== "") {
+            const unitInput = document.getElementById('unitDisplay');
+            if (idx !== "") {
                 const item = contractItems[idx];
-                document.getElementById('unitDisplay').value = item.unit || "ls";
+                unitInput.value = item.unit || "ls";
+
+                unitInput.readOnly = true;
+                unitInput.classList.add('input-locked');
+                unitInput.classList.remove('text-white', 'border-blue-500');
+
                 document.getElementById('extraWorkArea').classList.add('hidden');
+                document.getElementById('extraDesc').value = "";
             }
         }
 
         function toggleExtraWork() {
             document.getElementById('itemSelect').value = "";
-            document.getElementById('unitDisplay').value = "hr"; 
+
+            const unitInput = document.getElementById('unitDisplay');
+            unitInput.value = "m3";
+            unitInput.readOnly = false;
+            unitInput.classList.remove('input-locked');
+            unitInput.classList.add('text-white', 'border-blue-500');
+
             document.getElementById('extraWorkArea').classList.remove('hidden');
             document.getElementById('extraDesc').focus();
         }
 
-        // --- 2. MULTI-PHOTO LOGIC (UPDATED FOR DUAL BUTTONS) ---
         function handleFileSelect(evt) {
             const files = evt.target.files;
             if (!files.length) return;
@@ -233,28 +624,26 @@
 
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     const img = new Image();
-                    img.onload = function() {
-                        // Compresión básica
+                    img.onload = function () {
                         const canvas = document.createElement('canvas');
                         let width = img.width, height = img.height;
                         const maxSize = 800;
-                        if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } } 
+                        if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } }
                         else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
                         canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
-                        photoEvidence.push(canvas.toDataURL('image/jpeg', 0.7)); // Guardar Base64
+
+                        photoEvidence.push(canvas.toDataURL('image/jpeg', 0.7));
                         renderPhotoGrid();
                     };
                     img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
             });
-            
-            // Limpiar el input para permitir seleccionar la misma foto si es necesario
+
             evt.target.value = '';
         }
 
@@ -278,18 +667,15 @@
             renderPhotoGrid();
         }
 
-        // --- 3. SIGNATURE LOGIC ---
         function setupCanvas() {
-            canvas.width = canvas.parentElement.offsetWidth; // Ajustar ancho
-            
-            // Mouse
+            canvas.width = canvas.parentElement.offsetWidth;
+
             canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDraw);
-            
-            // Touch (Prevenir scroll)
-            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); }, {passive: false});
-            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, { passive: false });
             canvas.addEventListener('touchend', stopDraw);
         }
 
@@ -301,7 +687,7 @@
         }
 
         function draw(e) {
-            if(!drawing) return;
+            if (!drawing) return;
             const rect = canvas.getBoundingClientRect();
             ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
             ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
@@ -317,22 +703,35 @@
             return canvas.toDataURL() === blank.toDataURL();
         }
 
-        // --- 4. SAVE LOGIC ---
         function saveLog() {
-            if (!currentPid) return alert("Select a project first!");
+            if (!currentPid || !currentUserUid) return alert("Select a project first!");
 
             const idx = document.getElementById('itemSelect').value;
             const extraDesc = document.getElementById('extraDesc').value;
-            const qty = parseFloat(document.getElementById('qtyInput').value);
+
+            // LA CORRECCIÓN EXACTA AQUI PARA PERMITIR EL CERO (0)
+            const qtyRaw = document.getElementById('qtyInput').value;
+            const qty = parseFloat(qtyRaw);
+
             const signer = document.getElementById('signerName').value;
             const notes = document.getElementById('notesInput').value;
-            
-            // Validaciones Legales
-            if(!idx && !extraDesc) return alert("Select item or describe extra work.");
-            if(!qty) return alert("Enter quantity.");
-            if(!signer) return alert("⚠️ Traceability: Name Required.");
-            if(isCanvasBlank()) return alert("⚠️ Traceability: Signature Required.");
-            if(photoEvidence.length === 0) return alert("⚠️ Evidence: At least 1 photo required.");
+            const dimensions = document.getElementById('dimensionsInput').value;
+            const logDate = document.getElementById('logDate').value;
+
+            if (!idx && !extraDesc) return alert("Select item or describe extra work.");
+
+            // Validación actualizada: Permite '0' pero no cajas vacías ni letras
+            if (qtyRaw === "" || isNaN(qty)) return alert("Enter quantity completed. (Enter 0 for Stockpiles or Dayworks)");
+
+            if (!signer) return alert("⚠️ Traceability: Name Required.");
+            if (isCanvasBlank()) return alert("⚠️ Traceability: Signature Required.");
+            if (photoEvidence.length === 0) return alert("⚠️ Evidence: At least 1 photo required.");
+
+            let invalidResource = dailyResources.find(r => r.code === "");
+            if (invalidResource) {
+                alert("⚠️ Error in Resources Used: Please ensure all resources are selected or properly added via Quick Add.");
+                return;
+            }
 
             const btn = document.getElementById('btnSave');
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
@@ -341,33 +740,73 @@
             let itemName = idx !== "" ? (contractItems[idx].desc || contractItems[idx].name) : "EXTRA: " + extraDesc;
             let unit = idx !== "" ? (contractItems[idx].unit || "ls") : document.getElementById('unitDisplay').value;
 
+            const processedResources = dailyResources.map(dr => {
+                if (dr.code.startsWith('TEMP-') && dr.tempResource) {
+                    return {
+                        code: dr.code,
+                        desc: dr.tempResource.desc,
+                        cat: dr.tempResource.cat,
+                        unit: dr.tempResource.unit,
+                        rate: 0,
+                        qty: dr.qty,
+                        totalCost: 0,
+                        isPendingPrice: true
+                    };
+                }
+                const resourceInfo = globalResources.find(r => r.code === dr.code);
+                if (resourceInfo) {
+                    return {
+                        code: dr.code,
+                        desc: resourceInfo.desc,
+                        cat: resourceInfo.cat || resourceInfo.category,
+                        unit: resourceInfo.unit,
+                        rate: resourceInfo.rate,
+                        qty: dr.qty,
+                        totalCost: dr.qty * resourceInfo.rate,
+                        isPendingPrice: false
+                    };
+                }
+                return dr;
+            });
+
             const logData = {
                 projectId: currentPid,
-                date: document.getElementById('logDate').value,
+                date: logDate,
                 itemName: itemName,
                 qty: qty,
                 unit: unit,
+                dimensions: dimensions,
                 weather: document.getElementById('weatherSelect').value + " " + document.getElementById('tempInput').value + "°C",
                 notes: notes,
-                photos: photoEvidence, // Array
+                photos: photoEvidence,
+                resourcesUsed: processedResources,
                 signedBy: signer,
-                signature: canvas.toDataURL(), // Base64
+                signature: canvas.toDataURL(),
                 timestamp: Date.now()
             };
 
-            db.collection('site_logs').add(logData).then(() => {
+            db.collection('tenants').doc(currentUserUid).collection('site_logs').add(logData).then(() => {
                 document.getElementById('statusMsg').innerText = "✅ Saved Successfully!";
-                // Reset crítico para siguiente medición
                 setTimeout(() => {
                     document.getElementById('qtyInput').value = "";
+                    document.getElementById('dimensionsInput').value = "";
                     document.getElementById('notesInput').value = "";
+
+                    const unitInput = document.getElementById('unitDisplay');
+                    unitInput.readOnly = true;
+                    unitInput.classList.add('input-locked');
+                    unitInput.classList.remove('text-white', 'border-blue-500');
+
                     photoEvidence = [];
                     renderPhotoGrid();
+                    dailyResources = [];
+                    renderDailyResources();
                     clearSig();
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Daily Log';
                     loadTodayLogs();
-                }, 1500); 
+                    document.getElementById('statusMsg').innerText = "";
+                }, 1500);
             }).catch((error) => {
                 alert("Error: " + error.message);
                 btn.disabled = false;
@@ -376,21 +815,49 @@
         }
 
         function loadTodayLogs() {
-            if (!currentPid) return;
-            const today = document.getElementById('logDate').value;
-            db.collection('site_logs')
+            if (!currentPid || !currentUserUid) return;
+            const logDate = document.getElementById('logDate').value;
+            const div = document.getElementById('todayList');
+            div.innerHTML = '<p class="italic opacity-50">Loading logs...</p>';
+
+            db.collection('tenants').doc(currentUserUid).collection('site_logs')
                 .where('projectId', '==', currentPid)
-                .where('date', '==', today)
-                .get().then(snap => {
-                    const div = document.getElementById('todayList');
+                .where('date', '==', logDate)
+                .get()
+                .then(snap => {
                     div.innerHTML = "";
-                    if(snap.empty) { div.innerHTML = '<p class="italic opacity-50">No logs yet today.</p>'; return; }
+                    if (snap.empty) { div.innerHTML = '<p class="italic opacity-50">No logs for this date.</p>'; return; }
                     snap.forEach(doc => {
                         const d = doc.data();
-                        div.innerHTML += `<div class="bg-slate-800 p-2 rounded border border-slate-700 flex justify-between mb-1"><span>${d.itemName}</span> <span class="text-green-400 font-bold">${d.qty} ${d.unit}</span></div>`;
+
+                        let resHtml = '';
+                        if (d.resourcesUsed && d.resourcesUsed.length > 0) {
+                            resHtml = `<div class="w-full mt-2 pt-2 border-t border-slate-600">
+                                <p class="text-[9px] text-slate-400 uppercase font-bold mb-1">Resources:</p>`;
+                            d.resourcesUsed.forEach(r => {
+                                let warning = r.isPendingPrice ? ' <span class="text-amber-400" title="Pending Price">⚠️</span>' : '';
+                                let rUnit = r.unit || (r.cat === 'Material' ? 'ea' : 'hr');
+                                resHtml += `<p class="text-[10px] text-slate-300">• ${r.qty} ${rUnit} of ${r.desc} ${warning}</p>`;
+                            });
+                            resHtml += `</div>`;
+                        }
+
+                        div.innerHTML += `
+                        <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col mb-2 shadow-sm">
+                            <div class="flex justify-between w-full items-center">
+                                <span class="text-sm font-bold text-slate-200">${d.itemName}</span>
+                                <span class="text-green-400 font-bold text-sm bg-green-900/20 px-2 py-1 rounded">${d.qty} ${d.unit}</span>
+                            </div>
+                            ${resHtml}
+                        </div>`;
                     });
+                })
+                .catch(error => {
+                    console.error("Error loading today logs:", error);
+                    div.innerHTML = '<p class="text-red-400 text-xs">Error loading history.</p>';
                 });
         }
     </script>
 </body>
+
 </html>

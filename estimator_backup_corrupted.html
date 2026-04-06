@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Estimating & Budgeting Module - CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', sans-serif;
+            color: #334155;
+        }
+
+        /* UI HELPERS */
+        .res-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .res-table th {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #64748b;
+            padding: 6px 4px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .res-table td {
+            padding: 4px;
+            border-bottom: 1px dashed #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .res-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 2px 4px;
+        }
+
+        .res-input:hover {
+            background-color: #f1f5f9;
+            border-color: #e2e8f0;
+        }
+
+        .res-input:focus {
+            background-color: white;
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        /* MODE SWITCHER */
+        .mode-btn {
+            transition: all 0.2s;
+            border: 1px solid #cbd5e1;
+            cursor: pointer;
+        }
+
+        .mode-active {
+            background-color: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .mode-inactive {
+            background-color: white;
+            color: #64748b;
+        }
+
+        .mode-inactive:hover {
+            background-color: #f1f5f9;
+        }
+
+        /* --- PRINT OPTIMIZATION --- */
+        @media print {
+            @page {
+                margin: 10mm;
+                size: A4;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            #printSection,
+            #printSection * {
+                visibility: visible;
+            }
+
+            #printSection {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+
+            #a4Page {
+                width: 100% !important;
+                max-width: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                min-height: auto !important;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            .avoid-break {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                display: block;
+                margin-bottom: 20px;
+            }
+
+            .print-apu-hidden #apuAppendix {
+                display: none !important;
+            }
+
+            .print-apu-visible #apuAppendix {
+                display: block !important;
+                page-break-before: always;
+            }
+
+            .no-print,
+            ::-webkit-scrollbar {
+                display: none !important;
+            }
+        }
+
+        /* TABS */
+        .tab-btn {
+            padding: 12px 24px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background-color: #f1f5f9;
+            color: #334155;
+        }
+
+        .tab-btn.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+            background-color: #eff6ff;
+        }
+
+        /* DB SIDEBAR STYLES */
+        .db-sidebar-item {
+            padding: 10px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .db-sidebar-item:hover {
+            background-color: #f1f5f9;
+            color: #334155;
+        }
+
+        .db-sidebar-item.active {
+            background-color: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden relative">
+
+    <header class="bg-white border-b border-slate-200 shrink-0 z-30 shadow-sm no-print">
+        <div class="px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div
+                    class="bg-indigo-600 text-white w-8 h-8 rounded flex items-center justify-center font-bold text-lg">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-800 leading-none">Estimating & Budgeting Module</h1>
+                    <p class="text-[10px] text-slate-500">Professional Hub</p>
+                </div>
+            </div>
+            <div class="flex gap-2 items-center">
+                <button onclick="window.location.href='dashboard.html'"
+                    class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded border"><i
+                        class="fas fa-arrow-left mr-1"></i> Dashboard</button>
+                <button id="btnSave" onclick="saveProject()"
+                    class="hidden px-4 py-2 text-xs font-bold bg-green-600 hover:bg-green-700 text-white rounded shadow flex items-center gap-2"><i
+                        class="fas fa-save"></i> Save Quote</button>
+            </div>
+        </div>
+
+        <nav class="flex px-6 border-t border-slate-100">
+            <button onclick="switchTab('registry')" id="tab-registry" class="tab-btn active">
+                <i class="fas fa-list-ul mr-2"></i> Quote Registry
+            </button>
+            <button onclick="switchTab('builder')" id="tab-builder" class="tab-btn">
+                <i class="fas fa-hammer mr-2"></i> Estimate Builder
+            </button>
+            <button onclick="switchTab('database'); activeAPUType = null; renderResourceSidebar();" id="tab-database"
+                class="tab-btn">
+                <i class="fas fa-database mr-2"></i> Resource Database
+            </button>
+        </nav>
+    </header>
+
+    <div id="mainContainer" class="flex flex-1 overflow-hidden relative">
+
+        <!-- SUB-MODULE A: REGISTRY -->
+        <div id="view-registry" class="flex-1 flex flex-col overflow-hidden bg-slate-50 p-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Quote Registry</h2>
+                    <p class="text-sm text-slate-500">Manage all DRAFT and PENDING estimates locally.</p>
+                </div>
+                <button onclick="createNewEstimate()"
+                    class="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold shadow hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Create New Estimate
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead
+                            class="bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b">
+                            <tr>
+                                <th class="p-4">Project / Client</th>
+                                <th class="p-4">Reference</th>
+                                <th class="p-4 text-right">Value</th>
+                                <th class="p-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registryTable" class="divide-y divide-slate-100 overflow-y-auto"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUB-MODULE B: BUILDER -->
+        <div id="view-builder" class="hidden flex flex-1 overflow-hidden w-full">
+            <div id="builderPanel"
+                class="w-7/12 flex flex-col border-r border-slate-200 bg-white overflow-y-auto relative z-10 shadow-lg">
+                <div class="p-4 border-b border-slate-100 bg-slate-50 sticky top-0 z-20">
+                    <div class="flex gap-3 mb-1">
+                        <div class="w-1/2">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase mb-1 block">1. Category</label>
+                            <select id="categorySelect" onchange="filterItemsByCategory()"
+                                class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 outline-none">
+                                <option value="">-- Choose --</option>
+                            </select>
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase mb-1 block">2. Item</label>
+                            <select id="itemSelect" onchange="loadSelectedFromUI()"
+                                class="w-full p-2 text-xs font-bold border rounded bg-white text-slate-700 outline-none"
+                                disabled>
+                                <option value="">-- Select Category First --</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end gap-1">
+                            <button onclick="openKitsModal()"
+                                class="h-[34px] px-3 bg-indigo-600 text-white font-bold text-[10px] rounded hover:bg-indigo-700 flex items-center justify-center gap-2">
+                                <i class="fas fa-box"></i> KITS
+                            </button>
+                            <button onclick="resetBuilder()"
+                                class="h-[34px] w-10 bg-slate-200 text-slate-600 rounded hover:bg-slate-300 flex items-center justify-center">
+                                <i class="fas fa-eraser"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="builderArea" class="flex-1 flex flex-col p-6 pb-6">
+                    <label class="text-[9px] font-bold text-slate-400 uppercase mb-2 block">3. Calculation
+                        Method</label>
+                    <div class="flex gap-0 rounded-lg overflow-hidden border border-slate-300 mb-6">
+                        <button onclick="updateCalculationMode('unit')" id="btn-unit"
+                            class="flex-1 py-2 text-xs font-bold mode-active">📊 Unit Rate</button>
+                        <button onclick="updateCalculationMode('hour')" id="btn-hour"
+                            class="flex-1 py-2 text-xs font-bold mode-inactive">⏱️ Hourly</button>
+                        <button onclick="updateCalculationMode('lump')" id="btn-lump"
+                            class="flex-1 py-2 text-xs font-bold mode-inactive">🌎 Lump Sum</button>
+                    </div>
+
+                    <div class="flex gap-4 mb-6 items-end">
+                        <div class="w-1/2">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase">Description</label>
+                            <input type="text" id="itemName"
+                                class="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-200 focus:border-blue-600 outline-none pb-1"
+                                placeholder="Item Name">
+                        </div>
+                        <div class="w-1/4 text-center" id="prodContainer">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase">Production (Units/hr)</label>
+                            <input type="number" id="prodInput" oninput="updateCalculations()" step="0.01"
+                                class="w-full text-center text-xl font-bold text-orange-600 border-b-2 border-orange-200 focus:border-orange-500 outline-none pb-1"
+                                value="1.0">
+                        </div>
+                        <div class="w-1/4 text-center">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase">Unit</label>
+                            <input type="text" id="itemUnit"
+                                class="w-full text-center text-xl font-bold text-slate-600 border-b-2 border-slate-200 focus:border-blue-600 outline-none pb-1"
+                                placeholder="m3">
+                        </div>
+                    </div>
+                    <div id="resourcesContainer" class="space-y-6"></div>
+                </div>
+
+                <div class="relative w-full bg-slate-900 text-white p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] mt-auto">
+                    <div class="flex items-center justify-between mb-3 border-b border-slate-700 pb-3">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="updateDbCheck" class="w-4 h-4 text-green-500 rounded">
+                            <label for="updateDbCheck" class="text-[10px] font-bold text-green-400 uppercase">Save to
+                                Master DB</label>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-slate-400 font-bold uppercase text-[9px] mr-2">Margin %</span>
+                            <input type="number" id="marginInput" value="18" oninput="updateCalculations()"
+                                class="w-12 bg-slate-800 border border-slate-600 rounded px-1 text-center text-yellow-400 text-xs">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex gap-4 text-xs">
+                            <div>
+                                <span class="block text-slate-400 font-bold uppercase text-[9px]">Calculated Rate</span>
+                                <span class="font-mono text-green-400 text-xl font-bold"
+                                    id="finalRateDisplay">$0.00</span>
+                            </div>
+                            <div class="pl-4 border-l border-slate-700" id="hoursDisplayCont">
+                                <span class="block text-slate-400 font-bold uppercase text-[9px]">Est. Hours</span>
+                                <span class="font-mono text-orange-400 text-xl font-bold"
+                                    id="totalHoursDisplay">0.0</span>
+                            </div>
+                            <div class="pl-4 border-l border-slate-700">
+                                <span class="block text-slate-400 font-bold uppercase text-[9px]">Total value</span>
+                                <span class="font-mono text-yellow-400 text-xl font-bold"
+                                    id="totalLineValueDisplay">$0.00</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="bg-slate-800 p-1 rounded border border-slate-700 flex items-center px-3">
+                                <label class="text-[9px] font-bold text-slate-400 uppercase mr-2"
+                                    id="qtyLabel">Qty:</label>
+                                <input type="number" id="qtyInput" oninput="updateCalculations()"
+                                    class="w-16 bg-transparent font-bold text-center text-white text-xl" value="1">
+                            </div>
+                            <button onclick="addToQuote()"
+                                class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded font-bold transition flex items-center gap-2 text-sm"><i
+                                    class="fas fa-plus"></i> Add</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-5/12 bg-slate-100 flex flex-col overflow-y-auto relative" id="printSection">
+                <div class="bg-white min-h-[29.7cm] w-full max-w-[21cm] mx-auto my-8 shadow-2xl p-12 flex flex-col relative"
+                    id="a4Page">
+                    <div class="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-8">
+                        <div>
+                            <h2 id="docTitle" class="text-2xl font-bold text-slate-800 uppercase tracking-widest">
+                                QUOTATION</h2>
+                            <p class="text-sm text-slate-500 font-medium mt-1">Ref: <span
+                                    id="quoteRefDisplay">#EST-2026</span></p>
+                        </div>
+                        <div class="w-1/2 text-right">
+                            <input type="text" id="myCompany" value="My Construction Co."
+                                class="font-bold text-xl text-slate-800 w-full text-right outline-none">
+                            <input type="text" id="myAddress" value="123 Builder Lane, Auckland"
+                                class="text-xs text-slate-500 w-full text-right outline-none">
+                        </div>
+                    </div>
+                    <div class="bg-yellow-50/50 border border-yellow-100 rounded-lg p-4 mb-6 grid grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Prepared For</p>
+                            <input type="text" id="clientName"
+                                class="w-full font-bold text-lg text-slate-800 bg-transparent border-b border-dashed border-slate-300 outline-none"
+                                placeholder="Client Name">
+                            <input type="text" id="clientAddress"
+                                class="w-full text-xs text-slate-600 bg-transparent border-b border-dashed border-slate-300 outline-none mt-1"
+                                placeholder="Address">
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">Date</p>
+                            <p class="font-bold text-slate-700 text-sm" id="currentDate">...</p>
+                        </div>
+                    </div>
+                    <table class="w-full text-left mb-6 text-sm">
+                        <thead class="bg-slate-100 text-slate-600 font-bold uppercase text-[9px]">
+                            <tr>
+                                <th class="p-3">Description</th>
+                                <th class="p-3 text-center">Unit</th>
+                                <th class="p-3 text-center">Qty</th>
+                                <th class="p-3 text-right">Rate</th>
+                                <th class="p-3 text-right">Amount</th>
+                                <th class="p-3 w-10 no-print"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="quoteTable" class="text-slate-700"></tbody>
+                    </table>
+                    <div class="flex justify-end mt-auto space-y-2">
+                        <div class="w-1/2">
+                            <div class="flex justify-between text-xs text-slate-500"><span>Subtotal</span><span
+                                    id="subtotalDisplay">$0.00</span></div>
+                            <div class="flex justify-between text-2xl font-bold text-slate-800 border-t pt-2 mt-2">
+                                <span>TOTAL</span><span id="totalDisplay">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUB-MODULE C: RESOURCE DATABASE -->
+        <div id="view-database" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-50">
+            <div class="flex h-full">
+                <div class="w-64 bg-white border-r border-slate-200 p-6 flex flex-col gap-2 overflow-y-auto">
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Resource Databases
+                    </h3>
+                    <div class="flex flex-col gap-2 mb-6">
+                        <select id="activeDbSelector" onchange="switchActiveDatabase(this.value)"
+                            class="w-full p-2 text-xs font-bold border rounded bg-slate-50 text-slate-700 outline-none">
+                            <option value="Default">Main Catalog</option>
+                        </select>
+                        <div class="flex gap-1">
+                            <button onclick="openCsvImportModal()"
+                                class="flex-1 py-1.5 text-[9px] font-bold bg-slate-100 text-slate-600 rounded hover:bg-slate-200"><i
+                                    class="fas fa-plus mr-1"></i> New DB</button>
+                            <button onclick="confirmDeleteActiveDb()"
+                                class="flex-1 py-1.5 text-[9px] font-bold bg-red-50 text-red-500 rounded hover:bg-red-100"><i
+                                    class="fas fa-trash mr-1"></i> Delete</button>
+                        </div>
+                    </div>
+
+                    <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Functional Blocks
+                    </h3>
+                    <div id="dbSidebar" class="space-y-1"></div>
+
+                    <div class="mt-auto pt-6 border-t flex flex-col gap-2">
+                        <button onclick="openCsvImportModal()"
+                            class="w-full py-2 text-[10px] font-bold text-blue-600 border border-blue-200 rounded hover:bg-blue-50">
+                            <i class="fas fa-file-import mr-1"></i> Import CSV
+                        </button>
+                        <button onclick="forceResetMasterDB()"
+                            class="w-full py-2 text-[10px] font-bold text-red-500 border border-red-200 rounded hover:bg-red-50">
+                            <i class="fas fa-undo mr-1"></i> Factory Reset
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 flex flex-col p-8 overflow-hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800" id="currentCategoryLabel">Select a Category
+                            </h2>
+                            <p class="text-sm text-slate-500" id="dbSubLabel">Master database of resources and rates.
+                            </p>
+                        </div>
+                        <button onclick="addNewResource()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow hover:bg-blue-700 transition text-xs">
+                            <i class="fas fa-plus mr-1"></i> Add New Resource
+                        </button>
+                    </div>
+                    <div
+                        class="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 overflow-hidden flex flex-col">
+                        <table class="w-full text-sm">
+                            <thead
+                                class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b">
+                                <tr>
+                                    <th class="p-4 text-left">Code</th>
+                                    <th class="p-4 text-left">Description</th>
+                                    <th class="p-4 text-center">Unit</th>
+                                    <th class="p-4 text-right">Price per Unit</th>
+                                    <th class="p-4 text-center w-36">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterResourceTable" class="divide-y divide-slate-100 overflow-y-auto"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Picker Modal (The 'Pull' Interface) -->
+    <div id="resourcePickerModal"
+        class="hidden fixed inset-0 bg-slate-900/60 z-[120] items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg" id="pickerTitle">Select Resource</h3>
+                    <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest" id="pickerSubtitle">
+                        Browsing Labor</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="pickerSearch" oninput="filterPickerList()"
+                            placeholder="Search catalog..."
+                            class="pl-9 pr-4 py-2 border rounded-full text-xs outline-none focus:ring-2 focus:ring-blue-500 w-48">
+                    </div>
+                    <button onclick="closeResourcePicker()" class="text-slate-400 hover:text-slate-600"><i
+                            class="fas fa-times fa-lg"></i></button>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2 bg-slate-50/50">
+                <table class="w-full text-sm">
+                    <thead
+                        class="sticky top-0 bg-white shadow-sm text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        <tr>
+                            <th class="p-4 text-left">Code</th>
+                            <th class="p-4 text-left">Description</th>
+                            <th class="p-4 text-center">Unit</th>
+                            <th class="p-4 text-right">Rate</th>
+                            <th class="p-4 text-center w-24">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pickerResults" class="divide-y divide-slate-100">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSV Import Modal -->
+    <div id="csvImportModal"
+        class="hidden fixed inset-0 bg-slate-900/50 z-[150] items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200">
+            <div class="p-6 border-b bg-slate-50">
+                <h3 class="font-bold text-slate-800">Import Resources (CSV)</h3>
+            </div>
+            <div class="p-6 space-y-6">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">1. Select CSV File</label>
+                    <input type="file" id="csvFileInput" accept=".csv"
+                        class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">2. Import Strategy</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-3 p-3 border rounded-xl hover:bg-slate-50 cursor-pointer">
+                            <input type="radio" name="importMode" value="merge" checked class="w-4 h-4 text-blue-600">
+                            <div>
+                                <span class="block text-xs font-bold text-slate-700">Merge with Current</span>
+                                <span class="block text-[10px] text-slate-500">Add new items and skip duplicates.</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border rounded-xl hover:bg-slate-50 cursor-pointer">
+                            <input type="radio" name="importMode" value="replace" class="w-4 h-4 text-red-600">
+                            <div>
+                                <span class="block text-xs font-bold text-slate-700 text-red-600">Replace Current</span>
+                                <span class="block text-[10px] text-slate-500">Wipe the current database first.</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 border rounded-xl hover:bg-slate-50 cursor-pointer">
+                            <input type="radio" name="importMode" value="new" class="w-4 h-4 text-green-600">
+                            <div>
+                                <span class="block text-xs font-bold text-slate-700">Create New Database</span>
+                                <span class="block text-[10px] text-slate-500">Imports into a separate catalog.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t flex gap-2">
+                <button onclick="closeCsvImportModal()"
+                    class="flex-1 py-2 text-xs font-bold text-slate-500 border rounded">Cancel</button>
+                <button onclick="processCsvImport()"
+                    class="flex-1 py-2 text-xs font-bold bg-blue-600 text-white rounded">Start Import</button>
+            </div>
+        </div>
+        <!-- Edit Resource Modal -->
+        <div id="editResModal"
+            class="hidden fixed inset-0 bg-slate-900/50 z-[200] items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+                <div class="p-6 border-b bg-slate-50">
+                    <h3 class="font-bold text-slate-800" id="resModalTitle">Edit Resource</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Category</label>
+                            <select id="editResCategory" onchange="toggleNewCategoryField()"
+                                class="w-full p-2 border rounded mt-1 bg-white outline-none text-xs font-bold">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Resource Type</label>
+                            <select id="editResType"
+                                class="w-full p-2 border rounded mt-1 bg-white outline-none text-xs font-bold">
+                                <option value="Lab">Labor</option>
+                                <option value="Plant">Equipment</option>
+                                <option value="Mat">Material</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="newCategoryWrapper" class="hidden">
+                        <label class="text-[10px] font-bold text-blue-500 uppercase">New Category Name</label>
+                        <input type="text" id="editResNewCategory"
+                            class="w-full p-2 border border-blue-200 rounded mt-1 outline-none font-bold"
+                            placeholder="e.g. 5. Landscaping">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Description</label>
+                        <input type="text" id="editResName" class="w-full p-2 border rounded mt-1 font-bold">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Code</label>
+                            <input type="text" id="editResCode"
+                                class="w-full p-2 border rounded mt-1 font-mono text-xs">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Unit</label>
+                            <input type="text" id="editResUnit"
+                                class="w-full p-2 border rounded mt-1 font-bold text-xs">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Rate</label>
+                        <input type="number" step="0.01" id="editResRate"
+                            class="w-full p-2 border rounded mt-1 font-bold text-blue-600">
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 border-t flex gap-2">
+                    <button onclick="closeEditResModal()"
+                        class="flex-1 py-2 text-xs font-bold text-slate-500 border rounded">Cancel</button>
+                    <button onclick="saveResEdit()"
+                        class="flex-1 py-2 text-xs font-bold bg-blue-600 text-white rounded shadow-md">Save
+                        Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kits Browser Modal -->
+        <div id="kitsModal"
+            class="hidden fixed inset-0 bg-slate-900/60 z-[180] items-center justify-center p-4 backdrop-blur-md">
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[80vh]">
+                <div class="p-6 border-b bg-slate-50 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">Kits Database</h3>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Pre-assembled Resource
+                            Sets</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="saveCurrentAsKit()"
+                            class="bg-green-600 text-white px-3 py-1.5 rounded text-[10px] font-bold shadow hover:bg-green-700">
+                            <i class="fas fa-save mr-1"></i> SAVE CURRENT AS KIT
+                        </button>
+                        <button onclick="closeKitsModal()" class="text-slate-400 hover:text-slate-600"><i
+                                class="fas fa-times fa-lg"></i></button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+                    <div id="kitsList" class="grid grid-cols-1 gap-3">
+                        <!-- Kits loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // --- MASTER DATA ---
+            const MASTER_ITEMS_DATA = [
+                { cat: "1. General", name: "Contract Works Insurance", unit: "LS", prod: 1, resources: [{ n: "Premium", t: "Mat", u: "LS", q: 1, c: 1200 }] },
+                { cat: "3. Earthworks", name: "Bulk Excavation", unit: "m3", prod: 15, resources: [{ n: "Excavator 14T", t: "Plant", u: "hr", q: 1, c: 145 }, { n: "Operator", t: "Lab", u: "hr", q: 1, c: 65 }] },
+                { cat: "4. Concrete", name: "Floor Slab 20MPa", unit: "m2", prod: 10, resources: [{ n: "Concrete 20MPa", t: "Mat", u: "m3", q: 0.12, c: 285 }, { n: "Mesh 665", t: "Mat", u: "m2", q: 1.1, c: 18.5 }] }
+            ];
+
+            const RAW_RESOURCES = [
+                { category: "1. General", code: "PG-01", name: "Site Temporary Fencing", unit: "m", rate: 12, type: "Mat" },
+                { category: "1. General", code: "PG-02", name: "Port-a-loo Hire", unit: "wk", rate: 55, type: "Plant" },
+                { category: "3. Earthworks", code: "EW-01", name: "Bulk Excavation", unit: "m3", rate: 45, type: "Plant" },
+                { category: "4. Concrete", code: "CO-01", name: "20MPa Concrete", unit: "m3", rate: 285, type: "Mat" }
+            ];
+
+            let currentResources = [];
+            let quoteItems = [];
+            let currentProjectId = localStorage.getItem('civilmate_current_project_id');
+            let selectedCategory = "3. Earthworks";
+            let activePricingMode = 'unit';
+            let currentEditResId = null;
+            let activeAPUType = "Lab";
+
+            // MULTI-DB STATE
+            let activeDatabaseName = localStorage.getItem('civilmate_active_db') || 'Default';
+            let databaseList = JSON.parse(localStorage.getItem('civilmate_db_list') || '["Default"]');
+
+            let physicalScope = 0;
+            let physicalUnit = "m3";
+
+            init();
+
+            function init() {
+                initMasterItems(false);
+                initResourceDB(false);
+                initKits(false);
+                refreshDatabaseSelector();
+                renderCategories();
+                populateModalCategories();
+                loadRegistry();
+                renderResourceSidebar();
+                if (currentProjectId && currentProjectId !== 'null') loadProjectFromDB(currentProjectId);
+                document.getElementById('currentDate').innerText = new Date().toLocaleDateString('en-NZ');
+                physicalUnit = document.getElementById('itemUnit').value || "m3";
+                applyBranding();
+                updateCalculations();
+            }
+
+            function initKits(force) {
+                if (!localStorage.getItem('civilmate_kits') || force) {
+                    const defaultKits = [
+                        { name: "Standard Earthworks Kit", items: [{ n: "Excavator 14T", t: "Plant", u: "hr", q: 1, c: 145 }, { n: "Operator", t: "Lab", u: "hr", q: 1, c: 65 }] }
+                    ];
+                    localStorage.setItem('civilmate_kits', JSON.stringify(defaultKits));
+                }
+            }
+
+            function applyBranding() {
+                const settings = JSON.parse(localStorage.getItem('civilmate_settings') || '{}');
+                const companyName = settings.companyName || 'My Construction Co.';
+                const myCompanyInput = document.getElementById('myCompany');
+                if (myCompanyInput) myCompanyInput.value = companyName;
+            }
+
+            function initMasterItems(force) {
+                if (!localStorage.getItem('civilmate_master_items') || force) {
+                    localStorage.setItem('civilmate_master_items', JSON.stringify(MASTER_ITEMS_DATA));
+                }
+            }
+
+            function initResourceDB(force) {
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                if (!localStorage.getItem(dbKey) || force) {
+                    const resWithIds = RAW_RESOURCES.map(r => ({ ...r, id: 'res-' + Math.random().toString(36).substr(2, 9) }));
+                    localStorage.setItem(dbKey, JSON.stringify(resWithIds));
+                }
+            }
+            // --- MULTI-DB LOGIC ---
+            function refreshDatabaseSelector() {
+                const select = document.getElementById('activeDbSelector');
+                if (!select) return;
+                select.innerHTML = '';
+                databaseList.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.innerText = name === 'Default' ? 'Main Catalog' : name;
+                    opt.selected = (name === activeDatabaseName);
+                    select.appendChild(opt);
+                });
+            }
+
+            function switchActiveDatabase(name) {
+                activeDatabaseName = name;
+                localStorage.setItem('civilmate_active_db', name);
+                initResourceDB(false);
+                renderResourceSidebar();
+                renderResourceTable(selectedCategory);
+                populateModalCategories();
+            }
+
+            function openCreateDbModal() {
+                if (confirm("Would you like to build this new database from a CSV file (recommended for large Auckland lists)?\n\nClick OK for CSV, CANCEL for manual naming.")) {
+                    openCsvImportModal();
+                } else {
+                    const name = prompt("Enter name for new database:");
+                    if (name && !databaseList.includes(name)) {
+                        databaseList.push(name);
+                        localStorage.setItem('civilmate_db_list', JSON.stringify(databaseList));
+                        switchActiveDatabase(name);
+                        refreshDatabaseSelector();
+                    } else if (name) {
+                        alert("Database already exists.");
+                    }
+                }
+            }
+
+            function confirmDeleteActiveDb() {
+                if (activeDatabaseName === 'Default') return alert("Cannot delete Main Catalog.");
+                if (confirm(`Are you sure you want to delete database "${activeDatabaseName}"?`)) {
+                    localStorage.removeItem('civilmate_resources_' + activeDatabaseName);
+                    databaseList = databaseList.filter(d => d !== activeDatabaseName);
+                    localStorage.setItem('civilmate_db_list', JSON.stringify(databaseList));
+                    switchActiveDatabase('Default');
+                    refreshDatabaseSelector();
+                }
+            }
+
+            function forceResetMasterDB() {
+                if (confirm("Reset everything to factory defaults?")) {
+                    initMasterItems(true);
+                    initResourceDB(true);
+                    initKits(true);
+                    location.reload();
+                }
+            }
+
+            function populateModalCategories() {
+                let items = [];
+                try { items = JSON.parse(localStorage.getItem('civilmate_master_items') || '[]'); } catch (e) { }
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                let res = [];
+                try { res = JSON.parse(localStorage.getItem(dbKey) || '[]'); } catch (e) { }
+                const cats = [...new Set([...items.map(i => i.cat), ...res.map(r => r.category)])].filter(Boolean).sort();
+                const select = document.getElementById('editResCategory');
+                if (!select) return;
+                select.innerHTML = '<option value="">-- Choose Category --</option>';
+                cats.forEach(c => {
+                    const opt = document.createElement('option'); opt.value = c; opt.innerText = c;
+                    select.appendChild(opt);
+                });
+                select.innerHTML += '<option value="NEW" class="text-blue-600 font-bold">+ CREATE NEW CATEGORY</option>';
+            }
+
+            function toggleNewCategoryField() {
+                const select = document.getElementById('editResCategory');
+                const wrapper = document.getElementById('newCategoryWrapper');
+                wrapper.classList.toggle('hidden', select.value !== 'NEW');
+                if (select.value === 'NEW') document.getElementById('editResNewCategory').focus();
+            }
+
+            // --- RESOURCE DATABASE LOGIC ---
+            function addNewResource() {
+                populateModalCategories();
+                currentEditResId = null;
+                document.getElementById('resModalTitle').innerText = "Add New Resource";
+                const catSelect = document.getElementById('editResCategory');
+                document.getElementById('editResCategory').value = selectedCategory || (catSelect.options[1] ? catSelect.options[1].value : "");
+                document.getElementById('editResType').value = activeAPUType || 'Mat';
+                document.getElementById('editResCode').value = '';
+                document.getElementById('editResName').value = '';
+                document.getElementById('editResUnit').value = 'ea';
+                document.getElementById('editResRate').value = 0;
+                document.getElementById('newCategoryWrapper').classList.add('hidden');
+                document.getElementById('editResModal').classList.remove('hidden');
+                document.getElementById('editResModal').classList.add('flex');
+            }
+
+            function openEditResModal(id) {
+                populateModalCategories();
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                const database = JSON.parse(localStorage.getItem(dbKey) || '[]');
+                const res = database.find(x => x.id === id);
+                if (res) {
+                    currentEditResId = id;
+                    document.getElementById('resModalTitle').innerText = "Edit Resource";
+                    document.getElementById('editResCategory').value = res.category || "";
+                    document.getElementById('editResType').value = res.type || 'Mat';
+                    document.getElementById('editResCode').value = res.code || '';
+                    document.getElementById('editResName').value = res.name;
+                    document.getElementById('editResUnit').value = res.unit || 'ea';
+                    document.getElementById('editResRate').value = res.rate;
+                    document.getElementById('newCategoryWrapper').classList.add('hidden');
+                    document.getElementById('editResModal').classList.remove('hidden');
+                    document.getElementById('editResModal').classList.add('flex');
+                }
+            }
+
+            function saveResEdit() {
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                let res = JSON.parse(localStorage.getItem(dbKey) || '[]');
+                const catSelect = document.getElementById('editResCategory');
+                let category = catSelect.value;
+                if (category === 'NEW') {
+                    category = document.getElementById('editResNewCategory').value.trim();
+                    if (!category) return alert("Please enter a category name");
+                }
+                const data = {
+                    category: category,
+                    type: document.getElementById('editResType').value,
+                    code: document.getElementById('editResCode').value,
+                    name: document.getElementById('editResName').value,
+                    unit: document.getElementById('editResUnit').value,
+                    rate: parseFloat(document.getElementById('editResRate').value) || 0
+                };
+                if (currentEditResId) {
+                    const idx = res.findIndex(x => x.id === currentEditResId);
+                    if (idx > -1) res[idx] = { ...res[idx], ...data };
+                } else {
+                    data.id = 'res-' + Math.random().toString(36).substr(2, 9);
+                    res.push(data);
+                }
+                localStorage.setItem(dbKey, JSON.stringify(res));
+                closeEditResModal();
+                activeAPUType = data.type;
+                selectedCategory = category;
+                renderCategories();
+                renderResourceSidebar();
+                renderResourceTable(category);
+            }
+            function closeEditResModal() {
+                document.getElementById('editResModal').classList.add('hidden');
+                document.getElementById('editResModal').classList.remove('flex');
+            }
+
+            function renderResourceSidebar() {
+                const cont = document.getElementById('dbSidebar');
+                if (!cont) return;
+                cont.innerHTML = '';
+                const types = [
+                    { id: 'Lab', label: 'Labor', icon: 'fa-users' },
+                    { id: 'Plant', label: 'Plant & Equipment', icon: 'fa-truck-pickup' },
+                    { id: 'Mat', label: 'Materials', icon: 'fa-box-open' }
+                ];
+                types.forEach(t => {
+                    const div = document.createElement('div');
+                    div.className = `db-sidebar-item ${t.id === activeAPUType ? 'active' : ''}`;
+                    div.innerHTML = `<i class="fas ${t.icon}"></i> ${t.label}`;
+                    div.onclick = () => {
+                        activeAPUType = t.id;
+                        selectedCategory = "";
+                        renderResourceSidebar();
+                        renderResourceTable("");
+                    };
+                    cont.appendChild(div);
+                });
+                if (!activeAPUType) activeAPUType = 'Lab';
+                renderResourceTable(selectedCategory);
+            }
+
+            function renderResourceTable(cat) {
+                const tbody = document.getElementById('masterResourceTable');
+                if (!tbody) return;
+                document.getElementById('currentCategoryLabel').innerText = (activeDatabaseName === 'Default' ? 'Main Catalog' : activeDatabaseName) + (cat ? ` > ${cat}` : '');
+                tbody.innerHTML = '';
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                let res = JSON.parse(localStorage.getItem(dbKey) || '[]');
+                if (cat) res = res.filter(r => r.category === cat);
+                if (activeAPUType) res = res.filter(r => r.type === activeAPUType);
+
+                if (!res.length) {
+                    const typeLabel = activeAPUType === 'Lab' ? 'Labor' : (activeAPUType === 'Plant' ? 'Equipment' : 'Material');
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 italic">No ${typeLabel} resources found.</td></tr>`;
+                    return;
+                }
+
+                res.forEach(r => {
+                    tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100 last:border-0">
+                        <td class="p-4 font-mono text-xs text-slate-500">${r.code || '-'}</td>
+                        <td class="p-4 font-bold text-slate-700">${r.name}</td>
+                        <td class="p-4 text-center text-slate-500">${r.unit}</td>
+                        <td class="p-4 text-right font-bold text-blue-600">$${parseFloat(r.rate).toFixed(2)}</td>
+                        <td class="p-4 text-center">
+                            <div class="flex justify-center items-center gap-3">
+                                <button onclick="openEditResModal('${r.id}')" class="text-blue-400 hover:text-blue-600"><i class="fas fa-pencil-alt"></i></button>
+                                <button onclick="copyRes('${r.id}')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-file-alt"></i></button>
+                                <button onclick="deleteRes('${r.id}')" class="text-red-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            }
+
+            function copyRes(id) {
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                const res = JSON.parse(localStorage.getItem(dbKey) || '[]');
+                const r = res.find(x => x.id === id);
+                if (r) {
+                    res.push({ ...r, id: 'res-' + Date.now(), name: r.name + " (Copy)" });
+                    localStorage.setItem(dbKey, JSON.stringify(res));
+                    renderResourceTable(selectedCategory);
+                }
+            }
+
+            function deleteRes(id) {
+                if (confirm("Delete?")) {
+                    const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                    const r = JSON.parse(localStorage.getItem(dbKey) || '[]').filter(x => x.id !== id);
+                    localStorage.setItem(dbKey, JSON.stringify(r));
+                    renderResourceTable(selectedCategory);
+                }
+            }
+
+            // --- CALCULATION LOGIC ---
+            function updateCalculationMode(m) {
+                const currentQty = parseFloat(document.getElementById('qtyInput').value) || 1;
+                const currentProd = parseFloat(document.getElementById('prodInput').value) || 1.0;
+                if (activePricingMode === 'unit') physicalScope = currentQty;
+                else if (activePricingMode === 'hour') physicalScope = currentQty * currentProd;
+
+                activePricingMode = m;
+                document.querySelectorAll('[id^="btn-"]').forEach(b => b.className = 'flex-1 py-2 text-xs font-bold mode-inactive');
+                document.getElementById('btn-' + m).className = 'flex-1 py-2 text-xs font-bold mode-active';
+
+                const prodCont = document.getElementById('prodContainer');
+                const hoursCont = document.getElementById('hoursDisplayCont');
+                const qtyLabel = document.getElementById('qtyLabel');
+                const qtyInput = document.getElementById('qtyInput');
+
+                qtyInput.readOnly = (m === 'lump');
+                qtyInput.className = (m === 'lump') ? "w-16 bg-transparent font-bold text-center text-white text-xl opacity-50" : "w-16 bg-transparent font-bold text-center text-white text-xl";
+
+                if (m === 'unit') {
+                    prodCont.style.visibility = 'visible';
+                    hoursCont.style.display = 'block';
+                    qtyLabel.innerText = "Qty:";
+                    qtyInput.value = physicalScope || 1;
+                } else if (m === 'hour') {
+                    prodCont.style.visibility = 'hidden';
+                    hoursCont.style.display = 'none';
+                    qtyLabel.innerText = "Hours:";
+                    qtyInput.value = (physicalScope / currentProd).toFixed(2);
+                } else {
+                    prodCont.style.visibility = 'hidden';
+                    hoursCont.style.display = 'none';
+                    qtyLabel.innerText = "Lump Qty:";
+                    qtyInput.value = 1;
+                }
+                updateCalculations();
+            }
+
+            function updateCalculations() {
+                const labTotal = currentResources.filter(r => r.t === 'Lab').reduce((s, r) => s + (r.q * r.c), 0);
+                const plantTotal = currentResources.filter(r => r.t === 'Plant').reduce((s, r) => s + (r.q * r.c), 0);
+                const matTotal = currentResources.filter(r => r.t === 'Mat').reduce((s, r) => s + (r.q * r.c), 0);
+                const prod = parseFloat(document.getElementById('prodInput').value) || 1.0;
+                const margin = parseFloat(document.getElementById('marginInput').value) || 0;
+                const qtyIn = parseFloat(document.getElementById('qtyInput').value) || 0;
+
+                if (activePricingMode === 'unit') physicalScope = qtyIn;
+                else if (activePricingMode === 'hour') physicalScope = qtyIn * prod;
+
+                const unitRateBase = ((labTotal + plantTotal) / prod) + matTotal;
+                const unitRateFinal = unitRateBase * (1 + margin / 100);
+                const grandTotal = unitRateFinal * (physicalScope || 0);
+
+                let displayRate = (activePricingMode === 'lump') ? grandTotal : unitRateFinal;
+                let estHours = (physicalScope > 0 && prod > 0) ? (physicalScope / prod) : 0;
+
+                document.getElementById('finalRateDisplay').innerText = "$" + displayRate.toFixed(2);
+                document.getElementById('totalHoursDisplay').innerText = estHours.toFixed(1);
+                document.getElementById('totalLineValueDisplay').innerText = "$" + grandTotal.toFixed(2);
+
+                return { rate: unitRateFinal, total: grandTotal };
+            }
+            // --- BUILDER OPERATIONS ---
+            function renderAllLists() {
+                const cont = document.getElementById('resourcesContainer');
+                cont.innerHTML = '';
+                ['Lab', 'Plant', 'Mat'].forEach(t => {
+                    let label = t === 'Lab' ? 'Labor' : (t === 'Plant' ? 'Equipment' : 'Material');
+                    let html = `<div class="mb-4 border rounded-xl overflow-hidden bg-white shadow-sm border-slate-200">
+                        <div class="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center">
+                            <span class="font-bold text-[10px] uppercase text-slate-500 tracking-wider">${label} Resources</span>
+                            <button onclick="openResourcePicker('${t}')" class="text-blue-600 font-bold text-[10px] uppercase hover:underline">
+                                <i class="fas fa-plus-circle mr-1"></i> ADD ${label.toUpperCase()}
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto"><table class="w-full text-xs">
+                            <thead class="bg-slate-50/50 border-b border-slate-100">
+                                <tr class="text-[9px] uppercase font-bold text-slate-400">
+                                    <th class="px-4 py-2 text-left">Description</th>
+                                    <th class="px-2 py-2 text-center w-12">Unit</th>
+                                    <th class="px-2 py-2 text-right w-16">Qty</th>
+                                    <th class="px-2 py-2 text-right w-20">Price</th>
+                                    <th class="px-4 py-2 text-right w-24">Total</th>
+                                    <th class="px-2 py-2 w-8"></th>
+                                </tr>
+                            </thead><tbody>`;
+
+                    currentResources.filter(r => r.t === t).forEach((r, i) => {
+                        html += `<tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 transition">
+                            <td class="px-4 py-2"><input type="text" value="${r.n}" onchange="updateResRow(${i},'n',this.value,'${t}')" class="w-full bg-transparent outline-none"></td>
+                            <td class="px-2 py-2 text-center text-slate-400"><input type="text" value="${r.u}" onchange="updateResRow(${i},'u',this.value,'${t}')" class="w-full bg-transparent text-center outline-none"></td>
+                            <td class="px-2 py-2 text-right"><input type="number" step="0.01" value="${r.q}" onchange="updateResRow(${i},'q',this.value,'${t}')" class="w-full bg-transparent text-right outline-none"></td>
+                            <td class="px-2 py-2 text-right"><input type="number" step="0.01" value="${r.c}" onchange="updateResRow(${i},'c',this.value,'${t}')" class="w-full bg-transparent text-right outline-none"></td>
+                            <td class="px-4 py-2 text-right font-bold">$${(r.q * r.c).toFixed(2)}</td>
+                            <td class="px-2 py-2 text-right"><button onclick="removeResRow(${i},'${t}')" class="text-slate-300 hover:text-red-500">&times;</button></td>
+                        </tr>`;
+                    });
+                    if (currentResources.filter(r => r.t === t).length === 0) html += `<tr><td colspan="6" class="p-4 text-center text-slate-300 italic">No ${label.toLowerCase()} resources added.</td></tr>`;
+                    html += `</tbody></table></div></div>`;
+                    cont.innerHTML += html;
+                });
+            }
+
+            function updateResRow(idx, field, val, type) {
+                const globalIdx = currentResources.findIndex((r, i) => r.t === type && currentResources.filter((x, j) => x.t === type && j <= i).length === idx + 1);
+                currentResources[globalIdx][field] = (field === 'q' || field === 'c') ? parseFloat(val) : val;
+                
+                // Auto-learn missing resource logic
+                if (field === 'n' && val.length > 3) {
+                    const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                    const db = JSON.parse(localStorage.getItem(dbKey) || '[]');
+                    if (!db.some(x => x.name.toLowerCase() === val.toLowerCase() && x.type === type)) {
+                        if (confirm(`Add "${val}" to ${activeDatabaseName}?`)) {
+                            db.push({ id: 'res-' + Math.random().toString(36).substr(2, 9), category: "Auto", type: type, name: val, unit: currentResources[globalIdx].u, rate: currentResources[globalIdx].c });
+                            localStorage.setItem(dbKey, JSON.stringify(db));
+                        }
+                    }
+                }
+                renderAllLists();
+                updateCalculations();
+            }
+
+            function removeResRow(idx, type) {
+                const globalIdx = currentResources.findIndex((r, i) => r.t === type && currentResources.filter((x, j) => x.t === type && j <= i).length === idx + 1);
+                currentResources.splice(globalIdx, 1);
+                renderAllLists();
+                updateCalculations();
+            }
+            // --- RESOURCE PICKER (PULL MODEL) ---
+            let pickerType = '';
+            function openResourcePicker(t) {
+                pickerType = t;
+                document.getElementById('resourcePickerModal').classList.remove('hidden');
+                document.getElementById('resourcePickerModal').classList.add('flex');
+                document.getElementById('pickerSubtitle').innerText = `Browsing ${t === 'Lab' ? 'Labor' : (t === 'Plant' ? 'Equipment' : 'Material')}`;
+                filterPickerList();
+            }
+            function closeResourcePicker() { document.getElementById('resourcePickerModal').classList.add('hidden'); document.getElementById('resourcePickerModal').classList.remove('flex'); }
+            function filterPickerList() {
+                const query = document.getElementById('pickerSearch').value.toLowerCase();
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                const res = JSON.parse(localStorage.getItem(dbKey) || '[]').filter(r => r.type === pickerType && (r.name.toLowerCase().includes(query) || (r.code && r.code.toLowerCase().includes(query))));
+                const tbody = document.getElementById('pickerResults');
+                tbody.innerHTML = '';
+                res.forEach(r => {
+                    tbody.innerHTML += `<tr class="hover:bg-blue-50 cursor-pointer" onclick="selectFromPicker('${r.id}')">
+                        <td class="p-4 text-xs font-mono text-slate-400">${r.code || '-'}</td>
+                        <td class="p-4 font-bold text-slate-700">${r.name}</td>
+                        <td class="p-4 text-center text-slate-500">${r.unit}</td>
+                        <td class="p-4 text-right font-bold text-blue-600">$${parseFloat(r.rate).toFixed(2)}</td>
+                        <td class="p-4 text-center"><button class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">SELECT</button></td>
+                    </tr>`;
+                });
+            }
+            function selectFromPicker(id) {
+                const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                const res = JSON.parse(localStorage.getItem(dbKey) || '[]').find(r => r.id === id);
+                if (res) { currentResources.push({ n: res.name, u: res.unit, q: 1, c: res.rate, t: res.type }); renderAllLists(); updateCalculations(); closeResourcePicker(); }
+            }
+
+            // --- KITS LOGIC ---
+            function openKitsModal() { document.getElementById('kitsModal').classList.remove('hidden'); document.getElementById('kitsModal').classList.add('flex'); renderKits(); }
+            function closeKitsModal() { document.getElementById('kitsModal').classList.add('hidden'); document.getElementById('kitsModal').classList.remove('flex'); }
+            function renderKits() {
+                const kits = JSON.parse(localStorage.getItem('civilmate_kits') || '[]');
+                const cont = document.getElementById('kitsList'); cont.innerHTML = '';
+                kits.forEach((k, i) => {
+                    cont.innerHTML += `<div class="p-4 bg-white border rounded-xl shadow-sm flex justify-between items-center group">
+                        <div><h4 class="font-bold text-slate-800">${k.name}</h4><p class="text-[10px] text-slate-400 uppercase">${k.items.length} Items</p></div>
+                        <div class="flex gap-2">
+                            <button onclick="loadKit(${i})" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">INSERT</button>
+                            <button onclick="deleteKit(${i})" class="text-slate-300 hover:text-red-500 p-2"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                });
+            }
+            function saveCurrentAsKit() {
+                const name = prompt("Enter Kit Name:");
+                if (name && currentResources.length) {
+                    const kits = JSON.parse(localStorage.getItem('civilmate_kits') || '[]');
+                    kits.push({ name: name, items: JSON.parse(JSON.stringify(currentResources)) });
+                    localStorage.setItem('civilmate_kits', JSON.stringify(kits));
+                    renderKits();
+                }
+            }
+            function loadKit(i) {
+                const kits = JSON.parse(localStorage.getItem('civilmate_kits') || '[]');
+                currentResources = JSON.parse(JSON.stringify(kits[i].items));
+                renderAllLists(); updateCalculations(); closeKitsModal();
+            }
+            function deleteKit(i) {
+                if (confirm("Delete Kit?")) {
+                    const kits = JSON.parse(localStorage.getItem('civilmate_kits') || '[]');
+                    kits.splice(i, 1);
+                    localStorage.setItem('civilmate_kits', JSON.stringify(kits));
+                    renderKits();
+                }
+            }
+
+            // --- CSV IMPORT ---
+            function openCsvImportModal() { document.getElementById('csvImportModal').classList.remove('hidden'); document.getElementById('csvImportModal').classList.add('flex'); }
+            function closeCsvImportModal() { document.getElementById('csvImportModal').classList.add('hidden'); document.getElementById('csvImportModal').classList.remove('flex'); }
+            function processCsvImport() {
+                const file = document.getElementById('csvFileInput').files[0];
+                if (!file) return;
+                const mode = document.querySelector('input[name="importMode"]:checked').value;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const lines = e.target.result.split('\n').filter(l => l.trim());
+                    const data = lines.slice(1).map(l => {
+                        const v = l.split(',');
+                        return { id: 'res-'+Math.random().toString(36).substr(2,9), category: v[0]?.trim(), code: v[1]?.trim(), name: v[2]?.trim(), unit: v[3]?.trim(), rate: parseFloat(v[4])||0, type: v[5]?.trim()||'Mat' };
+                    });
+                    if (mode === 'new') {
+                        const name = prompt("DB Name?"); if (!name) return;
+                        databaseList.push(name); localStorage.setItem('civilmate_db_list', JSON.stringify(databaseList));
+                        activeDatabaseName = name; localStorage.setItem('civilmate_active_db', name);
+                    }
+                    const dbKey = 'civilmate_resources_' + activeDatabaseName;
+                    const existing = (mode === 'merge') ? JSON.parse(localStorage.getItem(dbKey)||'[]') : [];
+                    localStorage.setItem(dbKey, JSON.stringify([...existing, ...data]));
+                    closeCsvImportModal(); refreshDatabaseSelector(); switchActiveDatabase(activeDatabaseName);
+                };
+                reader.readAsText(file);
+            }
+            // --- REGISTRY & PROJECT OPS ---
+            function loadRegistry() {
+                const tbody = document.getElementById('registryTable'); tbody.innerHTML = '';
+                const projs = JSON.parse(localStorage.getItem('civilmate_projects') || '[]').filter(p => p.status !== 'DELETED');
+                projs.forEach(p => {
+                    tbody.innerHTML += `<tr class="hover:bg-slate-50 border-b">
+                        <td class="p-4"><b>${p.client || 'Untitled'}</b><div class="text-[10px] text-slate-400 uppercase">${p.name}</div></td>
+                        <td class="p-4 font-mono text-xs text-slate-500">${p.id.slice(0, 8)}</td>
+                        <td class="p-4 text-right"><b>$${(p.total || 0).toLocaleString()}</b></td>
+                        <td class="p-4 text-center">
+                            <button onclick="editEstimate('${p.id}')" class="text-blue-500 mx-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteEstimate('${p.id}')" class="text-red-400 mx-2"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            function addToQuote() {
+                const calc = updateCalculations();
+                const itemName = document.getElementById('itemName').value;
+                const cat = document.getElementById('categorySelect').value;
+                if (!itemName || !cat) return alert("Fill Name & Category");
+                quoteItems.push({ desc: itemName, unit: document.getElementById('itemUnit').value, qty: parseFloat(document.getElementById('qtyInput').value), rate: calc.rate, total: calc.total });
+                renderQuote(); resetBuilder(); alert("Added to Quote!");
+            }
+            function renderQuote() {
+                const tbody = document.getElementById('quoteTable'); tbody.innerHTML = '';
+                let sub = 0;
+                quoteItems.forEach((item, i) => {
+                    sub += item.total;
+                    tbody.innerHTML += `<tr><td class="p-3">${item.desc}</td><td class="p-3 text-center">${item.unit}</td><td class="p-3 text-center">${item.qty}</td><td class="p-3 text-right">$${item.rate.toFixed(2)}</td><td class="p-3 text-right"><b>$${item.total.toFixed(2)}</b></td><td class="p-3 no-print"><button onclick="removeFromQuote(${i})" class="text-red-400">&times;</button></td></tr>`;
+                });
+                document.getElementById('subtotalDisplay').innerText = "$"+sub.toLocaleString();
+                document.getElementById('totalDisplay').innerText = "$"+sub.toLocaleString();
+            }
+            function removeFromQuote(i) { quoteItems.splice(i, 1); renderQuote(); }
+            function resetBuilder() { document.getElementById('itemName').value = "New Item"; document.getElementById('qtyInput').value = 1; document.getElementById('prodInput').value = 1.0; currentResources = []; renderAllLists(); updateCalculations(); }
+            function saveProject() {
+                const client = document.getElementById('clientName').value;
+                if (!quoteItems.length) return alert("Quote empty");
+                const projs = JSON.parse(localStorage.getItem('civilmate_projects') || '[]');
+                const pData = { id: currentProjectId || 'proj-' + Date.now(), client: client, items: quoteItems, total: quoteItems.reduce((s, i) => s + i.total, 0), status: "DRAFT" };
+                const idx = projs.findIndex(p => p.id === pData.id);
+                if (idx > -1) projs[idx] = pData; else projs.push(pData);
+                localStorage.setItem('civilmate_projects', JSON.stringify(projs));
+                alert("Saved!"); loadRegistry();
+            }
+            function editEstimate(id) { currentProjectId = id; loadProjectFromDB(id); switchTab('builder'); }
+            function deleteEstimate(id) { if (confirm("Delete?")) { const p = JSON.parse(localStorage.getItem('civilmate_projects') || '[]').filter(x => x.id !== id); localStorage.setItem('civilmate_projects', JSON.stringify(p)); loadRegistry(); } }
+            function loadProjectFromDB(id) { const p = JSON.parse(localStorage.getItem('civilmate_projects') || '[]').find(x => x.id === id); if (p) { document.getElementById('clientName').value = p.client || ""; quoteItems = p.items || []; renderQuote(); } }
+            function createNewEstimate() { currentProjectId = null; resetBuilder(); quoteItems = []; renderQuote(); switchTab('builder'); }
+            function renderCategories() {
+                const cats = [...new Set(JSON.parse(localStorage.getItem('civilmate_master_items')||'[]').map(i => i.cat))].sort();
+                const select = document.getElementById('categorySelect');
+                select.innerHTML = '<option value="">-- Choose Category --</option>';
+                cats.forEach(c => select.innerHTML += `<option value="${c}" ${c===selectedCategory?'selected':''}>${c}</option>`);
+            }
+            function loadSelectedFromUI() {
+                const cat = document.getElementById('categorySelect').value;
+                const name = document.getElementById('itemSelect').value;
+                const item = JSON.parse(localStorage.getItem('civilmate_master_items')).find(i => i.cat === cat && i.name === name);
+                if (item) { document.getElementById('itemName').value = item.name; document.getElementById('itemUnit').value = item.unit; document.getElementById('prodInput').value = item.prod; currentResources = JSON.parse(JSON.stringify(item.resources)); renderAllLists(); updateCalculations(); }
+            }
+            function filterItemsByCategory() {
+                const cat = document.getElementById('categorySelect').value;
+                selectedCategory = cat;
+                const items = JSON.parse(localStorage.getItem('civilmate_master_items') || '[]').filter(i => i.cat === cat);
+                const select = document.getElementById('itemSelect');
+                select.innerHTML = '<option value="">-- Choose Item --</option>';
+                items.forEach(i => select.innerHTML += `<option value="${i.name}">${i.name}</option>`);
+                select.disabled = false;
+            }
+            function switchTab(tabId) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('tab-' + tabId).classList.add('active');
+                ['registry', 'builder', 'database'].forEach(v => document.getElementById('view-' + v).classList.add('hidden'));
+                document.getElementById('view-' + tabId).classList.remove('hidden');
+                document.getElementById('btnSave').classList.toggle('hidden', tabId !== 'builder');
+                if (tabId === 'registry') loadRegistry();
+            }
+        </script>
+</body>
+
+</html>

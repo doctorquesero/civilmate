@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Setup - CivilMate Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script>tailwind.config = { darkMode: 'class' }</script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .step-active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .step-inactive {
+            border-color: #cbd5e1;
+            color: #64748b;
+        }
+
+        .dark .step-inactive {
+            border-color: #334155;
+            color: #64748b;
+        }
+
+        .step-completed {
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen flex flex-col font-sans bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-white transition-colors">
+
+    <header
+        class="h-16 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8 bg-white dark:bg-slate-900 shrink-0 transition-colors z-20">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center shadow-lg"><i
+                    class="fas fa-hard-hat text-white text-sm"></i></div>
+            <span class="font-bold text-xl tracking-tight">CivilMate <span class="text-blue-500">Pro</span></span>
+        </div>
+        <div class="text-sm font-bold text-slate-500">Organization Setup</div>
+    </header>
+
+    <main class="flex-1 flex justify-center py-12 px-4 relative overflow-hidden">
+
+        <div class="absolute top-12 left-1/2 transform -translate-x-1/2 w-full max-w-2xl px-4 flex justify-between z-0">
+            <div class="w-full h-1 bg-slate-200 dark:bg-slate-800 absolute top-4 left-0 -z-10"></div>
+
+            <div class="flex flex-col items-center bg-slate-50 dark:bg-[#0f172a] px-2">
+                <div id="ind-1"
+                    class="w-8 h-8 rounded-full border-2 bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm step-active">
+                    1</div>
+                <span class="text-[10px] uppercase font-bold mt-2 text-blue-600 dark:text-blue-500">Account &
+                    Plan</span>
+            </div>
+            <div class="flex flex-col items-center bg-slate-50 dark:bg-[#0f172a] px-2">
+                <div id="ind-2"
+                    class="w-8 h-8 rounded-full border-2 bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm step-inactive">
+                    2</div>
+                <span class="text-[10px] uppercase font-bold mt-2 text-slate-500">Business Info</span>
+            </div>
+            <div class="flex flex-col items-center bg-slate-50 dark:bg-[#0f172a] px-2">
+                <div id="ind-3"
+                    class="w-8 h-8 rounded-full border-2 bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm step-inactive">
+                    3</div>
+                <span class="text-[10px] uppercase font-bold mt-2 text-slate-500">Localization</span>
+            </div>
+        </div>
+
+        <div class="w-full max-w-xl mt-16 z-10">
+
+            <div id="step-1"
+                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-xl transition-all block">
+                <h2 class="text-2xl font-bold mb-2 text-center">Welcome to CivilMate Pro</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-center text-sm mb-6">Create your admin account and
+                    claim your Beta access.</p>
+
+                <div
+                    class="border-2 border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 relative overflow-hidden mb-6">
+                    <div
+                        class="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold uppercase py-1 px-3 rounded-bl-lg">
+                        Active Offer</div>
+                    <div class="flex justify-between items-center mb-2">
+                        <div>
+                            <h3 class="text-lg font-bold text-blue-900 dark:text-white">Early Adopter Beta</h3>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-blue-900 dark:text-white">$0<span
+                                    class="text-sm text-slate-500 dark:text-slate-400 font-normal">/mo</span></div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                        <i class="fas fa-check text-green-600 mr-1"></i> Unlimited Access during Beta <br>
+                        <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mr-1 mt-1"></i> Will transition to
+                        a 30-Day Trial later.
+                    </div>
+                </div>
+
+                <button onclick="registerWithGoogle()"
+                    class="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white font-bold py-3 rounded-xl shadow-sm transition flex justify-center items-center gap-2 transform active:scale-95 mb-6">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5" alt="Google Logo">
+                    Register with Google
+                </button>
+
+                <div class="relative flex items-center mb-6">
+                    <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                    <span class="flex-shrink px-4 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Or use
+                        email</span>
+                    <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                </div>
+
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Admin
+                            Full Name</label>
+                        <input type="text" id="regName"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 focus:outline-none focus:border-blue-500 transition-colors"
+                            placeholder="John Doe">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Work
+                            Email</label>
+                        <input type="email" id="regEmail"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 focus:outline-none focus:border-blue-500 transition-colors"
+                            placeholder="admin@company.co.nz">
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Create
+                            Password</label>
+                        <div class="relative">
+                            <input type="password" id="regPassword"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 pr-11 focus:outline-none focus:border-blue-500 transition-colors"
+                                placeholder="Min 6 characters">
+                            <button type="button" onclick="togglePasswordVisibility()"
+                                class="absolute right-3 top-3 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition"
+                                title="Show/Hide Password">
+                                <i id="eyeIcon" class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <p id="step1Error" class="text-red-500 text-xs font-bold text-center hidden mb-2"></p>
+                <button id="btnCreateAcc" onclick="createFirebaseAccount()"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">Create
+                    Account & Continue <i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <div id="step-2"
+                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-xl transition-all hidden">
+                <h2 class="text-2xl font-bold mb-2">Organization Details</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Enter your business registration details.</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Legal Business Name
+                            *</label>
+                        <input type="text" id="bizLegalName"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3"
+                            placeholder="e.g., Truchsess Civil Ltd">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">NZBN / Reg. Number
+                                *</label>
+                            <input type="text" id="bizRegNum"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3"
+                                placeholder="94290...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Business Phone</label>
+                            <input type="text"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3"
+                                placeholder="+64...">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Niche/Industry</label>
+                        <select id="bizNiche"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm appearance-none">
+                            <option>General Contractor</option>
+                            <option>Earthworks / Civil</option>
+                            <option>Concrete / Formwork</option>
+                            <option>Quantity Surveying</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <button onclick="nextStep(1)"
+                        class="px-6 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold rounded-lg transition transform active:scale-95">Back</button>
+                    <button onclick="nextStep(3)"
+                        class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">Next
+                        Step <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <div id="step-3"
+                class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-8 shadow-xl transition-all hidden">
+                <h2 class="text-2xl font-bold mb-2">Localization & Headquarters</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Headquarters
+                            Address</label>
+                        <input type="text" id="locAddress"
+                            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3"
+                            placeholder="123 Queen Street">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">City</label>
+                            <input type="text" id="locCity"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3"
+                                placeholder="Auckland">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Country</label>
+                            <select id="locCountry"
+                                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm">
+                                <option>New Zealand</option>
+                                <option>Australia</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4 mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <button onclick="nextStep(2)"
+                        class="px-6 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold rounded-lg transition transform active:scale-95">Back</button>
+                    <button id="btnFinish" onclick="saveTenantToFirebase()"
+                        class="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2"><i
+                            class="fas fa-check-circle"></i> Complete Setup</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // FIREBASE INICIALIZACIÓN
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // MOTOR DE VISIBILIDAD DE CONTRASEÑA
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('regPassword');
+            const eyeIcon = document.getElementById('eyeIcon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+
+        // NAVEGACIÓN DEL ASISTENTE
+        function nextStep(stepNumber) {
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('step-' + stepNumber).classList.remove('hidden');
+
+            for (let i = 1; i <= 3; i++) {
+                let ind = document.getElementById('ind-' + i);
+                let text = ind.nextElementSibling;
+                if (i < stepNumber) {
+                    ind.className = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm step-completed bg-white dark:bg-slate-900";
+                    ind.innerHTML = '<i class="fas fa-check"></i>';
+                    text.className = "text-[10px] uppercase font-bold mt-2 text-green-600 dark:text-green-500";
+                } else if (i === stepNumber) {
+                    ind.className = "w-8 h-8 rounded-full border-2 bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm step-active";
+                    ind.innerHTML = i;
+                    text.className = "text-[10px] uppercase font-bold mt-2 text-blue-600 dark:text-blue-500";
+                } else {
+                    ind.className = "w-8 h-8 rounded-full border-2 bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm step-inactive";
+                    ind.innerHTML = i;
+                    text.className = "text-[10px] uppercase font-bold mt-2 text-slate-500";
+                }
+            }
+        }
+
+        // LÓGICA DE REGISTRO CON GOOGLE (NUEVO)
+        function registerWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            const errorMsg = document.getElementById('step1Error');
+
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    // Éxito: El usuario se autenticó. Lo mandamos directo al Paso 2.
+                    errorMsg.classList.add('hidden');
+                    nextStep(2);
+                })
+                .catch((error) => {
+                    errorMsg.innerText = error.message;
+                    errorMsg.classList.remove('hidden');
+                });
+        }
+
+        // PASO 1: CREAR CUENTA CON CORREO
+        function createFirebaseAccount() {
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const pass = document.getElementById('regPassword').value;
+            const errorMsg = document.getElementById('step1Error');
+            const btn = document.getElementById('btnCreateAcc');
+
+            if (!name || !email || pass.length < 6) {
+                errorMsg.innerText = "Please fill all fields (Password min 6 characters).";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Creating...';
+
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then((userCredential) => {
+                    return userCredential.user.updateProfile({ displayName: name });
+                })
+                .then(() => {
+                    errorMsg.classList.add('hidden');
+                    nextStep(2);
+                })
+                .catch((error) => {
+                    btn.innerHTML = 'Create Account & Continue <i class="fas fa-arrow-right"></i>';
+                    errorMsg.innerText = error.message;
+                    errorMsg.classList.remove('hidden');
+                });
+        }
+
+        // PASO 3: GUARDAR EMPRESA EN FIRESTORE Y REDIRIGIR AL DASHBOARD
+        function saveTenantToFirebase() {
+            const user = auth.currentUser;
+            if (!user) return alert("Error: No authorized user found.");
+
+            const btn = document.getElementById('btnFinish');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Creating Workspace...';
+
+            const companyData = {
+                adminName: user.displayName || "Admin",
+                adminEmail: user.email,
+                legalName: document.getElementById('bizLegalName').value || " unnamed organization",
+                nzbn: document.getElementById('bizRegNum').value || "",
+                niche: document.getElementById('bizNiche').value || "",
+                address: document.getElementById('locAddress').value || "",
+                city: document.getElementById('locCity').value || "",
+                country: document.getElementById('locCountry').value || "New Zealand",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            db.collection("tenants").doc(user.uid).set(companyData)
+                .then(() => { window.location.href = "dashboard.html"; })
+                .catch((error) => {
+                    btn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Complete Setup';
+                    alert("Error saving company details: " + error.message);
+                });
+        }
+
+        // MOTOR VISUAL
+        function initTheme() {
+            const savedTheme = localStorage.getItem('civilmate_theme') || 'light';
+            if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+        }
+        document.addEventListener('DOMContentLoaded', initTheme);
+    </script>
+</body>
+
+</html>

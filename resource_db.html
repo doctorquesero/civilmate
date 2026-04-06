@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Resource DB | CivilMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+        <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        if(!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="civilmate_core.js"></script>
+</head>
+
+<body class="bg-slate-900 font-sans text-slate-200 h-screen flex flex-col">
+
+    <header class="h-16 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6">
+        <div class="flex items-center gap-4">
+            <a href="dashboard.html" class="text-slate-400 hover:text-white"><i class="fas fa-home"></i></a>
+            <h1 class="text-xl font-bold text-white">Resource <span class="text-blue-500">Database</span></h1>
+        </div>
+        <nav class="flex bg-slate-800 rounded-lg p-1 gap-1">
+            <a href="#" class="px-4 py-2 bg-blue-600 text-white rounded font-bold text-sm">1. Resources</a>
+            <a href="master_apu.html"
+                class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm">2. Master
+                APU</a>
+            <a href="estimator.html"
+                class="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded font-bold text-sm">3.
+                Budgets</a>
+        </nav>
+    </header>
+
+    <main class="flex-1 p-6 overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex gap-2">
+                <button onclick="render('All')"
+                    class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 text-xs">All</button>
+                <button onclick="render('Material')"
+                    class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 text-xs text-indigo-400">Materials</button>
+                <button onclick="render('Plant')"
+                    class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 text-xs text-orange-400">Plant</button>
+                <button onclick="render('Labour')"
+                    class="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600 text-xs text-blue-400">Labour</button>
+            </div>
+            <button onclick="openModal()"
+                class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold"><i
+                    class="fas fa-plus"></i> New Resource</button>
+        </div>
+
+        <div class="flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+            <div class="overflow-y-auto h-full" id="tableContainer"></div>
+        </div>
+    </main>
+
+    <div id="modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 w-96">
+            <h3 class="text-lg font-bold mb-4">Edit Resource</h3>
+            <input type="hidden" id="rIdx">
+            <div class="space-y-3">
+                <input id="rCode" placeholder="Code"
+                    class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm">
+                <select id="rCat" class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm">
+                    <option value="Material">Material</option>
+                    <option value="Plant">Plant</option>
+                    <option value="Labour">Labour</option>
+                </select>
+                <input id="rDesc" placeholder="Description"
+                    class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm">
+                <input id="rUnit" placeholder="Unit"
+                    class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm">
+                <input id="rRate" type="number" placeholder="Rate ($)"
+                    class="w-full bg-slate-900 p-2 rounded border border-slate-600 text-sm">
+            </div>
+            <div class="mt-4 flex justify-end gap-2">
+                <button onclick="document.getElementById('modal').classList.add('hidden')"
+                    class="text-slate-400">Cancel</button>
+                <button onclick="save()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let resources = DataManager.get(DB_KEYS.RESOURCES);
+
+        function render(filter) {
+            const container = document.getElementById('tableContainer');
+            let html = '<table class="w-full text-sm text-left"><thead class="bg-slate-900 text-slate-400"><tr><th class="p-3">Code</th><th class="p-3">Cat</th><th class="p-3">Description</th><th class="p-3">Unit</th><th class="p-3 text-right">Rate</th><th class="p-3 text-center">Actions</th></tr></thead><tbody>';
+
+            resources.forEach((r, idx) => {
+                if (filter !== 'All' && r.cat !== filter) return;
+                html += `<tr class="border-b border-slate-700 hover:bg-slate-700/50">
+                    <td class="p-3 font-mono text-slate-500">${r.code}</td>
+                    <td class="p-3 font-bold ${r.cat === 'Labour' ? 'text-blue-400' : r.cat === 'Plant' ? 'text-orange-400' : 'text-indigo-400'}">${r.cat}</td>
+                    <td class="p-3">${r.desc}</td>
+                    <td class="p-3 text-slate-400">${r.unit}</td>
+                    <td class="p-3 text-right font-mono">${Utils.fmtMoney(r.rate)}</td>
+                    <td class="p-3 text-center flex justify-center gap-3">
+                        <button onclick="edit(${idx})" class="text-blue-500 hover:text-white" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button onclick="copyRes(${idx})" class="text-green-500 hover:text-white" title="Copy/Clone"><i class="fas fa-copy"></i></button>
+                        <button onclick="del(${idx})" class="text-red-500 hover:text-white" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            container.innerHTML = html + '</tbody></table>';
+        }
+
+        function copyRes(idx) {
+            const r = resources[idx];
+            // Clone and ensure new unique Code
+            const newCode = r.code + '-CPY-' + Math.floor(Math.random() * 1000);
+            const newRes = { ...r, code: newCode, desc: r.desc + ' (Copy)' };
+
+            resources.push(newRes);
+            DataManager.set(DB_KEYS.RESOURCES, resources);
+            render('All');
+        }
+
+        function openModal() {
+            document.getElementById('rIdx').value = '-1';
+            document.getElementById('rCode').value = '';
+            document.getElementById('rDesc').value = '';
+            document.getElementById('rRate').value = '';
+            document.getElementById('modal').classList.remove('hidden'); document.getElementById('modal').classList.add('flex');
+        }
+
+        function edit(idx) {
+            const r = resources[idx];
+            document.getElementById('rIdx').value = idx;
+            document.getElementById('rCode').value = r.code;
+            document.getElementById('rCat').value = r.cat;
+            document.getElementById('rDesc').value = r.desc;
+            document.getElementById('rUnit').value = r.unit;
+            document.getElementById('rRate').value = r.rate;
+            document.getElementById('modal').classList.remove('hidden'); document.getElementById('modal').classList.add('flex');
+        }
+
+        function save() {
+            const idx = parseInt(document.getElementById('rIdx').value);
+            const obj = {
+                code: document.getElementById('rCode').value,
+                cat: document.getElementById('rCat').value,
+                desc: document.getElementById('rDesc').value,
+                unit: document.getElementById('rUnit').value,
+                rate: parseFloat(document.getElementById('rRate').value)
+            };
+            if (idx === -1) resources.push(obj);
+            else resources[idx] = obj;
+
+            DataManager.set(DB_KEYS.RESOURCES, resources);
+            document.getElementById('modal').classList.add('hidden');
+            render('All');
+        }
+
+        function del(idx) {
+            if (confirm("Delete Resource?")) {
+                resources.splice(idx, 1);
+                DataManager.set(DB_KEYS.RESOURCES, resources);
+                render('All');
+            }
+        }
+
+        render('All');
+    </script>
+</body>
+
+</html>

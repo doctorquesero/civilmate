@@ -1,0 +1,236 @@
+{
+  "resources": [
+    {
+      "code": "M-POLE-150",
+      "cat": "Material",
+      "desc": "150mm SED Timber Pole (H5)",
+      "unit": "m",
+      "rate": 22.50
+    },
+    {
+      "code": "M-TIMB-ROUGH",
+      "cat": "Material",
+      "desc": "150x50mm Rough Sawn Timber (H4)",
+      "unit": "m",
+      "rate": 6.80
+    },
+    {
+      "code": "M-KEYSTONE",
+      "cat": "Material",
+      "desc": "Keystone Retaining Wall Block",
+      "unit": "Ea",
+      "rate": 14.50
+    },
+    {
+      "code": "M-GEOGRID",
+      "cat": "Material",
+      "desc": "Geogrid Fortrac 35T",
+      "unit": "m2",
+      "rate": 4.50
+    },
+    {
+      "code": "M-PIPE-PE63",
+      "cat": "Material",
+      "desc": "63mm OD PE100 PN16 Water Pipe",
+      "unit": "m",
+      "rate": 11.20
+    },
+    {
+      "code": "M-HYDROSEED",
+      "cat": "Material",
+      "desc": "Hydroseed Mix & Mulch",
+      "unit": "m2",
+      "rate": 1.80
+    },
+    {
+      "code": "P-AUGER",
+      "cat": "Plant",
+      "desc": "Excavator Auger Attachment",
+      "unit": "day",
+      "rate": 150
+    },
+    {
+      "code": "P-HYDRO-TRUCK",
+      "cat": "Plant",
+      "desc": "Hydroseeding Truck",
+      "unit": "day",
+      "rate": 1200
+    },
+    {
+      "code": "L-BUILDER",
+      "cat": "Labour",
+      "desc": "Qualified Builder / Carpenter",
+      "unit": "hr",
+      "rate": 55
+    },
+    {
+      "code": "L-WATER",
+      "cat": "Labour",
+      "desc": "Water Reticulation Technician",
+      "unit": "hr",
+      "rate": 60
+    }
+  ],
+  "master_apus": [
+    {
+      "id": "APU-NZ-250",
+      "category": "200 Retaining Walls",
+      "desc": "250 - Construct Timber Pole Retaining Wall (up to 1.5m high)",
+      "unit": "m2",
+      "output": 12,
+      "pricingFormat": "UNIT_PRICE",
+      "benefitsPerc": 50,
+      "overheadPerc": 10,
+      "profitPerc": 15,
+      "materials": [
+        {
+          "code": "M-POLE-150",
+          "qty": 2.5
+        },
+        {
+          "code": "M-TIMB-ROUGH",
+          "qty": 7
+        },
+        {
+          "code": "M-CONC-20",
+          "qty": 0.15
+        }
+      ],
+      "plant": [
+        {
+          "code": "P-EXC-5T",
+          "qty": 1
+        },
+        {
+          "code": "P-AUGER",
+          "qty": 1
+        }
+      ],
+      "labor": [
+        {
+          "code": "L-BUILDER",
+          "qty": 1
+        },
+        {
+          "code": "L-LABOUR",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "id": "APU-NZ-260",
+      "category": "200 Retaining Walls",
+      "desc": "260 - Construct Keystone Block Wall incl. Geogrid",
+      "unit": "m2",
+      "output": 15,
+      "pricingFormat": "UNIT_PRICE",
+      "benefitsPerc": 50,
+      "overheadPerc": 10,
+      "profitPerc": 15,
+      "materials": [
+        {
+          "code": "M-KEYSTONE",
+          "qty": 11
+        },
+        {
+          "code": "M-GEOGRID",
+          "qty": 3
+        },
+        {
+          "code": "M-GAP40",
+          "qty": 0.5
+        }
+      ],
+      "plant": [
+        {
+          "code": "P-EXC-5T",
+          "qty": 1
+        }
+      ],
+      "labor": [
+        {
+          "code": "L-BUILDER",
+          "qty": 1
+        },
+        {
+          "code": "L-LABOUR",
+          "qty": 2
+        }
+      ]
+    },
+    {
+      "id": "APU-NZ-460",
+      "category": "400 Water Reticulation",
+      "desc": "460 - Trench, Bed & Lay 63mm PE Water Pipe",
+      "unit": "m",
+      "output": 60,
+      "pricingFormat": "UNIT_PRICE",
+      "benefitsPerc": 50,
+      "overheadPerc": 10,
+      "profitPerc": 15,
+      "materials": [
+        {
+          "code": "M-PIPE-PE63",
+          "qty": 1.05
+        },
+        {
+          "code": "M-BEDDING",
+          "qty": 0.5
+        }
+      ],
+      "plant": [
+        {
+          "code": "P-EXC-5T",
+          "qty": 1
+        },
+        {
+          "code": "P-COMP-PLATE",
+          "qty": 1
+        }
+      ],
+      "labor": [
+        {
+          "code": "L-WATER",
+          "qty": 1
+        },
+        {
+          "code": "L-OPERATOR",
+          "qty": 1
+        },
+        {
+          "code": "L-LABOUR",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "id": "APU-NZ-801",
+      "category": "800 Landscaping",
+      "desc": "801 - Hydroseeding to prepared ground",
+      "unit": "m2",
+      "output": 1500,
+      "pricingFormat": "UNIT_PRICE",
+      "benefitsPerc": 50,
+      "overheadPerc": 10,
+      "profitPerc": 15,
+      "materials": [
+        {
+          "code": "M-HYDROSEED",
+          "qty": 1
+        }
+      ],
+      "plant": [
+        {
+          "code": "P-HYDRO-TRUCK",
+          "qty": 1
+        }
+      ],
+      "labor": [
+        {
+          "code": "L-OPERATOR",
+          "qty": 2
+        }
+      ]
+    }
+  ]
+}

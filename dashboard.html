@@ -3,258 +3,605 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Dashboard - CivilMate</title>
+    <title>Command Center - CivilMate Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyClWpKp8f0axjSEJrnJMKa6jUrerhyrC4A",
+            authDomain: "civilmate-pro.firebaseapp.com",
+            projectId: "civilmate-pro",
+            storageBucket: "civilmate-pro.firebasestorage.app",
+            messagingSenderId: "674522561149",
+            appId: "1:674522561149:web:4e55096c4f8d72f142cf14"
+        };
+        if(!window.firebase || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    </script>
+    <script src="civilmate_core.js"></script>
+
     <style>
-        body { background-color: #f1f5f9; font-family: 'Segoe UI', sans-serif; }
-        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 800; background-color: #eff6ff; }
-        .tab-inactive { color: #64748b; background-color: white; border-bottom: 3px solid transparent; }
-        .tab-inactive:hover { background-color: #f8fafc; color: #475569; }
+        body { background-color: #0f172a; font-family: 'Outfit', sans-serif; color: #f8fafc; min-height: 100vh; background-image: radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.1) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.1) 0px, transparent 50%); }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 40px; padding: 2.5rem; display: flex; flex-direction: column; cursor: pointer; text-decoration: none; position: relative; overflow: hidden; }
+        .glass-card:not(.locked):hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); background: rgba(30, 41, 59, 0.9); border-color: rgba(255, 255, 255, 0.1); }
+        .glass-card.locked { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
+        .glass-card.locked:hover { transform: none; box-shadow: none; }
+        .module-icon { width: 80px; height: 80px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2.25rem; margin-bottom: 2rem; transition: all 0.3s; background: rgba(255, 255, 255, 0.05); color: #94a3b8; }
+        .card-red:not(.locked):hover .module-icon { background: #ef4444; color: white; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+        .card-green:not(.locked):hover .module-icon { background: #22c55e; color: white; box-shadow: 0 0 20px rgba(34, 197, 94, 0.4); }
+        .card-orange:not(.locked):hover .module-icon { background: #f59e0b; color: white; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+        .card-blue:not(.locked):hover .module-icon { background: #3b82f6; color: white; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .card-purple:not(.locked):hover .module-icon { background: #8b5cf6; color: white; box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
+        .modal-bg { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 1000; }
+        .scroller::-webkit-scrollbar { width: 6px; }
+        .scroller::-webkit-scrollbar-track { background: transparent; }
+        .scroller::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="p-6 max-w-[1600px] mx-auto min-h-screen">
 
-    <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div>
-            <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Command Center</h1>
-            <p class="text-slate-500 text-sm">Financial Overview & Pipeline</p>
+<body class="p-8 md:p-12 lg:p-16">
+
+    <div class="max-w-6xl mx-auto relative">
+        <div id="loadingOverlay" class="absolute inset-0 bg-[#0f172a] z-50 flex items-center justify-center flex-col min-h-[60vh] rounded-3xl">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
+            <p class="text-slate-400 font-bold tracking-widest text-sm uppercase">Authenticating Secure Connection...</p>
         </div>
-        <div class="flex gap-3">
-             <button onclick="createNewQuote()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-blue-700 shadow flex items-center transition transform hover:scale-105">
-                <i class="fas fa-plus mr-2"></i> New Quote
-            </button>
-            <a href="index.html" class="bg-slate-800 text-white px-5 py-2 rounded-lg font-bold hover:bg-black transition flex items-center">
-                <i class="fas fa-mobile-alt mr-2"></i> Field App
+
+        <header class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 opacity-0 transition-opacity duration-500" id="mainHeader">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <span id="companyBranding" class="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-tighter shadow-lg shadow-blue-500/20">Loading...</span>
+                    <span id="roleBadge" class="text-slate-400 text-xs font-medium">Verifying Credentials...</span>
+                </div>
+                <h1 class="text-5xl font-extrabold text-white tracking-tight leading-none mb-4">Command <span class="text-blue-500">Center</span></h1>
+                <p class="text-slate-400 text-lg font-medium max-w-xl">Central management nexus for site operations, financials, and project administration.</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="handleLogout()" class="flex items-center gap-2 text-slate-400 hover:text-white font-bold transition text-sm bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                <button onclick="openSettings()" id="btnSettings" class="bg-slate-800/50 p-3 rounded-xl border border-slate-700 text-slate-400 hover:text-blue-400 hover:border-blue-400/50 transition shadow-sm" title="Global Settings">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+                <div id="userAvatar" class="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
+                    --
+                </div>
+            </div>
+        </header>
+
+        <div id="financialOverview" class="mb-12 opacity-0 transition-opacity duration-500">
+            <h2 class="text-xl font-bold text-white mb-4"><i class="fas fa-chart-line text-blue-500 mr-2"></i> Company Financial Overview</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg border-t-4 border-t-blue-500">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Contracted Revenue</p>
+                    <h3 class="text-3xl font-bold text-white" id="kpiTotalRev">$0.00</h3>
+                    <p class="text-xs text-slate-500 mt-2">Sum of all Approved Budgets</p>
+                </div>
+                
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg border-t-4 border-t-red-500">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Actual Costs (To Date)</p>
+                    <h3 class="text-3xl font-bold text-white" id="kpiTotalCost">$0.00</h3>
+                    <p class="text-xs text-slate-500 mt-2">From Site Tracker Logs</p>
+                </div>
+                
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg border-t-4 border-t-green-500" id="cardProfit">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Realized Gross Profit</p>
+                    <div class="flex items-end gap-2">
+                        <h3 class="text-3xl font-bold text-green-400" id="kpiProfitVal">$0.00</h3>
+                        <span class="text-lg font-bold text-green-500 mb-1" id="kpiProfitPerc">(0%)</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">Revenue minus Actual Costs</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                    <h3 class="text-sm font-bold text-slate-300 mb-4 text-center">Cost Breakdown (Actuals)</h3>
+                    <div class="relative h-64 w-full">
+                        <canvas id="costBreakdownChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex items-center justify-center text-slate-500 italic text-sm min-h-[300px]">
+                    [Reserved for Future Cashflow Chart]
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 lg:gap-12 opacity-0 transition-opacity duration-500" id="mainGrid">
+            <a href="site_safety.html" id="mod-safety" class="glass-card card-red group">
+                <div class="module-icon"><i class="fas fa-shield-virus"></i></div>
+                <h3 class="text-2xl font-bold text-white mb-2">Health & Safety</h3>
+                <p class="text-slate-400 text-sm mb-8 leading-relaxed">Inductions, Hazards, Reports</p>
+                <div class="mt-auto flex items-center text-red-500 font-bold text-sm gap-2">Open Safety Module <i class="fas fa-arrow-right transition-transform group-hover:translate-x-2"></i></div>
+            </a>
+
+            <a href="tracker.html" id="mod-tracker" class="glass-card card-green group">
+                <div class="module-icon"><i class="fas fa-satellite-dish"></i></div>
+                <h3 class="text-2xl font-bold text-white mb-2">Site Control</h3>
+                <p class="text-slate-400 text-sm mb-8 leading-relaxed">Daily Logs & Progress</p>
+                <div class="mt-auto flex items-center text-green-500 font-bold text-sm gap-2">Enter Control Hub <i class="fas fa-arrow-right transition-transform group-hover:translate-x-2"></i></div>
+            </a>
+
+            <a href="estimator.html" id="mod-estimator" class="glass-card card-orange group">
+                <div class="module-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                <h3 class="text-2xl font-bold text-white mb-2">Budgeting & Estimating</h3>
+                <p class="text-slate-400 text-sm mb-8 leading-relaxed">Create Quotes & APU Analysis</p>
+                <div class="mt-auto flex items-center text-orange-500 font-bold text-sm gap-2 footer-text">Manage Estimates <i class="fas fa-arrow-right transition-transform group-hover:translate-x-2"></i></div>
+            </a>
+
+            <a href="valuations.html" id="mod-contracts" class="glass-card card-blue group">
+                <div class="module-icon"><i class="fas fa-file-contract"></i></div>
+                <h3 class="text-2xl font-bold text-white mb-2">Contract Administration</h3>
+                <p class="text-slate-400 text-sm mb-8 leading-relaxed">Active Contracts, Variations & Valuations</p>
+                <div class="mt-auto flex items-center text-blue-500 font-bold text-sm gap-2 footer-text">View Project Pipeline <i class="fas fa-arrow-right transition-transform group-hover:translate-x-2"></i></div>
+            </a>
+
+            <a href="master_library.html" id="mod-library" class="glass-card card-purple group md:col-span-2 lg:col-span-2">
+                <div class="flex items-center gap-6">
+                    <div class="module-icon mb-0 shrink-0"><i class="fas fa-database"></i></div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-white mb-2">Master Rate Library</h3>
+                        <p class="text-slate-400 text-sm leading-relaxed">Manage APU Databases, Global Resources & Regional Pricing Imports</p>
+                    </div>
+                </div>
+                <div class="mt-6 flex items-center text-purple-400 font-bold text-sm gap-2 footer-text">Open Database Manager <i class="fas fa-arrow-right transition-transform group-hover:translate-x-2"></i></div>
             </a>
         </div>
-    </header>
-
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-orange-400">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Pending Quotes</p>
-            <div class="flex justify-between items-end">
-                <h3 class="text-2xl font-bold text-slate-700" id="kpi-pending-val">$0</h3>
-                <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold" id="kpi-pending-count">0</span>
-            </div>
-        </div>
-        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-green-500">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Active Contracts</p>
-            <div class="flex justify-between items-end">
-                <h3 class="text-2xl font-bold text-green-700" id="kpi-active-val">$0</h3>
-                <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold" id="kpi-active-count">0</span>
-            </div>
-        </div>
-        <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-blue-500">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Success Rate</p>
-            <div class="flex justify-between items-end">
-                <h3 class="text-2xl font-bold text-blue-700" id="kpi-winrate">0%</h3>
-                <i class="fas fa-trophy text-blue-200 text-2xl"></i>
-            </div>
-        </div>
-        <div class="bg-slate-800 p-5 rounded-xl shadow-sm text-white">
-            <p class="text-[10px] font-bold text-slate-400 uppercase">Total Claimed (Gross)</p>
-            <div class="flex justify-between items-end">
-                <h3 class="text-2xl font-bold text-yellow-400" id="kpi-profit">$0</h3>
-                <i class="fas fa-coins text-yellow-600 text-2xl"></i>
-            </div>
-        </div>
     </div>
 
-    <div class="flex border-b border-slate-200 bg-white rounded-t-xl overflow-hidden shadow-sm">
-        <button onclick="filterStatus('Pending')" id="tab-Pending" class="tab-active flex-1 py-4 text-sm font-bold text-center transition">
-            <i class="fas fa-paper-plane mr-2"></i> Quotes Pipeline
-        </button>
-        <button onclick="filterStatus('Active')" id="tab-Active" class="tab-inactive flex-1 py-4 text-sm font-bold text-center transition">
-            <i class="fas fa-file-contract mr-2"></i> Active Contracts
-        </button>
-        <button onclick="filterStatus('Archive')" id="tab-Archive" class="tab-inactive flex-1 py-4 text-sm font-bold text-center transition">
-            <i class="fas fa-archive mr-2"></i> Archive / History
-        </button>
-    </div>
+    <div id="settingsModal" class="fixed inset-0 modal-bg hidden items-center justify-center p-4">
+        <div class="bg-slate-800 w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden border border-slate-700 flex flex-col md:flex-row h-[85vh]">
+            <div class="w-full md:w-1/3 bg-slate-900 border-r border-slate-700 p-6 flex flex-col gap-2">
+                <h2 class="text-2xl font-bold text-white mb-8 mt-2"><i class="fas fa-building mr-3 text-blue-500"></i>Enterprise</h2>
+                <button onclick="switchSetTab('profile')" id="btnTabProfile" class="text-left px-4 py-3 rounded-xl bg-blue-600/20 text-blue-400 font-bold transition flex items-center gap-3"><i class="fas fa-id-card w-5 text-center"></i> Company Profile</button>
+                <button onclick="switchSetTab('staff')" id="btnTabStaff" class="text-left px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition flex items-center gap-3"><i class="fas fa-users w-5 text-center"></i> My Staff & Roles</button>
+                <button onclick="switchSetTab('security')" id="btnTabSecurity" class="text-left px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition flex items-center gap-3"><i class="fas fa-shield-alt w-5 text-center"></i> Security & Passkey</button>
+            </div>
 
-    <div class="bg-white shadow-sm border border-t-0 border-slate-200 rounded-b-xl overflow-hidden min-h-[400px]">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b">
-                <tr>
-                    <th class="p-4 w-1/3">Project / Client</th>
-                    <th class="p-4 text-center">Date</th>
-                    <th class="p-4 text-right">Contract Value</th>
-                    <th class="p-4 text-right text-slate-400">Claimed</th>
-                    <th class="p-4 text-center">Status</th>
-                    <th class="p-4 text-center w-48">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="projectsTable" class="divide-y divide-slate-100">
-                <tr><td colspan="6" class="p-10 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i> Loading Pipeline...</td></tr>
-            </tbody>
-        </table>
+            <div class="w-full md:w-2/3 p-8 overflow-y-auto scroller relative bg-slate-800">
+                <button onclick="closeSettings()" class="absolute top-6 right-6 text-slate-400 hover:text-white bg-slate-900 p-2 rounded-lg border border-slate-700"><i class="fas fa-times px-1"></i></button>
+
+                <div id="setTabProfile" class="block space-y-5">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Company Profile</h3>
+                        <p class="text-slate-400 text-sm mb-6">Details used for official quotes, contracts, and valuations.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2"><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Legal Company Name</label><input type="text" id="setCompName" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:border-blue-500 text-white font-bold"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Owner / Director Name</label><input type="text" id="setOwner" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:border-blue-500 text-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">NZBN (Business Number)</label><input type="text" id="setNZBN" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:border-blue-500 text-white"></div>
+                        <div class="col-span-2"><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Official Address</label><input type="text" id="setAddress" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:border-blue-500 text-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Phone</label><input type="text" id="setPhone" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:border-blue-500 text-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Official Email</label><input type="email" id="setEmail" class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:border-blue-500 text-white"></div>
+                    </div>
+                </div>
+
+                <div id="setTabStaff" class="hidden space-y-5">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">My Staff & Access Control</h3>
+                        <p class="text-slate-400 text-sm mb-4">Register your employees and assign operational roles.</p>
+                    </div>
+                    <div class="bg-slate-900 p-5 rounded-xl border border-slate-700 mb-6 shadow-inner">
+                        <h4 class="text-sm font-bold text-white mb-4 border-b border-slate-800 pb-2 flex justify-between items-center">
+                            <span><i class="fas fa-user-plus mr-2 text-green-500"></i>Staff Roster Editor</span>
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-[10px] uppercase text-slate-400 font-bold">Full Name</label><input type="text" id="staffName" class="w-full bg-slate-800 border border-slate-600 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500" placeholder="John Doe"></div>
+                            <div><label class="text-[10px] uppercase text-slate-400 font-bold">Email Address</label><input type="email" id="staffEmail" class="w-full bg-slate-800 border border-slate-600 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500" placeholder="john@company.com"></div>
+                            <div><label class="text-[10px] uppercase text-slate-400 font-bold">Phone Number</label><input type="text" id="staffPhone" class="w-full bg-slate-800 border border-slate-600 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500" placeholder="021 123 4567"></div>
+                            <div><label class="text-[10px] uppercase text-slate-400 font-bold">Physical Address</label><input type="text" id="staffAddress" class="w-full bg-slate-800 border border-slate-600 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500" placeholder="Home address"></div>
+                            <div><label class="text-[10px] uppercase text-slate-400 font-bold">Role / Access Level</label>
+                                <select id="staffRole" class="w-full bg-slate-800 border border-slate-600 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500">
+                                    <option value="SUPERVISOR">Site Supervisor</option>
+                                    <option value="SURVEYOR">Surveyor</option>
+                                    <option value="ENGINEER">Project Engineer</option>
+                                    <option value="QS">Quantity Surveyor</option>
+                                    <option value="DIRECTOR">Director / Admin</option>
+                                </select>
+                            </div>
+                            <div><label class="text-[10px] uppercase text-slate-400 font-bold text-orange-400">Temporary Passkey</label><input type="text" id="staffTempKey" class="w-full bg-slate-800 border border-orange-500/50 p-2 rounded-lg text-white text-sm font-mono outline-none focus:border-orange-500" placeholder="temp1234"></div>
+                        </div>
+                        <div class="mt-4 flex justify-end gap-2">
+                            <button onclick="cancelEditStaff()" id="btnCancelEditStaff" class="hidden bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg font-bold shadow text-sm transition">Cancel</button>
+                            <button onclick="addStaffMember()" id="btnSubmitStaff" class="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg font-bold shadow text-sm transition"><i class="fas fa-save mr-2"></i>Add to Roster</button>
+                        </div>
+                    </div>
+                    <div class="border border-slate-700 rounded-xl bg-slate-900/50 overflow-hidden">
+                        <table class="w-full text-left text-sm text-slate-300">
+                            <thead class="bg-slate-900 text-slate-500 text-[10px] uppercase font-bold">
+                                <tr><th class="p-3 w-2/5">Employee Profile</th><th class="p-3">Role</th><th class="p-3 text-center">Action</th></tr>
+                            </thead>
+                            <tbody id="staffListTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="setTabSecurity" class="hidden space-y-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">Security & Vault Access</h3>
+                    </div>
+                    
+                    <div class="bg-slate-900 p-5 rounded-xl border border-slate-700 shadow-inner">
+                        <h4 class="text-sm font-bold text-white mb-4 border-b border-slate-800 pb-2"><i class="fas fa-user-shield mr-2 text-blue-500"></i>My Personal Passkey</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Passkey</label><input type="password" id="setPersonalOldKey" class="w-full p-2 bg-slate-800 border border-slate-600 rounded-lg outline-none focus:border-blue-500 text-white font-mono"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">New Secure Passkey</label><input type="password" id="setPersonalNewKey" class="w-full p-2 bg-slate-800 border border-slate-600 rounded-lg outline-none focus:border-blue-500 text-white font-mono"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2 italic">* Use this section to update your temporary onboarding passkey to a secure personal one.</p>
+                    </div>
+
+                    <div class="bg-slate-900 p-5 rounded-xl border border-red-900/50 border-t-4 border-t-red-500 shadow-inner">
+                        <label class="block text-xs font-bold text-red-400 uppercase tracking-widest mb-2"><i class="fas fa-key mr-2"></i>Master Admin Deletion Passkey</label>
+                        <input type="text" id="setAdminPasskey" class="w-full p-3 bg-slate-800 border border-slate-600 rounded-xl outline-none focus:border-red-500 text-white font-mono" placeholder="e.g. master2026">
+                        <p class="text-[10px] text-slate-500 mt-3 leading-relaxed">This vault passkey is requested whenever someone tries to delete data from the Master Rate Library. <strong class="text-slate-300">Do not share this key with junior staff.</strong></p>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700 flex justify-end">
+                    <button onclick="saveSettings()" id="btnSaveSet" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition">Save Enterprise Configuration</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBcgFroLuH-8AQ_0uXmCffnYpEkJZEeBYk", authDomain: "civilmate-933db.firebaseapp.com", projectId: "civilmate-933db", storageBucket: "civilmate-933db.firebasestorage.app", messagingSenderId: "679829297548", appId: "1:679829297548:web:42f9a5217314b787ed9ea9" };
-        firebase.initializeApp(firebaseConfig);
+        // firebaseConfig and initializeApp are now in the <head>
+        const auth = firebase.auth();
         const db = firebase.firestore();
 
-        let allProjects = [];
-        let currentTab = 'Pending'; // Default view
+        let currentStaffList = [];
+        let editingStaffIndex = -1; // Nueva variable para controlar la edición
 
-        function loadData() {
-            db.collection('projects').orderBy('updatedAt', 'desc').onSnapshot(snapshot => {
-                allProjects = [];
-                let pendingVal = 0, pendingCount = 0, activeVal = 0, activeCount = 0, totalClaimedGlobal = 0, lostCount = 0;
+        auth.onAuthStateChanged((user) => {
+            if (!user) { window.location.replace("index.html"); } 
+            else { loadUserAccess(user); }
+        });
+
+        function loadUserAccess(user) {
+            db.collection("tenants").get().then((snapshot) => {
+                let userRole = null; let tenantData = null;
 
                 snapshot.forEach(doc => {
-                    const p = doc.data();
-                    p.id = doc.id;
-                    allProjects.push(p);
-                    const total = p.total || 0;
-                    const claimed = p.totalClaimedGross || 0; // Field updated by Valuations V3.0
-                    
-                    if(p.status === 'Pending') { pendingVal += total; pendingCount++; }
-                    else if (p.status === 'Active') { activeVal += total; totalClaimedGlobal += claimed; activeCount++; }
-                    else if (p.status === 'Rejected' || p.status === 'Completed') { lostCount++; totalClaimedGlobal += claimed; }
+                    const data = doc.data();
+                    if (data.email && data.email.toLowerCase() === user.email.toLowerCase()) {
+                        userRole = 'DIRECTOR'; tenantData = data;
+                    } else if (data.staff && Array.isArray(data.staff)) {
+                        const staffMatch = data.staff.find(s => s.email.toLowerCase() === user.email.toLowerCase());
+                        if (staffMatch) { userRole = staffMatch.role; tenantData = data; }
+                    }
                 });
 
-                document.getElementById('kpi-pending-val').innerText = fmtMoney(pendingVal);
-                document.getElementById('kpi-pending-count').innerText = pendingCount;
-                document.getElementById('kpi-active-val').innerText = fmtMoney(activeVal);
-                document.getElementById('kpi-active-count').innerText = activeCount;
-                document.getElementById('kpi-profit').innerText = fmtMoney(totalClaimedGlobal);
-                
-                // Win Rate includes completed jobs as wins
-                const completedWins = allProjects.filter(p => p.status === 'Completed').length;
-                const totalClosed = activeCount + completedWins + allProjects.filter(p => p.status === 'Rejected').length;
-                const winRate = totalClosed > 0 ? Math.round(((activeCount + completedWins) / totalClosed) * 100) : 0;
-                document.getElementById('kpi-winrate').innerText = winRate + "%";
+                if (userRole && tenantData) {
+                    document.getElementById('companyBranding').innerText = tenantData.legalName || 'CivilMate Enterprise';
+                    
+                    if (userRole === 'DIRECTOR') {
+                        let s = DataManager.getSettings() || {};
+                        s.companyName = tenantData.legalName || '';
+                        s.adminPasskey = tenantData.adminPasskey || 'master2026';
+                        DataManager.saveSettings(s);
+                        currentStaffList = tenantData.staff || [];
+                    }
 
-                renderTable();
-            });
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('projectsTable');
-            tbody.innerHTML = "";
-            const filtered = allProjects.filter(p => {
-                if (currentTab === 'Pending') return p.status === 'Pending';
-                if (currentTab === 'Active') return p.status === 'Active'; // Strict Active
-                if (currentTab === 'Archive') return p.status === 'Rejected' || p.status === 'Completed'; // History bucket
-                return false;
-            });
-
-            if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-slate-400 italic">No records in ${currentTab}.</td></tr>`;
-                return;
-            }
-
-            filtered.forEach(p => {
-                const total = p.total || 0;
-                const claimed = p.totalClaimedGross || 0;
-                
-                let percent = 0;
-                if(total > 0) percent = Math.round((claimed / total) * 100);
-
-                // Progress Bar Color Logic
-                let progressColor = "bg-blue-600";
-                if(percent > 100) progressColor = "bg-red-500"; // Over budget
-                else if(percent === 100) progressColor = "bg-green-500";
-
-                const progressBar = `
-                    <div class="flex items-center gap-2 justify-end">
-                        <span class="text-xs font-bold ${percent >= 100 ? 'text-green-600' : 'text-slate-500'}">${percent}%</span>
-                        <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div class="${progressColor} h-full" style="width: ${Math.min(percent, 100)}%"></div>
-                        </div>
-                    </div>
-                    <div class="text-[10px] text-slate-400 text-right font-mono">${fmtMoney(claimed)}</div>
-                `;
-
-                let statusBadge = "";
-                let actionBtns = "";
-                
-                let mainBtnText = "Open Budget";
-                let mainBtnIcon = "fa-folder-open";
-                let mainBtnClass = "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100";
-                
-                if (p.status === 'Active' || p.status === 'Completed') {
-                    mainBtnText = "Manage Project";
-                    mainBtnIcon = "fa-cogs";
-                    mainBtnClass = "bg-slate-800 text-white hover:bg-slate-900 border-slate-900 shadow-md";
-                }
-
-                const btnMain = `<button onclick="openProjectHub('${p.id}', '${p.status}')" class="${mainBtnClass} px-3 py-1.5 rounded-md text-xs font-bold border transition flex items-center justify-center gap-2 w-full mb-1"><i class="fas ${mainBtnIcon}"></i> ${mainBtnText}</button>`;
-
-                if(currentTab === 'Pending') {
-                    statusBadge = `<span class="bg-orange-100 text-orange-600 px-2 py-1 rounded text-[10px] font-bold uppercase">Pending Quote</span>`;
-                    actionBtns = `<div class="flex flex-col gap-1">${btnMain}<div class="flex gap-1"><button onclick="updateStatus('${p.id}', 'Active')" class="flex-1 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-green-200 transition">Won</button><button onclick="updateStatus('${p.id}', 'Rejected')" class="flex-1 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold border border-red-200 transition">Lost</button></div></div>`;
-                } else if (currentTab === 'Active') {
-                    statusBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase">Active Contract</span>`;
-                    // SMART CLOSE BUTTON
-                    actionBtns = `<div class="flex flex-col gap-1">${btnMain}<button onclick="attemptClose('${p.id}', ${percent})" class="text-xs text-slate-400 hover:text-red-500 hover:underline mt-1">Archive / Close Project</button></div>`;
+                    applyStrictRoleSecurity(userRole);
+                    
+                    db.collection("civilmate_resources").get().then(resSnap => {
+                        window.resources = [];
+                        resSnap.forEach(r => window.resources.push(r.data()));
+                        return loadFinancialDashboard();
+                    }).finally(() => {
+                        document.getElementById('loadingOverlay').classList.add('hidden');
+                        document.getElementById('mainHeader').classList.remove('opacity-0');
+                        const finOver = document.getElementById('financialOverview');
+                        if (finOver) finOver.classList.remove('opacity-0');
+                        document.getElementById('mainGrid').classList.remove('opacity-0');
+                    });
                 } else {
-                    const label = p.status === 'Completed' ? 'Completed' : 'Rejected';
-                    const color = p.status === 'Completed' ? 'bg-gray-100 text-gray-600' : 'bg-red-50 text-red-400';
-                    statusBadge = `<span class="${color} px-2 py-1 rounded text-[10px] font-bold uppercase">${label}</span>`;
-                    actionBtns = `<button onclick="updateStatus('${p.id}', 'Pending')" class="text-xs text-blue-500 hover:underline">Restore to Pipeline</button>`;
+                    alert("Unauthorized Email. You do not have access to any CivilMate company.");
+                    auth.signOut();
                 }
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 transition group">
-                        <td class="p-4"><div class="font-bold text-slate-700 text-sm">${p.name || 'Untitled'}</div><div class="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">${new Date(p.createdAt || Date.now()).toLocaleDateString()}</div></td>
-                        <td class="p-4 text-center text-xs text-slate-500">${getTimeAgo(p.createdAt || Date.now())} ago</td>
-                        <td class="p-4 text-right font-mono font-bold text-slate-700 text-sm">${fmtMoney(total)}</td>
-                        <td class="p-4">${progressBar}</td>
-                        <td class="p-4 text-center">${statusBadge}</td>
-                        <td class="p-4 text-center w-48">${actionBtns}</td>
-                    </tr>`;
-            });
+            }).catch(err => { console.error(err); alert("Error connecting to database."); });
         }
 
-        function filterStatus(status) {
-            currentTab = status;
-            ['Pending', 'Active', 'Archive'].forEach(s => {
-                const btn = document.getElementById('tab-'+s);
-                btn.className = (s === status) ? "tab-active flex-1 py-4 text-sm font-bold text-center transition cursor-default" : "tab-inactive flex-1 py-4 text-sm font-bold text-center transition cursor-pointer hover:bg-slate-50";
-            });
-            renderTable();
-        }
-
-        function updateStatus(id, newStatus) {
-            db.collection('projects').doc(id).update({ status: newStatus });
-        }
-
-        // --- SMART CLOSE LOGIC (LEGAL CHECK) ---
-        function attemptClose(id, percent) {
-            if (percent < 100) {
-                if(!confirm(`⚠️ WARNING: FINANCIAL RISK\n\nOnly ${percent}% of the contract value has been claimed.\n\nAre you sure you want to close this project before final payment?`)) {
-                    return; // Cancel close
-                }
-            } else {
-                if(!confirm("Archive this project as Completed?")) return;
+        function applyStrictRoleSecurity(role) {
+            const avatar = document.getElementById('userAvatar');
+            const badge = document.getElementById('roleBadge');
+            const btnSettings = document.getElementById('btnSettings');
+            
+            if (role === 'SUPERVISOR' || role === 'SURVEYOR' || role === 'ENGINEER') {
+                avatar.innerText = role.substring(0,2).toUpperCase(); avatar.classList.add('bg-green-600');
+                badge.innerHTML = `<span class="text-green-400">●</span> ${role} Access`;
+                lockModule('mod-estimator'); lockModule('mod-contracts'); lockModule('mod-library'); 
+                if (btnSettings) btnSettings.remove();
+            } 
+            else if (role === 'QS') {
+                avatar.innerText = 'QS'; avatar.classList.add('bg-orange-500');
+                badge.innerHTML = `<span class="text-orange-400">●</span> Commercial Access (QS)`;
+                if (btnSettings) btnSettings.remove();
             }
-            updateStatus(id, 'Completed');
-        }
-
-        function createNewQuote() { localStorage.removeItem('civilmate_current_project_id'); window.location.href = 'contracts.html'; }
-        
-        function openProjectHub(id, status) {
-            localStorage.setItem('civilmate_current_project_id', id);
-            if (status === 'Active' || status === 'Completed') {
-                window.location.href = 'project_hub.html';
-            } else {
-                window.location.href = 'contracts.html';
+            else if (role === 'DIRECTOR') {
+                avatar.innerText = 'DR'; badge.innerHTML = '<span class="text-blue-400">●</span> Enterprise Director';
             }
         }
 
-        function fmtMoney(n) { return "$" + (n || 0).toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
-        function getTimeAgo(ts) {
-            const days = Math.floor((Date.now() - ts) / (1000 * 60 * 60 * 24));
-            return days === 0 ? "Today" : days + " days";
+        function lockModule(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.classList.add('locked'); el.removeAttribute('href'); 
+                const iconContainer = el.querySelector('.module-icon'); iconContainer.innerHTML = '<i class="fas fa-lock"></i>';
+                const footer = el.querySelector('.footer-text'); footer.innerHTML = '<i class="fas fa-ban mr-2"></i> Access Denied';
+                footer.classList.remove('text-orange-500', 'text-blue-500', 'text-purple-400'); footer.classList.add('text-slate-500');
+                el.onclick = (e) => { e.preventDefault(); alert('⛔ SECURITY PROTOCOL\n\nThis module is restricted. Contact your Director for access.'); }
+            }
         }
 
-        loadData();
+        function switchSetTab(tab) {
+            document.getElementById('setTabProfile').classList.add('hidden'); document.getElementById('setTabStaff').classList.add('hidden'); document.getElementById('setTabSecurity').classList.add('hidden');
+            const btnClassBase = "text-left px-4 py-3 rounded-xl transition flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white";
+            document.getElementById('btnTabProfile').className = btnClassBase; document.getElementById('btnTabStaff').className = btnClassBase; document.getElementById('btnTabSecurity').className = btnClassBase;
+
+            if(tab === 'profile') { document.getElementById('setTabProfile').classList.remove('hidden'); document.getElementById('btnTabProfile').className = "text-left px-4 py-3 rounded-xl transition flex items-center gap-3 bg-blue-600/20 text-blue-400 font-bold"; } 
+            else if(tab === 'staff') { document.getElementById('setTabStaff').classList.remove('hidden'); document.getElementById('btnTabStaff').className = "text-left px-4 py-3 rounded-xl transition flex items-center gap-3 bg-blue-600/20 text-blue-400 font-bold"; renderStaffTable(); } 
+            else if(tab === 'security') { document.getElementById('setTabSecurity').classList.remove('hidden'); document.getElementById('btnTabSecurity').className = "text-left px-4 py-3 rounded-xl transition flex items-center gap-3 bg-blue-600/20 text-blue-400 font-bold"; }
+            cancelEditStaff(); // Limpiar el modo edición al cambiar de pestaña
+        }
+
+        function renderStaffTable() {
+            const tbody = document.getElementById('staffListTable');
+            if (currentStaffList.length === 0) { tbody.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-500 italic">No staff members registered.</td></tr>`; return; }
+            tbody.innerHTML = currentStaffList.map((s, index) => {
+                let color = s.role === 'DIRECTOR' ? 'text-blue-400' : (s.role === 'QS' ? 'text-orange-400' : 'text-slate-300');
+                return `<tr class="border-t border-slate-700 hover:bg-slate-800 transition">
+                    <td class="p-3"><div class="font-bold text-white text-sm">${s.name || 'N/A'}</div><div class="text-[11px] text-slate-400">${s.email}</div></td>
+                    <td class="p-3 font-bold text-xs ${color} uppercase tracking-wider">${s.role}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="editStaff(${index})" class="text-blue-500 hover:text-blue-300 bg-blue-500/10 px-2 py-1 rounded mr-1 transition" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                        <button onclick="removeStaff(${index})" class="text-red-500 hover:text-red-300 bg-red-500/10 px-2 py-1 rounded transition" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // --- LÓGICA DE EDICIÓN DEL STAFF ---
+        function editStaff(index) {
+            editingStaffIndex = index;
+            const s = currentStaffList[index];
+            document.getElementById('staffName').value = s.name || "";
+            document.getElementById('staffEmail').value = s.email || "";
+            document.getElementById('staffPhone').value = s.phone || "";
+            document.getElementById('staffAddress').value = s.address || "";
+            document.getElementById('staffRole').value = s.role || "SUPERVISOR";
+            document.getElementById('staffTempKey').value = s.passkey || "";
+            
+            const btnSubmit = document.getElementById('btnSubmitStaff');
+            btnSubmit.innerHTML = '<i class="fas fa-save mr-2"></i>Update Staff';
+            btnSubmit.classList.replace('bg-green-600', 'bg-blue-600');
+            btnSubmit.classList.replace('hover:bg-green-500', 'hover:bg-blue-500');
+            document.getElementById('btnCancelEditStaff').classList.remove('hidden');
+        }
+
+        function cancelEditStaff() {
+            editingStaffIndex = -1;
+            document.getElementById('staffName').value = "";
+            document.getElementById('staffEmail').value = "";
+            document.getElementById('staffPhone').value = "";
+            document.getElementById('staffAddress').value = "";
+            document.getElementById('staffTempKey').value = "";
+            
+            const btnSubmit = document.getElementById('btnSubmitStaff');
+            btnSubmit.innerHTML = '<i class="fas fa-save mr-2"></i>Add to Roster';
+            btnSubmit.classList.replace('bg-blue-600', 'bg-green-600');
+            btnSubmit.classList.replace('hover:bg-blue-500', 'hover:bg-green-500');
+            document.getElementById('btnCancelEditStaff').classList.add('hidden');
+        }
+
+        function addStaffMember() {
+            const name = document.getElementById('staffName').value.trim();
+            const email = document.getElementById('staffEmail').value.trim();
+            const phone = document.getElementById('staffPhone').value.trim();
+            const address = document.getElementById('staffAddress').value.trim();
+            const role = document.getElementById('staffRole').value;
+            const tempKey = document.getElementById('staffTempKey').value.trim();
+
+            if (email === "" || name === "") { alert("Name and Email are mandatory."); return; }
+            
+            if (editingStaffIndex > -1) {
+                // Modo Actualización
+                if (currentStaffList.some((s, idx) => s.email.toLowerCase() === email.toLowerCase() && idx !== editingStaffIndex)) {
+                    alert("Email already registered for another staff member.");
+                    return;
+                }
+                currentStaffList[editingStaffIndex] = { name, email, phone, address, role, passkey: tempKey };
+                cancelEditStaff();
+                renderStaffTable();
+            } else {
+                // Modo Añadir Nuevo
+                if (!currentStaffList.some(s => s.email.toLowerCase() === email.toLowerCase())) {
+                    currentStaffList.push({ name, email, phone, address, role, passkey: tempKey });
+                    cancelEditStaff();
+                    renderStaffTable();
+                } else { 
+                    alert("Email already registered."); 
+                }
+            }
+        }
+
+        function removeStaff(index) { if(confirm("Remove this staff member?")) { currentStaffList.splice(index, 1); renderStaffTable(); cancelEditStaff(); } }
+
+        function handleLogout() { auth.signOut().then(() => { window.location.replace("index.html"); }); }
+
+        function openSettings() {
+            const user = auth.currentUser;
+            db.collection("tenants").doc(user.uid).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('setCompName').value = data.legalName || '';
+                    document.getElementById('setOwner').value = data.ownerName || '';
+                    document.getElementById('setNZBN').value = data.nzbn || '';
+                    document.getElementById('setAddress').value = data.address || '';
+                    document.getElementById('setPhone').value = data.phone || '';
+                    document.getElementById('setEmail').value = data.email || '';
+                    document.getElementById('setAdminPasskey').value = data.adminPasskey || 'master2026';
+                    currentStaffList = data.staff || [];
+                    switchSetTab('profile'); 
+                    document.getElementById('settingsModal').classList.remove('hidden'); document.getElementById('settingsModal').classList.add('flex');
+                }
+            });
+        }
+
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').classList.remove('flex'); cancelEditStaff(); }
+
+        function saveSettings() {
+            const user = auth.currentUser;
+            const btn = document.getElementById('btnSaveSet');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            const payload = {
+                legalName: document.getElementById('setCompName').value,
+                ownerName: document.getElementById('setOwner').value,
+                nzbn: document.getElementById('setNZBN').value,
+                address: document.getElementById('setAddress').value,
+                phone: document.getElementById('setPhone').value,
+                email: document.getElementById('setEmail').value,
+                adminPasskey: document.getElementById('setAdminPasskey').value || 'master2026',
+                staff: currentStaffList
+            };
+
+            const oldKey = document.getElementById('setPersonalOldKey').value;
+            const newKey = document.getElementById('setPersonalNewKey').value;
+            if (oldKey !== "" && newKey !== "") {
+                payload.adminPasskey = newKey; 
+                document.getElementById('setAdminPasskey').value = newKey;
+                document.getElementById('setPersonalOldKey').value = "";
+                document.getElementById('setPersonalNewKey').value = "";
+                alert("Personal Passkey successfully updated.");
+            }
+
+            db.collection("tenants").doc(user.uid).update(payload).then(() => {
+                document.getElementById('companyBranding').innerText = payload.legalName;
+                let s = DataManager.getSettings() || {};
+                s.companyName = payload.legalName; s.adminPasskey = payload.adminPasskey; DataManager.saveSettings(s);
+                btn.innerHTML = 'Save Enterprise Configuration';
+                closeSettings();
+            }).catch((error) => {
+                btn.innerHTML = 'Save Enterprise Configuration';
+                alert("Error saving settings: " + error.message);
+            });
+        }
+
+        // --- DASHBOARD FINANCIAL LOGIC ---
+        let dashChartInstance = null;
+
+        async function loadFinancialDashboard() {
+            try {
+                const user = firebase.auth().currentUser;
+                if(!user) return;
+                
+                // 1. Calculate Total Revenue from Approved Budgets
+                let totalRevenue = 0;
+                const budSnap = await db.collection("tenants").doc(user.uid).collection("budgets").where("status", "==", "Approved").get();
+                
+                budSnap.forEach(doc => {
+                    const b = doc.data();
+                    const bTotal = (b.items || []).reduce((acc, i) => acc + (Number(i.rate || 0) * Number(i.qty || 0)), 0);
+                    totalRevenue += bTotal;
+                });
+                
+                // 2. Calculate Actual Costs from Site Logs
+                let totalCost = 0;
+                let costLabor = 0, costPlant = 0, costMat = 0;
+                
+                // Fetch site logs from Firebase directly
+                const siteLogsSnap = await db.collection('site_logs').get();
+                let logs = [];
+                siteLogsSnap.forEach(d => logs.push(d.data()));
+                
+                // Fallback local storage
+                if(logs.length === 0) {
+                    logs = JSON.parse(localStorage.getItem('civilmate_sitelogs')) || [];
+                }
+                
+                logs.forEach(log => {
+                    const resUsed = log.resourcesUsed || [];
+                    resUsed.forEach(res => {
+                        const masterRes = (window.resources || []).find(r => r.desc === res.desc); 
+                        const rate = masterRes ? Number(masterRes.rate || 0) : 0;
+                        
+                        const lineCost = Number(res.qty || 0) * rate;
+                        totalCost += lineCost;
+                        
+                        if(res.type === 'Labor') costLabor += lineCost;
+                        else if(res.type === 'Plant') costPlant += lineCost;
+                        else costMat += lineCost;
+                    });
+                });
+                
+                // 3. Calculate Profit
+                const profitVal = totalRevenue - totalCost;
+                const profitPerc = totalRevenue > 0 ? (profitVal / totalRevenue) * 100 : 0;
+                
+                // 4. Update UI
+                const fmt = (n) => '$' + n.toLocaleString('en-NZ', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                document.getElementById('kpiTotalRev').innerText = fmt(totalRevenue);
+                document.getElementById('kpiTotalCost').innerText = fmt(totalCost);
+                document.getElementById('kpiProfitVal').innerText = fmt(profitVal);
+                document.getElementById('kpiProfitPerc').innerText = `(${profitPerc.toFixed(1)}%)`;
+                
+                const profitCard = document.getElementById('cardProfit');
+                const profitText = document.getElementById('kpiProfitVal');
+                const percText = document.getElementById('kpiProfitPerc');
+                
+                if(profitVal < 0) {
+                    profitCard.className = "bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg border-t-4 border-t-red-500";
+                    profitText.className = "text-3xl font-bold text-red-400";
+                    percText.className = "text-lg font-bold text-red-500 mb-1";
+                } else {
+                    profitCard.className = "bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg border-t-4 border-t-green-500";
+                    profitText.className = "text-3xl font-bold text-green-400";
+                    percText.className = "text-lg font-bold text-green-500 mb-1";
+                }
+                
+                // 5. Draw Chart
+                drawCostChart(costLabor, costPlant, costMat);
+                
+            } catch(e) {
+                console.error("Dashboard calculation error:", e);
+            }
+        }
+
+        function drawCostChart(labor, plant, mat) {
+            const ctx = document.getElementById('costBreakdownChart').getContext('2d');
+            if(dashChartInstance) dashChartInstance.destroy();
+            
+            if(labor === 0 && plant === 0 && mat === 0) return;
+            
+            dashChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Labor', 'Plant', 'Materials'],
+                    datasets: [{
+                        data: [labor, plant, mat],
+                        backgroundColor: ['#3b82f6', '#f97316', '#818cf8'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#cbd5e1' } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
     </script>
 </body>
 </html>
